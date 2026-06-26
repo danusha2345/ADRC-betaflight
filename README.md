@@ -1,4 +1,4 @@
-<img width="1376" height="768" alt="Gemini_Generated_Image_exhvovexhvovexhv" src="https://github.com/user-attachments/assets/3014451f-cb07-47a4-b374-432f6aef1514" />
+<img width="2752" height="1536" alt="Gemini_Generated_Image_ug0arsug0arsug0a" src="https://github.com/user-attachments/assets/beabbfef-cba9-40af-93b3-4470733872fd" />
 
 # Betaflight ADRC Controller (Active Disturbance Rejection Control)
 
