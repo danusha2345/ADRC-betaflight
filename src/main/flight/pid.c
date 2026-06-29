@@ -1410,7 +1410,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             pidRuntime.adrc_lastOutput[axis] = 0.0f;
         }
     } else if (pidRuntime.zeroThrottleItermReset) {
-        pidResetIterm();
+        // Keep the ESO running at zero throttle (do not wipe z1/z2/z3) so the disturbance
+        // estimate is maintained instead of restarting from zero on every spool-up.
+        // Only the legacy I accumulator is cleared (ADRC recomputes I = -z3/b0 each loop).
+        for (int axis = 0; axis < 3; axis++) {
+            pidData[axis].I = 0.0f;
+        }
     }
 }
 
