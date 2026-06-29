@@ -37,6 +37,23 @@ git revert <sha>           # drop one fix (creates a revert commit)
 # then build as usual: make <TARGET>   (see README "Compiling ADRC-Betaflight")
 ```
 
+## Known real-world feedback (as of June 2026)
+
+Real-flight evidence for the ADRC-Betaflight fork is currently very thin (the fork is only days old). Collected here so the picture stays honest:
+
+**Flights of this fork**
+- **Author demo** — Boyyt357, YouTube *Engineering Robotic*, [BLTQN-Gw7LE](https://www.youtube.com/watch?v=BLTQN-Gw7LE): a 10" quad flown with uncalibrated params (P10/I50/D20) and a water-bottle payload swinging off one arm. Proof-of-concept; per comments the clip reportedly ends in a crash.
+- **One independent pilot — jmsweng** ([PR #1](https://github.com/Boyyt357/ADRC-betaflight/pull/1)): flew a 5" quad carrying an unstable load (~40% of AUW), toss-launched with PID off at min throttle, params 10/110/100. The only third-party flight found.
+- **Negative hands-on report** — YouTube commenter @captain-ulitka: on a normal build the controller "barely resists external influences" and oscillates when the gains are raised. Worth watching for during testing.
+
+**No wider traction yet:** no Reddit / RCGroups / IntoFPV / blog threads on this fork, and the official Betaflight project has zero ADRC mentions (issues/PRs/discussions).
+
+**Broader ADRC on multirotors (not this fork, research)** — genuine real flights that favor ADRC for disturbance rejection, but always with *tuned* ADRC on research rigs:
+- Lv et al., *Sensors* 2024 — LADRC quad autonomously landing on a moving USV; landing accuracy ~0.057 m vs ~0.11 m for PID. [PMC10935343](https://pmc.ncbi.nlm.nih.gov/articles/PMC10935343/)
+- Michalski et al., ICUAS 2023 — ADRC vs PID position control on a Crazyflie 2.1 (OptiTrack mocap), real indoor flights. [IEEE 10156505](https://ieeexplore.ieee.org/document/10156505/)
+
+**Reality check on "no tuning":** ADRC for quads has many parameters, and a whole research subfield exists just to auto-tune them (GA/PSO/Kriging); PID still covers ~90–97% of UAV applications. ADRC is a capable disturbance-rejection approach, but "PID killer / no tuning" is marketing, not an established field result. This is exactly why these fixes ship **with a call for testers** rather than as proven defaults.
+
 ## Background
 The full theory-vs-implementation review (what matches canonical LADRC, what is a deliberate
 simplification, what deviates, and the robustness concerns these commits address) lives outside
