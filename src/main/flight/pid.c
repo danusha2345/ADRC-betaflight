@@ -1282,6 +1282,12 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         pidRuntime.adrc_z2[axis] += dt * (pidRuntime.adrc_z3[axis] + (b0 * pidRuntime.adrc_lastOutput[axis]) - beta2 * error_eso);
         pidRuntime.adrc_z3[axis] += dt * (-beta3 * error_eso);
 
+        // Anti-windup: bound the disturbance estimate so it cannot wind up under
+        // motor/actuator saturation (otherwise recovery from clipping lags while z3 unwinds).
+        // |I term| = |z3 / b0| is capped at the per-axis pidsum limit.
+        const float adrcZ3Limit = b0 * ((axis == FD_YAW) ? PIDSUM_LIMIT_YAW : PIDSUM_LIMIT);
+        pidRuntime.adrc_z3[axis] = constrainf(pidRuntime.adrc_z3[axis], -adrcZ3Limit, adrcZ3Limit);
+
         // Control Law (Virtual PD)
         float kp = wc * wc;
         float kd = 2.0f * wc;
