@@ -9,15 +9,19 @@
 
 This repository implements **Active Disturbance Rejection Control (ADRC)** on Betaflight, completely replacing the traditional PID loop. ADRC acts as a "PID Killer"—providing incredible stability, robust wind resistance, and smooth handling even with uncalibrated parameters, changing propeller sizes, or extreme, unbalanced dynamic payloads.
 
-> ⚠️ **Experimental robustness fixes on this fork — flight testers wanted!**
+> ⚠️ **Experimental fork with ADRC robustness fixes — more flight testers wanted!**
 > This fork carries a series of small, independent ADRC robustness fixes on top of
-> `Boyyt357/ADRC-betaflight` (anti-windup on the disturbance estimate, saturation-aware
-> observer feedback, ADRC-tuned defaults, zero-throttle observer handling, plus one
-> experimental change). **They are UNTESTED on real hardware.** Each fix is its own commit so
-> you can build with or without any of them (`git revert <sha>`). Details and rationale in
-> [`ADRC_FIXES.md`](ADRC_FIXES.md). If you fly it, **please report in
-> [issue #1 — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1)** —
-> what you flew, which commits, and how it behaved. 🙏
+> `Boyyt357/ADRC-betaflight`: anti-windup on the disturbance estimate, saturation-aware
+> observer feedback, ADRC-tuned defaults, zero-throttle observer handling, a liftoff gate
+> for the observer, a per-craft System-Gain multiplier, and blackbox logging of the
+> observer states. Several are **validated in real flights** (5" and 65 mm whoop, one
+> independent pilot — takeoff bounce fixed, leaf-blower/stick-strike/prop-cut survival,
+> blackbox-confirmed); hardware diversity is still tiny, so results from other stacks are
+> the most valuable thing you can contribute. Each fix is its own commit
+> (`git revert <sha>` to A/B). Details and flight evidence in [`ADRC_FIXES.md`](ADRC_FIXES.md).
+> **Report in [issue #1 — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1).** 🙏
+
+> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — 16 popular boards baked-in plus generic images for every mainstream MCU (F405/F411/F446, F722/F745, G473, H7 series, AT32F435). Flash via Configurator → *Load Firmware [Local]*.
 
 ---
 
@@ -82,6 +86,7 @@ set pid_at_min_throttle = off
 | 5" drone (jmsweng, 2300 kV) | 40 | 160 | 200 |
 | 5" drone (jmsweng, 1750 kV) | 40 | 160 | 250 |
 | 5" drone (jmsweng, 1750 kV, blackbox-refined) | 30 | 100 | 200 |
+| 65 mm whoop (jmsweng, Air65 clone, 1S, 30000 kV) | 15 | 65 | 250 (b0-limited — use `adrc_b0_scale`) |
 
 ### Tuning procedure (community, from @jmsweng)
 A sensible step-by-step instead of guessing, starting from `10 / 50 / 20` (P/I/D):
@@ -89,13 +94,21 @@ A sensible step-by-step instead of guessing, starting from `10 / 50 / 20` (P/I/D
 2. **Observer Bandwidth (I):** raise until stuttering/chatter appears in hover, then back off ~20%. *(Too high and the observer starts tracking gyro noise.)*
 3. **Control Bandwidth (P):** set to ~¼ of the Observer Bandwidth (the wo ≈ 3–5×wc rule of thumb).
 
-Example end state on a 5" (640 g, DAKEFPVF405, 4S, 2300 kV, Gemfan Hurricane 51433-3): **40 / 160 / 200** — in tests this resisted a leaf-blower and being hit with a stick mid-air, and flew with 20–40% of AUW hung off one motor arm. On faster/lighter setups scale System Gain roughly with kV·mass. The System Gain (D) input maxes out at **255** in this fork (raised from 250); if you need more, chattering usually means the Observer Bandwidth (I) / gyro filtering needs retuning rather than more gain.
+Example end state on a 5" (640 g, DAKEFPVF405, 4S, 2300 kV, Gemfan Hurricane 51433-3): **40 / 160 / 200** — in tests this resisted a leaf-blower and being hit with a stick mid-air, and flew with 20–40% of AUW hung off one motor arm. On faster/lighter setups scale System Gain roughly with kV·mass. The System Gain (D) input maxes out at **255** in this fork (raised from 250); if you genuinely need a larger b0 (high thrust/weight builds), raise `adrc_b0_scale` instead (see above) — but chattering usually means the Observer Bandwidth (I) / gyro filtering needs retuning rather than more gain.
 
 **Refinement (blackbox method):** after swapping to 1750 kV motors jmsweng re-tuned by comparing blackbox traces of the same takeoff+hover under several candidate tunes and picking the one with the least oscillation — ending at **30 / 100 / 200**. Maintainer analysis of those logs confirms the separation is real (takeoff pitch-error RMS differed ~4× between candidate tunes), so a few logged takeoffs are a cheap, quantitative way to choose between tunes that all "feel fine". This method is packaged as a ready-to-run script: [`docs/flight-test-analysis/adrc_tune_score.py`](docs/flight-test-analysis/adrc_tune_score.py) (stdlib-only Python; feed it the CSVs from `blackbox_decode` and it ranks your candidate tunes).
 
-> **Takeoff note:** the rate ESO doesn't model gravity, so on throttle-up there's often a brief (sub-second) oscillation/bounce before it settles — some pilots report this as "unpredictable on arm". `set pid_at_min_throttle = off` (above) helps, and a firm toss-launch avoids it.
+> **Takeoff note:** on the original code, throttle-up shows a brief (sub-second) oscillation/bounce — blackbox analysis traced it to the observer winding up while the craft is still ground-constrained, and fixes **#2** and **#8** in this fork remove it (hardware-confirmed). `set pid_at_min_throttle = off` (above) is still recommended while your tune is unproven. A residual sideways drift right after liftoff with a badly offset CG is the observer honestly *learning* that torque — it shrinks with a healthy Observer Bandwidth.
 
 ---
+
+## Prebuilt firmware (no compiling)
+
+Every release on the [**Releases page**](https://github.com/danusha2345/ADRC-betaflight/releases) ships ready-to-flash `.hex` files built by CI from this repo (all fixes included):
+- **16 board-specific builds** (config baked in): DAKEFPV F405, BETAFPV G473 V2/V3, CrazyBee F405, Matek F405TE / F722SE, SpeedyBee F405 V3/V4 / F7 V3, Kakute H7, Mamba F722, GEPRC F722, iFlight Blitz F722, T-Motor F7, Foxeer F722 V4, AxisFlying F7 Pro.
+- **Generic per-MCU images** for everything else — pick the hex matching your board's MCU (`STM32F7X2` for any F722 board, `STM32F405`, `STM32H743`, `AT32F435M/G`, …), flash it, and accept *Apply custom defaults* when the Configurator offers it (same scheme official Betaflight releases use).
+
+Flash via Configurator → Firmware Flasher → *Load Firmware [Local]* → *Flash Firmware* (full chip erase on the first flash). Want a board added to the baked-in list? Ask in an [issue](https://github.com/danusha2345/ADRC-betaflight/issues).
 
 ## Compiling ADRC-Betaflight
 Compiles exactly like standard Betaflight (full docs [here](https://betaflight.com/docs/category/building)). On a normal x86_64 Linux / macOS / WSL host:
@@ -139,10 +152,10 @@ make DAKEFPVF405
 
 ## 🧪 Help test these fixes — testers wanted!
 
-This fork's ADRC robustness fixes (see [`ADRC_FIXES.md`](ADRC_FIXES.md)) are **UNTESTED on real hardware** — the code builds clean but has never flown. If you have a craft you can safely test on, please help validate them.
+This fork's ADRC robustness fixes (see [`ADRC_FIXES.md`](ADRC_FIXES.md)) have so far been flight-validated by **one independent pilot on two crafts** (5" freestyle quad and a 65 mm whoop) — the results are strong (takeoff bounce fixed, flight with a cut-off prop blade, single-motor balancing), but a sample of one pilot and two FC types proves little. **Different FCs, gyros, sizes and flying styles are exactly what's missing.**
 
 **How to help:**
-1. Build the fork (see *Compiling* above). Each fix is a separate commit, so you can `git revert <sha>` to build with or without any one of them.
+1. Grab a prebuilt hex from [Releases](https://github.com/danusha2345/ADRC-betaflight/releases) (see above) — or build the fork yourself (*Compiling* above); each fix is a separate commit, so you can `git revert <sha>` to build with or without any one of them.
 2. Test safely — **props off first**, then an open area away from people.
 3. Report in **[issue #1 — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1)**, including:
    - Craft (size, weight, motors/props, FC target) and your ADRC P/I/D (wc/wo/b0).
@@ -160,9 +173,10 @@ Betaflight does not manufacture or distribute their own hardware. While we are c
 
 If you encounter any hardware issues with your flight controller or another component, please contact the manufacturer or supplier of your hardware, or check [Discord](https://discord.gg/n4E6ak4u3c) to see if others with the same problem have found a solution.
 
-## Betaflight Releases
+## Releases
 
-You can find our release [here](https://github.com/betaflight/betaflight/releases) on Github and we also have more detailed [release notes](https://www.betaflight.com/docs/category/release-notes) at [betaflight.com](https://www.betaflight.com).
+**ADRC firmware releases (this fork): [github.com/danusha2345/ADRC-betaflight/releases](https://github.com/danusha2345/ADRC-betaflight/releases).**
+Stock (PID) Betaflight releases live [here](https://github.com/betaflight/betaflight/releases), with detailed [release notes](https://www.betaflight.com/docs/category/release-notes) at [betaflight.com](https://www.betaflight.com).
 
 ## Open Source / Contributors
 
