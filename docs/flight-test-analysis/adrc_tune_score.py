@@ -20,6 +20,9 @@ Reported per log (roll & pitch, deg/s):
                  disturbance estimate (the mechanism behind the bounce)
 
 The tune (P/I/D = wc/wo/b0) is read from the sibling .bbl header when present.
+Note: the header stores the raw D value; the effective b0 is D * adrc_b0_scale
+(fix #9, default 10), and the scale is not in the header - keep track of it
+yourself when comparing logs from different crafts.
 Lower is better for every metric. One caveat: one takeoff per tune is a noisy
 sample - fly 2-3 takeoffs per candidate and compare the spread before trusting
 small differences.

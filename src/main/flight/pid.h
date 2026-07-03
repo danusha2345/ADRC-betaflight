@@ -336,6 +336,8 @@ typedef struct pidProfile_s {
     uint16_t chirp_frequency_start_deci_hz; // start frequency in units of 0.1 hz
     uint16_t chirp_frequency_end_deci_hz;   // end frequency in units of 0.1 hz
     uint8_t chirp_time_seconds;             // excitation time
+
+    uint8_t adrc_b0_scale;                  // ADRC System-Gain multiplier: b0 = D * adrc_b0_scale (default 10; raise on high thrust/weight builds where D maxes out)
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
