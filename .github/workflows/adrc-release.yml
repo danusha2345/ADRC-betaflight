@@ -1,0 +1,96 @@
+# Builds ready-to-flash ADRC hex files for popular boards and attaches them to a
+# GitHub Release, so testers don't have to compile the firmware themselves.
+# Trigger manually (Actions -> ADRC hex release -> Run workflow) or push an 'adrc-v*' tag.
+
+name: ADRC hex release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. adrc-v0.1.0)'
+        required: true
+        default: 'adrc-v0.1.0'
+  push:
+    tags:
+      - 'adrc-v*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - DAKEFPVF405
+          - BETAFPVG473_V2
+          - BETAFPVG473_V3
+          - CRAZYBEEF405
+          - MATEKF405TE
+          - MATEKF722SE
+          - SPEEDYBEEF405V3
+          - SPEEDYBEEF405V4
+          - SPEEDYBEEF7V3
+          - KAKUTEH7
+          - MAMBAF722
+          - GEPRCF722
+          - IFLIGHT_BLITZ_F722
+          - TMOTORF7
+          - FOXEERF722V4
+          - AXISFLYINGF7PRO
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Init config submodule
+        run: git submodule update --init -- src/config
+
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: tools
+          key: ${{ runner.os }}-tools-v2-${{ hashFiles('mk/tools.mk', 'src/platform/*/mk/*.mk') }}
+
+      - name: Install ARM SDK
+        run: make arm_sdk_install
+
+      - name: Hydrate configuration
+        run: make configs
+
+      - name: Build target
+        run: make ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hex-${{ matrix.target }}
+          path: obj/*.hex
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: hex
+          merge-multiple: true
+
+      - name: Create release and upload hex files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          ls -la hex/
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "ADRC firmware $TAG — prebuilt hex" \
+              --notes-file .github/adrc-release-notes.md
+          gh release upload "$TAG" hex/*.hex --repo "$GITHUB_REPOSITORY" --clobber
