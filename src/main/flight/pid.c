@@ -82,7 +82,7 @@ FAST_DATA_ZERO_INIT pidRuntime_t pidRuntime;
 
 #define ADRC_WC_SCALE 1.0f
 #define ADRC_WO_SCALE 1.0f
-#define ADRC_B0_SCALE 10.0f
+#define ADRC_B0_SCALE_DEFAULT 10   // default D -> b0 multiplier; per-craft override via adrc_b0_scale (fix #9)
 #define ADRC_B0_FALLBACK 50.0f
 
 // EXPERIMENTAL fix #8 (see ADRC_FIXES.md): while the craft is ground-constrained the plant
@@ -274,6 +274,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_start_deci_hz = 2,
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
+        .adrc_b0_scale = ADRC_B0_SCALE_DEFAULT,
     );
 }
 
@@ -1291,15 +1292,18 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             &currentPidSetpoint, &errorRate);
 #endif
 
-        // ADRC parameters
+        // ADRC parameters. b0 = D * adrc_b0_scale (fix #9): the multiplier is a per-craft
+        // constant set once in the CLI, so high thrust/weight builds (whoops) can reach
+        // b0 beyond the uint8 D field's ceiling while day-to-day tuning stays in the D cell.
+        const float b0Scale = (pidProfile->adrc_b0_scale > 0) ? (float)pidProfile->adrc_b0_scale : (float)ADRC_B0_SCALE_DEFAULT;
         float wc = (float)pidProfile->pid[axis].P * ADRC_WC_SCALE;
         float wo = (float)pidProfile->pid[axis].I * ADRC_WO_SCALE;
-        float b0 = (float)pidProfile->pid[axis].D * ADRC_B0_SCALE;
+        float b0 = (float)pidProfile->pid[axis].D * b0Scale;
 
         // Sane fallbacks for wc, wo, b0
         if (wc < 1.0f) wc = 10.0f;
         if (wo < 1.0f) wo = 30.0f;
-        if (b0 < 1.0f) b0 = ADRC_B0_FALLBACK * ADRC_B0_SCALE;
+        if (b0 < 1.0f) b0 = ADRC_B0_FALLBACK * b0Scale;
 
         // Observer gains (for second-order linear ADRC)
         float beta1 = 3.0f * wo;

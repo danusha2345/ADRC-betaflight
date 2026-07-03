@@ -67,6 +67,8 @@ Two things to know before you hit Save:
 
 CLI equivalent, if you prefer it over the GUI: `set p_roll = 30`, `set i_roll = 100`, `set d_roll = 200` (same for `_pitch` / `_yaw`), then `save`.
 
+**If the D cell maxes out** (typical on high thrust/weight builds — tiny whoops): don't chase more D. Set the per-craft System-Gain multiplier once in the CLI — `set adrc_b0_scale = 20` (default 10, range 1–100; b0 = D × scale) — then keep tuning the ordinary D cell in the GUI. The setting lives in the profile and shows up in `diff`/`dump` backups. When sharing your tune, mention the scale: the same D means a different b0 at a different scale.
+
 It is **highly recommended** to disable PID at minimum throttle in case the initial ADRC parameters are incorrect for your drone — otherwise it may behave unpredictably on arm while you adjust parameters. In the Betaflight command line interface (CLI) run:
 ```
 set pid_at_min_throttle = off
