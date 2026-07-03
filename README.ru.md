@@ -3,6 +3,7 @@
 
 
 # Betaflight ADRC Controller (Active Disturbance Rejection Control)
+[![Boosty](https://img.shields.io/badge/Boosty-Buy_me_a_coffee-FF7143?logo=boosty&logoColor=white&style=for-the-badge)](https://boosty.to/danusha/donate)
 
 [English](README.md) | **Русский**
 
