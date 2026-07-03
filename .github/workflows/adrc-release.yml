@@ -23,6 +23,25 @@ jobs:
       fail-fast: false
       matrix:
         target:
+          # Generic per-MCU platform targets (same set the official Betaflight release
+          # builds with the arm toolchain): cover ANY board — flash the hex matching the
+          # board's MCU and let the Configurator apply custom defaults on first connect.
+          - AT32F435G
+          - AT32F435M
+          - STM32F405
+          - STM32F411
+          - STM32F446
+          - STM32F745
+          - STM32F7X2
+          - STM32G47X
+          - STM32H723
+          - STM32H725
+          - STM32H730
+          - STM32H735
+          - STM32H743
+          - STM32H750
+          - STM32H757
+          # Board-specific builds (config baked in) for boards testers actually fly.
           - DAKEFPVF405
           - BETAFPVG473_V2
           - BETAFPVG473_V3
