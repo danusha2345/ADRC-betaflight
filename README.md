@@ -74,6 +74,8 @@ CLI equivalent, if you prefer it over the GUI: `set p_roll = 30`, `set i_roll = 
 
 **If the D cell maxes out** (typical on high thrust/weight builds — tiny whoops): don't chase more D. Set the per-craft System-Gain multiplier once in the CLI — `set adrc_b0_scale = 20` (default 10, range 1–100; b0 = D × scale) — then keep tuning the ordinary D cell in the GUI. The setting lives in the profile and shows up in `diff`/`dump` backups. When sharing your tune, mention the scale: the same D means a different b0 at a different scale.
 
+**Experimental extras** (see [ADRC_FIXES](ADRC_FIXES.md) #10/#11 — safe to leave at defaults): `adrc_hover_throttle` (%, default 35) tells the throttle-scaled b0 where your hover point is — b0 is scaled `(throttle/hover)²` above hover so the model stays calibrated across the throttle range; set it near your actual hover throttle, most useful on high thrust/weight builds. Note the square is deliberately conservative: it may feel slightly *soft/less snappy near full throttle* (real motor authority likely scales closer to linear) — if you dislike that, raise `adrc_hover_throttle` toward your top throttle to shrink the effect. `adrc_sigma_decay` (default 3) is a mild leak that bleeds a transient disturbance estimate back to zero instead of letting it linger; set `0` for the classic pure integrator. Leave `adrc_sigma_decay_sched` at 0 — its scheduling is not yet validated.
+
 It is **highly recommended** to disable PID at minimum throttle in case the initial ADRC parameters are incorrect for your drone — otherwise it may behave unpredictably on arm while you adjust parameters. In the Betaflight command line interface (CLI) run:
 ```
 set pid_at_min_throttle = off
@@ -86,7 +88,7 @@ set pid_at_min_throttle = off
 | 5" drone (jmsweng, 2300 kV) | 40 | 160 | 200 |
 | 5" drone (jmsweng, 1750 kV) | 40 | 160 | 250 |
 | 5" drone (jmsweng, 1750 kV, blackbox-refined) | 30 | 100 | 200 |
-| 65 mm whoop (jmsweng, Air65 clone, 1S, 30000 kV) | 15 | 65 | 250 (b0-limited — use `adrc_b0_scale`) |
+| 65 mm whoop (jmsweng, Air65 clone, 1S, 30000 kV) | 33 | 65 | 160 (with `adrc_b0_scale = 20`) |
 
 ### Tuning procedure (community, from @jmsweng)
 A sensible step-by-step instead of guessing, starting from `10 / 50 / 20` (P/I/D):
@@ -152,7 +154,7 @@ make DAKEFPVF405
 
 ## 🧪 Help test these fixes — testers wanted!
 
-This fork's ADRC robustness fixes (see [`ADRC_FIXES.md`](ADRC_FIXES.md)) have so far been flight-validated by **one independent pilot on two crafts** (5" freestyle quad and a 65 mm whoop) — the results are strong (takeoff bounce fixed, flight with a cut-off prop blade, single-motor balancing), but a sample of one pilot and two FC types proves little. **Different FCs, gyros, sizes and flying styles are exactly what's missing.**
+This fork's ADRC robustness fixes (see [`ADRC_FIXES.md`](ADRC_FIXES.md)) have so far been flight-validated by **one independent pilot on two crafts** (5" freestyle quad and a 65 mm whoop), with a **second developer independently confirming the same LADRC core** (stable hover + angle mode on a 2" cinewhoop, running their own implementation and reusing this fork's `adrc_b0_scale` and liftoff gate). The results are strong (takeoff bounce fixed, flight with a cut-off prop blade, single-motor balancing), but this is still a tiny sample. **Different FCs, gyros, sizes and flying styles are exactly what's missing.**
 
 **How to help:**
 1. Grab a prebuilt hex from [Releases](https://github.com/danusha2345/ADRC-betaflight/releases) (see above) — or build the fork yourself (*Compiling* above); each fix is a separate commit, so you can `git revert <sha>` to build with or without any one of them.

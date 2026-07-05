@@ -174,15 +174,21 @@ def plot_log(path, out_dir, window):
     # 4: ESO states (debug_mode = ADRC only)
     if debug:
         ax = axes[3]
-        for idx, name, c, lw in ((3, "pitch z1 (rate)", S1, LW_THIN),
-                                 (4, "pitch z2 (accel)", S3, LW_THIN),
-                                 (5, "pitch z3 (disturbance)", S2, LW)):
+        # z3 (debug[5]) is logged /16 on recent firmware (fix #12) so it doesn't clip int16 —
+        # multiply back to put it on the same scale as z1/z2. Harmless x16 on older raw-z3 logs.
+        Z3_SCALE = 16
+        for idx, name, c, lw, scale in ((3, "pitch z1 (rate)", S1, LW_THIN, 1),
+                                        (4, "pitch z2 (accel)", S3, LW_THIN, 1),
+                                        (5, "pitch z3 (disturbance)", S2, LW, Z3_SCALE)):
             d = series(f"debug[{idx}]")
             if d:
+                if scale != 1:
+                    d = [v * scale for v in d]
                 ax.plot(*decimate(rel, d), color=c, lw=lw, label=name)
         d7 = series("debug[7]")
         if d7:
-            # debug[7] = ±b0: sign is the fix #8 liftoff latch
+            # debug[7] sign is the fix #8 liftoff latch (magnitude = throttle-scaled b0
+            # multiplier x100 on recent firmware, fix #10; older logs store ±b0).
             latched = [1.0 if v > 0 else 0.0 for v in d7]
             ax2 = ax.twinx()
             ax2.plot(*decimate(rel, latched), color=INK2, lw=LW_THIN, ls="--",
@@ -191,7 +197,7 @@ def plot_log(path, out_dir, window):
             ax2.set_yticks([0, 1])
             ax2.set_yticklabels(["gated", "air"], color=INK2)
             ax2.grid(False)
-        ax.set_ylabel("ESO states (pitch)")
+        ax.set_ylabel("ESO states (pitch)")  # z3 logged /16 on recent fw (fix #12)
         ax.legend(labelcolor=INK2, loc="upper right", ncols=3)
 
     for ax in axes:
