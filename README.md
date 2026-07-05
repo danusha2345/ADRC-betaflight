@@ -19,7 +19,7 @@ This repository implements **Active Disturbance Rejection Control (ADRC)** on Be
 > blackbox-confirmed); hardware diversity is still tiny, so results from other stacks are
 > the most valuable thing you can contribute. Each fix is its own commit
 > (`git revert <sha>` to A/B). Details and flight evidence in [`ADRC_FIXES.md`](ADRC_FIXES.md).
-> **Report in [issue #1 — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1).** 🙏
+> **Report in [issue `#1` — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1).** 🙏
 
 > 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — 16 popular boards baked-in plus generic images for every mainstream MCU (F405/F411/F446, F722/F745, G473, H7 series, AT32F435). Flash via Configurator → *Load Firmware [Local]*.
 
@@ -68,13 +68,13 @@ Two things to know before you hit Save:
    - **Feedforward (F)** — unchanged: still the standard Betaflight stick feedforward, applied on top of ADRC. Keep the defaults.
    - **D Max** — ignored (ADRC reads only the D cell, as System Gain).
    - **TPA** — effectively inert (it scales the legacy Kp/Kd coefficients, which ADRC does not use).
-   - **Anti-gravity / I-term relax / I-term rotation** — legacy PID helpers; ADRC recomputes its I-term from the observer every loop, so they don't apply (the anti-gravity P-boost is explicitly disabled in this fork — fix #7a).
+   - **Anti-gravity / I-term relax / I-term rotation** — legacy PID helpers; ADRC recomputes its I-term from the observer every loop, so they don't apply (the anti-gravity P-boost is explicitly disabled in this fork — fix `#7a`).
 
 CLI equivalent, if you prefer it over the GUI: `set p_roll = 30`, `set i_roll = 100`, `set d_roll = 200` (same for `_pitch` / `_yaw`), then `save`.
 
 **If the D cell maxes out** (typical on high thrust/weight builds — tiny whoops): don't chase more D. Set the per-craft System-Gain multiplier once in the CLI — `set adrc_b0_scale = 20` (default 10, range 1–100; b0 = D × scale) — then keep tuning the ordinary D cell in the GUI. The setting lives in the profile and shows up in `diff`/`dump` backups. When sharing your tune, mention the scale: the same D means a different b0 at a different scale.
 
-**Experimental extras** (see [ADRC_FIXES](ADRC_FIXES.md) #10/#11 — safe to leave at defaults): `adrc_hover_throttle` (%, default 35) tells the throttle-scaled b0 where your hover point is — b0 is scaled `(throttle/hover)²` above hover so the model stays calibrated across the throttle range; set it near your actual hover throttle, most useful on high thrust/weight builds. Note the square is deliberately conservative: it may feel slightly *soft/less snappy near full throttle* (real motor authority likely scales closer to linear) — if you dislike that, raise `adrc_hover_throttle` toward your top throttle to shrink the effect. `adrc_sigma_decay` (default 3) is a mild leak that bleeds a transient disturbance estimate back to zero instead of letting it linger; set `0` for the classic pure integrator. Leave `adrc_sigma_decay_sched` at 0 — its scheduling is not yet validated.
+**Experimental extras** (see [ADRC_FIXES](ADRC_FIXES.md) `#10`/`#11` — safe to leave at defaults): `adrc_hover_throttle` (%, default 35) tells the throttle-scaled b0 where your hover point is — b0 is scaled `(throttle/hover)²` above hover so the model stays calibrated across the throttle range; set it near your actual hover throttle, most useful on high thrust/weight builds. Note the square is deliberately conservative: it may feel slightly *soft/less snappy near full throttle* (real motor authority likely scales closer to linear) — if you dislike that, raise `adrc_hover_throttle` toward your top throttle to shrink the effect. `adrc_sigma_decay` (default 3) is a mild leak that bleeds a transient disturbance estimate back to zero instead of letting it linger; set `0` for the classic pure integrator. Leave `adrc_sigma_decay_sched` at 0 — its scheduling is not yet validated.
 
 It is **highly recommended** to disable PID at minimum throttle in case the initial ADRC parameters are incorrect for your drone — otherwise it may behave unpredictably on arm while you adjust parameters. In the Betaflight command line interface (CLI) run:
 ```
@@ -98,9 +98,9 @@ A sensible step-by-step instead of guessing, starting from `10 / 50 / 20` (P/I/D
 
 Example end state on a 5" (640 g, DAKEFPVF405, 4S, 2300 kV, Gemfan Hurricane 51433-3): **40 / 160 / 200** — in tests this resisted a leaf-blower and being hit with a stick mid-air, and flew with 20–40% of AUW hung off one motor arm. On faster/lighter setups scale System Gain roughly with kV·mass. The System Gain (D) input maxes out at **255** in this fork (raised from 250); if you genuinely need a larger b0 (high thrust/weight builds), raise `adrc_b0_scale` instead (see above) — but chattering usually means the Observer Bandwidth (I) / gyro filtering needs retuning rather than more gain.
 
-**Refinement (blackbox method):** after swapping to 1750 kV motors jmsweng re-tuned by comparing blackbox traces of the same takeoff+hover under several candidate tunes and picking the one with the least oscillation — ending at **30 / 100 / 200**. Maintainer analysis of those logs confirms the separation is real (takeoff pitch-error RMS differed ~4× between candidate tunes), so a few logged takeoffs are a cheap, quantitative way to choose between tunes that all "feel fine". This method is packaged as a ready-to-run script: [`docs/flight-test-analysis/adrc_tune_score.py`](docs/flight-test-analysis/adrc_tune_score.py) (stdlib-only Python; feed it the CSVs from `blackbox_decode` and it ranks your candidate tunes). Its companion [`adrc_log_plot.py`](docs/flight-test-analysis/adrc_log_plot.py) draws the same logs (tracking error, the observer's disturbance estimate, motors, and — with `set debug_mode = ADRC` — the ESO states and the fix #8 liftoff latch); needs `pip install matplotlib`.
+**Refinement (blackbox method):** after swapping to 1750 kV motors jmsweng re-tuned by comparing blackbox traces of the same takeoff+hover under several candidate tunes and picking the one with the least oscillation — ending at **30 / 100 / 200**. Maintainer analysis of those logs confirms the separation is real (takeoff pitch-error RMS differed ~4× between candidate tunes), so a few logged takeoffs are a cheap, quantitative way to choose between tunes that all "feel fine". This method is packaged as a ready-to-run script: [`docs/flight-test-analysis/adrc_tune_score.py`](docs/flight-test-analysis/adrc_tune_score.py) (stdlib-only Python; feed it the CSVs from `blackbox_decode` and it ranks your candidate tunes). Its companion [`adrc_log_plot.py`](docs/flight-test-analysis/adrc_log_plot.py) draws the same logs (tracking error, the observer's disturbance estimate, motors, and — with `set debug_mode = ADRC` — the ESO states and the fix `#8` liftoff latch); needs `pip install matplotlib`.
 
-> **Takeoff note:** on the original code, throttle-up shows a brief (sub-second) oscillation/bounce — blackbox analysis traced it to the observer winding up while the craft is still ground-constrained, and fixes **#2** and **#8** in this fork remove it (hardware-confirmed). `set pid_at_min_throttle = off` (above) is still recommended while your tune is unproven. A residual sideways drift right after liftoff with a badly offset CG is the observer honestly *learning* that torque — it shrinks with a healthy Observer Bandwidth.
+> **Takeoff note:** on the original code, throttle-up shows a brief (sub-second) oscillation/bounce — blackbox analysis traced it to the observer winding up while the craft is still ground-constrained, and fixes **`#2`** and **`#8`** in this fork remove it (hardware-confirmed). `set pid_at_min_throttle = off` (above) is still recommended while your tune is unproven. A residual sideways drift right after liftoff with a badly offset CG is the observer honestly *learning* that torque — it shrinks with a healthy Observer Bandwidth.
 
 ---
 
@@ -159,7 +159,7 @@ This fork's ADRC robustness fixes (see [`ADRC_FIXES.md`](ADRC_FIXES.md)) have so
 **How to help:**
 1. Grab a prebuilt hex from [Releases](https://github.com/danusha2345/ADRC-betaflight/releases) (see above) — or build the fork yourself (*Compiling* above); each fix is a separate commit, so you can `git revert <sha>` to build with or without any one of them.
 2. Test safely — **props off first**, then an open area away from people.
-3. Report in **[issue #1 — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1)**, including:
+3. Report in **[issue `#1` — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1)**, including:
    - Craft (size, weight, motors/props, FC target) and your ADRC P/I/D (wc/wo/b0).
    - Which commits you built with (or "all").
    - Behavior: arm/spool-up, hover, hard maneuvers, prop wash, wind, recovery after throttle chops, any oscillation or motor heating.
