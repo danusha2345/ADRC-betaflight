@@ -1405,17 +1405,21 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         // latch (fix #8): positive = airborne (b0*u fed to the ESO), negative = gated on ground.
         // z1 = estimated rate (deg/s), z2 = estimated accel, z3 = estimated total disturbance
         // (logged /ADRC_Z3_LOG_SCALE, fix #12, so the int16 field does not clip — multiply back).
+        // debug[] is int16_t and DEBUG_SET does not range-check, so an over-range value would
+        // WRAP (the "goes nuts" trace) — the z3 anti-windup clamp (b0 * pidsum limit) can still
+        // exceed int16 even /16 on high-b0 builds, so saturate: a flat rail reads as "off-scale"
+        // on a plot, a wrap reads as garbage. Past the rail the I term (-z3/b0) is exact.
         if (axis == FD_ROLL) {
-            DEBUG_SET(DEBUG_ADRC, 0, lrintf(pidRuntime.adrc_z1[axis]));
-            DEBUG_SET(DEBUG_ADRC, 1, lrintf(pidRuntime.adrc_z2[axis]));
-            DEBUG_SET(DEBUG_ADRC, 2, lrintf(pidRuntime.adrc_z3[axis] / ADRC_Z3_LOG_SCALE));
+            DEBUG_SET(DEBUG_ADRC, 0, lrintf(constrainf(pidRuntime.adrc_z1[axis], -32767.0f, 32767.0f)));
+            DEBUG_SET(DEBUG_ADRC, 1, lrintf(constrainf(pidRuntime.adrc_z2[axis], -32767.0f, 32767.0f)));
+            DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(pidRuntime.adrc_z3[axis] / ADRC_Z3_LOG_SCALE, -32767.0f, 32767.0f)));
         } else if (axis == FD_PITCH) {
-            DEBUG_SET(DEBUG_ADRC, 3, lrintf(pidRuntime.adrc_z1[axis]));
-            DEBUG_SET(DEBUG_ADRC, 4, lrintf(pidRuntime.adrc_z2[axis]));
-            DEBUG_SET(DEBUG_ADRC, 5, lrintf(pidRuntime.adrc_z3[axis] / ADRC_Z3_LOG_SCALE));
+            DEBUG_SET(DEBUG_ADRC, 3, lrintf(constrainf(pidRuntime.adrc_z1[axis], -32767.0f, 32767.0f)));
+            DEBUG_SET(DEBUG_ADRC, 4, lrintf(constrainf(pidRuntime.adrc_z2[axis], -32767.0f, 32767.0f)));
+            DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(pidRuntime.adrc_z3[axis] / ADRC_Z3_LOG_SCALE, -32767.0f, 32767.0f)));
             DEBUG_SET(DEBUG_ADRC, 7, lrintf((pidRuntime.adrc_liftoff ? 1.0f : -1.0f) * adrcB0ThrScale * 100.0f));
         } else { // FD_YAW
-            DEBUG_SET(DEBUG_ADRC, 6, lrintf(pidRuntime.adrc_z3[axis] / ADRC_Z3_LOG_SCALE));
+            DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(pidRuntime.adrc_z3[axis] / ADRC_Z3_LOG_SCALE, -32767.0f, 32767.0f)));
         }
 
         // Control Law (Virtual PD)
