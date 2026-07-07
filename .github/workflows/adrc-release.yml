@@ -166,4 +166,22 @@ jobs:
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
               --title "ADRC firmware $TAG — prebuilt hex" \
               --notes-file .github/adrc-release-notes.md
-          gh release upload "$TAG" hex/*.hex --repo "$GITHUB_REPOSITORY" --clobber
+          # Upload one file at a time with throttling: blasting ~600 assets at once
+          # trips GitHub's secondary rate limit. Skip assets already uploaded so a
+          # re-run of this job resumes instead of starting over.
+          existing=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+          failed=0
+          for f in hex/*.hex; do
+            name=$(basename "$f")
+            if grep -qxF "$name" <<< "$existing"; then continue; fi
+            ok=""
+            for attempt in 1 2 3; do
+              if gh release upload "$TAG" "$f" --repo "$GITHUB_REPOSITORY" --clobber; then ok=1; break; fi
+              echo "retry $attempt failed for $name; backing off"
+              sleep $(( attempt * 60 ))
+            done
+            if [ -z "$ok" ]; then echo "GIVING UP on $name"; failed=$((failed + 1)); fi
+            sleep 1
+          done
+          echo "assets on release: $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets | length')"
+          [ "$failed" -eq 0 ]
