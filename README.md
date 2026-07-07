@@ -86,6 +86,7 @@ While your tune is unproven you can disable PID at minimum throttle so a wrong t
 | 5" drone (jmsweng, 1750 kV) | 40 | 160 | 250 |
 | 5" drone (jmsweng, 1750 kV, blackbox-refined) | 30 | 100 | 200 |
 | 65 mm whoop (jmsweng, Air65 clone, 1S, 30000 kV) | 33 | 65 | 160 (with `adrc_b0_scale = 20`) |
+| 5" drone (maintainer, 2207 1300 kV, 6S, 51477 props — short indoor hover only) | 40 | 120 | 200 (with `adrc_b0_scale = 20`) |
 
 ### Tuning procedure (community, from @jmsweng)
 A sensible step-by-step instead of guessing, starting from `10 / 50 / 20` (P/I/D):
