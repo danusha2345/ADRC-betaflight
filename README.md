@@ -88,6 +88,8 @@ While your tune is unproven you can disable PID at minimum throttle so a wrong t
 | 65 mm whoop (jmsweng, Air65 clone, 1S, 30000 kV) | 33 | 65 | 160 (with `adrc_b0_scale = 20`) |
 | 5" drone (maintainer, 2207 1300 kV, 6S, 51477 props — short indoor hover only) | 40 | 120 | 200 (with `adrc_b0_scale = 20`) |
 
+> Note on the maintainer's row: the `adrc_b0_scale = 20` there is **not** a validated 5" recommendation — it was raised from the default 10 chasing a bench limit cycle that later traced to a stick / `pid_at_min_throttle` artefact, not b0. The other 5" rows run the default scale 10. On a 5" start at scale 10; the ×20 headroom is really for authority-limited whoops that hit the D ceiling.
+
 ### Tuning procedure (community, from @jmsweng)
 A sensible step-by-step instead of guessing, starting from `10 / 50 / 20` (P/I/D):
 1. **System Gain (D):** raise until the quad takes off stably (~70 on a 5"), keep raising until it makes a stuttering noise in hover, then back off ~20%. *(Overestimating b0 is fairly harmless; underestimating causes instability.)*
