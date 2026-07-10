@@ -129,4 +129,5 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     [DEBUG_AUTOPILOT_PID] = "AUTOPILOT_PID",
     [DEBUG_AUTOPILOT_STOP] = "AUTOPILOT_STOP",
     [DEBUG_ADRC] = "ADRC",
+    [DEBUG_ADRC_DTERM] = "ADRC_DTERM",
 };

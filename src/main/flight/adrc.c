@@ -134,6 +134,12 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // SeverinBitterli's independent implementation, not danusha2345's - unvalidated here, left
     // opt-in for testers.
     adrcProfile->tdHz = 0;
+    // D-term low-pass, off by default: round-2 flight logs (danusha2345 fork) showed the usable
+    // wc ceiling is set by gyro-noise amplification through the control law, not by stability -
+    // motor HF noise roughly doubled from wc 30 to 60 while the gyro's own HF content stayed low.
+    // Filtering z2 only where it feeds the D term cuts that path without adding phase lag inside
+    // the observer loop (unlike lowering adrc_gyro_lpf_hz). Unvalidated in flight yet - opt-in.
+    adrcProfile->dtermFilterHz = 0;
 
     // Liftoff-gate defaults, ported as-is from danusha2345/ADRC-betaflight (ADRC_FIXES.md fix
     // #8/#10) - community-validated on real hardware across several testers/airframes. See adrc.h
@@ -215,6 +221,9 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         const float gyroFilterGain = (adrcProfile->gyroFilterHz > 0 && dT > 0)
             ? pt2FilterGain(adrcProfile->gyroFilterHz, dT) : 1.0f;
         pt2FilterUpdateCutoff(&adrcRuntime->gyroFilter[axis], gyroFilterGain);
+        const float dtermFilterGain = (adrcProfile->dtermFilterHz > 0 && dT > 0)
+            ? pt2FilterGain(adrcProfile->dtermFilterHz, dT) : 1.0f;
+        pt2FilterUpdateCutoff(&adrcRuntime->dtermFilter[axis], dtermFilterGain);
     }
 
     adrcRuntime->b0ThrottleScale = 1.0f;
@@ -230,6 +239,9 @@ void adrcResetState(adrcRuntime_t *adrcRuntime, int axis)
     // first z3 step is -beta3*errorEso*dT ~ -122 000.
     adrcRuntime->gyroFilter[axis].state = gyroRate;
     adrcRuntime->gyroFilter[axis].state1 = gyroRate;
+    // z2 resets to zero below, so its D-term filter is seeded to match.
+    adrcRuntime->dtermFilter[axis].state = 0.0f;
+    adrcRuntime->dtermFilter[axis].state1 = 0.0f;
     adrcRuntime->z1[axis] = gyroRate;
     adrcRuntime->z2[axis] = 0.0f;
     adrcRuntime->z3[axis] = 0.0f;
@@ -363,11 +375,28 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // exceeds pidSumLimit while an opposing D partially cancels it, and clamping both cuts the
     // net drive severalfold mid-snap - which is exactly the regime the community-validated tunes
     // were flown in without them.
+    // D-term low-pass (see dtermFilterHz): applied to z2 only where it feeds the control law,
+    // AFTER the ESO update above - the observer keeps integrating the raw z2, so filtering here
+    // costs no phase inside the observer loop. Gain 1 (hz = 0) is an exact pass-through.
+    const float z2Dterm = pt2FilterApply(&adrcRuntime->dtermFilter[axis], adrcRuntime->z2[axis]);
+
+    // Filter verification (set debug_mode = ADRC_DTERM): raw vs filtered z2 side by side for all
+    // three axes - [0/1] roll pre/post, [2/3] pitch pre/post, [4/5] yaw pre/post, [6] the roll D
+    // output x10 (what the filtered z2 actually costs/saves at the mixer). Saturated, not wrapped,
+    // like the DEBUG_ADRC channels; z2 exceeds int16 only in hard maneuvers, and the noise study
+    // this mode exists for happens at hover/throttle-up where it doesn't.
+    DEBUG_SET(DEBUG_ADRC_DTERM, axis * 2, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+    DEBUG_SET(DEBUG_ADRC_DTERM, axis * 2 + 1, lrintf(constrainf(z2Dterm, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+
     const adrcOutput_t output = {
         .P = (c->kp * (adrcRuntime->vRef[axis] - adrcRuntime->z1[axis])) / b0,
-        .D = (-c->kd * adrcRuntime->z2[axis]) / b0,
+        .D = (-c->kd * z2Dterm) / b0,
         .I = (-adrcRuntime->z3[axis]) / b0,
     };
+
+    if (axis == FD_ROLL) {
+        DEBUG_SET(DEBUG_ADRC_DTERM, 6, lrintf(constrainf(output.D * 10.0f, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+    }
 
     // Log all three axes simultaneously (the ported source gates on gyro.gyroDebugAxis, one axis
     // only): roll z1/z2/z3 in [0..2], pitch z1/z2/z3 in [3..5], yaw z3 in [6], throttle-scaled b0

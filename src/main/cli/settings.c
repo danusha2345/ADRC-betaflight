@@ -1424,6 +1424,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_ADRC_B0_PITCH, VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 100, UINT16_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.b0[FD_PITCH]) },
     { PARAM_NAME_ADRC_B0_YAW,   VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 100, UINT16_MAX }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.b0[FD_YAW]) },
     { PARAM_NAME_ADRC_GYRO_LPF_HZ, VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.gyroFilterHz) },
+    { PARAM_NAME_ADRC_DTERM_LPF_HZ, VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.dtermFilterHz) },
     { PARAM_NAME_ADRC_HOVER_THROTTLE, VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 5, 100 }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.hoverThrottlePercent) },
     { PARAM_NAME_ADRC_SIGMA_DECAY,    VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 100 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc.sigmaDecay) },
     { PARAM_NAME_ADRC_TD_HZ,          VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, LPF_MAX_HZ }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.tdHz) },

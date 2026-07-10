@@ -597,3 +597,79 @@ TEST_F(AdrcUnittest, TdEnabledSmoothsSetpointStep)
     }
     EXPECT_NEAR(500.0f, runtime.vRef[FD_ROLL], 1.0f);
 }
+
+TEST_F(AdrcUnittest, DtermLpfZeroIsPassThrough)
+{
+    // Default (adrc_dterm_lpf_hz = 0) must be an exact pass-through: same D as unfiltered code.
+    constexpr float dT = 0.000125f;
+    adrcInitConfig(&profile, &runtime, dT);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adrcResetState(&runtime, axis);
+    }
+
+    runtime.z2[FD_ROLL] = 5000.0f;
+    // gyro == z1 == 0 (errorEso == 0), so the preset z2 passes through the ESO update unchanged.
+    const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    EXPECT_NEAR(-300.0f, out.D, 1e-3f); // -kd*z2/b0 = -120*5000/2000, no attenuation
+}
+
+TEST_F(AdrcUnittest, DtermLpfAttenuatesOnlyTheControlPath)
+{
+    // With a low cutoff the D term must be strongly attenuated on a fresh step, while the
+    // observer's own z2 state stays untouched (the filter lives outside the ESO recursion).
+    profile.dtermFilterHz = 20;
+    constexpr float dT = 0.000125f;
+    adrcInitConfig(&profile, &runtime, dT);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adrcResetState(&runtime, axis);
+    }
+
+    runtime.z2[FD_ROLL] = 5000.0f;
+    const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    EXPECT_LT(fabsf(out.D), 30.0f);                    // pass-through would give -300
+    EXPECT_FLOAT_EQ(5000.0f, runtime.z2[FD_ROLL]);     // raw observer state untouched
+}
+
+TEST_F(AdrcUnittest, ResetSeedsDtermFilter)
+{
+    // adrcResetState() must clear the D-term filter along with z2 - leftover filter state would
+    // produce a phantom D kick on the first loop after a reset.
+    profile.dtermFilterHz = 100;
+    constexpr float dT = 0.000125f;
+    adrcInitConfig(&profile, &runtime, dT);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adrcResetState(&runtime, axis);
+    }
+
+    // Wind some state into the filter, then reset.
+    runtime.z2[FD_ROLL] = 5000.0f;
+    for (int i = 0; i < 200; i++) {
+        adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+        runtime.z2[FD_ROLL] = 5000.0f; // hold it against the ESO update
+    }
+    adrcResetState(&runtime, FD_ROLL);
+
+    const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    EXPECT_FLOAT_EQ(0.0f, out.D);
+}
+
+TEST_F(AdrcUnittest, DtermDebugModeLogsRawAndFilteredZ2)
+{
+    // debug_mode = ADRC_DTERM: [0/1] roll z2 pre/post filter - the A/B evidence channel for the
+    // filter itself.
+    profile.dtermFilterHz = 20;
+    constexpr float dT = 0.000125f;
+    adrcInitConfig(&profile, &runtime, dT);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adrcResetState(&runtime, axis);
+    }
+    debugMode = DEBUG_ADRC_DTERM;
+
+    runtime.z2[FD_ROLL] = 5000.0f;
+    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    debugMode = 0;
+
+    EXPECT_EQ(5000, debug[0]);          // raw z2
+    EXPECT_LT(abs(debug[1]), 500);      // filtered z2, heavily attenuated on a fresh step
+    EXPECT_NE(debug[0], debug[1]);
+}
