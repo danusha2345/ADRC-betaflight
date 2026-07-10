@@ -1,0 +1,189 @@
+# Builds ready-to-flash ADRC hex files — generic per-MCU targets plus every board
+# config in the Betaflight config repo (~600 boards) — and attaches them to a
+# GitHub Release, so testers don't have to compile the firmware themselves.
+# Trigger manually (Actions -> ADRC hex release -> Run workflow) or push an 'adrc-v*' tag.
+
+name: ADRC hex release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. adrc-v0.1.0)'
+        required: true
+        default: 'adrc-v0.1.0'
+  push:
+    tags:
+      - 'adrc-v*'
+      - 'adrc-pr*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # Generic per-MCU platform targets (same set the official Betaflight release
+          # builds with the arm toolchain): cover ANY board — flash the hex matching the
+          # board's MCU and let the Configurator apply custom defaults on first connect.
+          - AT32F435G
+          - AT32F435M
+          - STM32F405
+          - STM32F411
+          - STM32F446
+          - STM32F745
+          - STM32F7X2
+          - STM32G47X
+          - STM32H723
+          - STM32H725
+          - STM32H730
+          - STM32H735
+          - STM32H743
+          - STM32H750
+          - STM32H757
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Init config submodule
+        run: git submodule update --init -- src/config
+
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: tools
+          key: ${{ runner.os }}-tools-v2-${{ hashFiles('mk/tools.mk', 'src/platform/*/mk/*.mk') }}
+
+      - name: Install ARM SDK
+        run: make arm_sdk_install
+
+      - name: Hydrate configuration
+        run: make configs
+
+      - name: Build target
+        run: make ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hex-${{ matrix.target }}
+          path: obj/*.hex
+
+  # Board-specific builds (config baked in) for EVERY board in the Betaflight config
+  # repo (~600 targets), sharded across parallel jobs. A board that fails to build is
+  # listed in the job summary but does not fail the release.
+  build-boards:
+    name: Boards shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                30, 31, 32, 33, 34, 35, 36, 37, 38, 39]
+    env:
+      SHARD_COUNT: 40
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Init config submodule
+        run: git submodule update --init -- src/config
+
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: tools
+          key: ${{ runner.os }}-tools-v2-${{ hashFiles('mk/tools.mk', 'src/platform/*/mk/*.mk') }}
+
+      - name: Install ARM SDK
+        run: make arm_sdk_install
+
+      - name: Hydrate configuration
+        run: make configs
+
+      - name: Build shard targets
+        run: |
+          mapfile -t targets < <(ls src/config/configs | sort | awk -v n="$SHARD_COUNT" -v s="${{ matrix.shard }}" '(NR - 1) % n == s')
+          echo "Shard ${{ matrix.shard }}: ${targets[*]}"
+          failed=()
+          skipped=()
+          for t in "${targets[@]}"; do
+            # Only the ARM SDK is installed here; skip configs needing another toolchain.
+            mcu=$(grep -oP 'FC_TARGET_MCU\s+\K\w+' "src/config/configs/$t/config.h" || true)
+            case "$mcu" in
+              SITL|RP2350A|RP2350B|STM32N657|STM32H563|STM32C562)
+                echo "SKIP $t ($mcu)"; skipped+=("$t"); continue ;;
+            esac
+            echo "::group::$t"
+            if make -j"$(nproc)" "$t" > "/tmp/build_$t.log" 2>&1; then
+              echo "OK $t"
+            else
+              echo "FAIL $t"
+              tail -50 "/tmp/build_$t.log"
+              failed+=("$t")
+            fi
+            echo "::endgroup::"
+          done
+          {
+            echo "### Shard ${{ matrix.shard }}: $(( ${#targets[@]} - ${#failed[@]} - ${#skipped[@]} )) built, ${#failed[@]} failed, ${#skipped[@]} skipped"
+            if [ ${#failed[@]} -gt 0 ]; then printf -- '- FAILED: %s\n' "${failed[@]}"; fi
+            if [ ${#skipped[@]} -gt 0 ]; then printf -- '- skipped (non-ARM toolchain): %s\n' "${skipped[@]}"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hex-boards-${{ matrix.shard }}
+          path: obj/*.hex
+          if-no-files-found: warn
+
+  release:
+    name: Create release
+    needs: [build, build-boards]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: hex
+          merge-multiple: true
+
+      - name: Create release and upload hex files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          ls -la hex/
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "ADRC firmware $TAG — prebuilt hex" \
+              --prerelease \
+              --notes-file .github/adrc-release-notes.md
+          # Upload one file at a time with throttling: blasting ~600 assets at once
+          # trips GitHub's secondary rate limit. Skip assets already uploaded so a
+          # re-run of this job resumes instead of starting over.
+          existing=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+          failed=0
+          for f in hex/*.hex; do
+            name=$(basename "$f")
+            if grep -qxF "$name" <<< "$existing"; then continue; fi
+            ok=""
+            for attempt in 1 2 3; do
+              if gh release upload "$TAG" "$f" --repo "$GITHUB_REPOSITORY" --clobber; then ok=1; break; fi
+              echo "retry $attempt failed for $name; backing off"
+              sleep $(( attempt * 60 ))
+            done
+            if [ -z "$ok" ]; then echo "GIVING UP on $name"; failed=$((failed + 1)); fi
+            sleep 1
+          done
+          echo "assets on release: $(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets | length')"
+          [ "$failed" -eq 0 ]
