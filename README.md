@@ -21,6 +21,13 @@ This repository implements **Active Disturbance Rejection Control (ADRC)** on Be
 > (`git revert <sha>` to A/B). Details and flight evidence in [`ADRC_FIXES.md`](ADRC_FIXES.md).
 > **Report in [issue `#1` — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1).** 🙏
 
+> 🚀 **Heading upstream: [betaflight/betaflight#15400](https://github.com/betaflight/betaflight/pull/15400)** —
+> ADRC is on its way into official Betaflight as an opt-in feature (`pid_type = ADRC` per
+> profile, classic PID untouched), a draft PR by @bvandevliet carrying this fork's fixes with
+> attribution plus a joint review/fix round. This fork remains the fast-iteration testbed and
+> its releases stay the easiest way to fly ADRC today; everything validated here feeds
+> straight into that PR.
+
 > 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — 16 popular boards baked-in plus generic images for every mainstream MCU (F405/F411/F446, F722/F745, G473, H7 series, AT32F435). Flash via Configurator → *Load Firmware [Local]*.
 
 ---

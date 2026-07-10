@@ -22,6 +22,13 @@
 > в [`ADRC_FIXES.md`](ADRC_FIXES.md).
 > **Отписывайтесь в [issue `#1` — Call for flight testers](https://github.com/danusha2345/ADRC-betaflight/issues/1).** 🙏
 
+> 🚀 **Едем в апстрим: [betaflight/betaflight#15400](https://github.com/betaflight/betaflight/pull/15400)** —
+> ADRC идёт в официальный Betaflight как опция (`pid_type = ADRC` на профиль, классический
+> PID не тронут): draft-PR от @bvandevliet несёт фиксы этого форка с сохранением авторства,
+> плюс совместный раунд ревью и доработок. Этот форк остаётся быстрым полигоном, а его
+> релизы — самым простым способом полетать на ADRC уже сегодня; всё валидированное здесь
+> напрямую попадает в тот PR.
+
 > 📦 **Не хотите компилировать? [Готовые hex — в Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — 16 популярных плат с вшитым конфигом плюс генерик-образы под каждый массовый MCU (F405/F411/F446, F722/F745, G473, серия H7, AT32F435). Прошивка через Configurator → *Load Firmware [Local]*.
 
 ---
