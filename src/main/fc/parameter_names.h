@@ -245,6 +245,7 @@
 #define PARAM_NAME_ADRC_B0_PITCH "adrc_b0_pitch"
 #define PARAM_NAME_ADRC_B0_YAW "adrc_b0_yaw"
 #define PARAM_NAME_ADRC_GYRO_LPF_HZ "adrc_gyro_lpf_hz"
+#define PARAM_NAME_ADRC_DTERM_LPF_HZ "adrc_dterm_lpf_hz"
 #define PARAM_NAME_ADRC_HOVER_THROTTLE "adrc_hover_throttle"
 #define PARAM_NAME_ADRC_SIGMA_DECAY "adrc_sigma_decay"
 #define PARAM_NAME_ADRC_TD_HZ "adrc_td_hz"

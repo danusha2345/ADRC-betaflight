@@ -63,6 +63,11 @@ typedef struct adrcProfile_s {
                                    // part of the danusha2345 port, independently added by a third
                                    // ADRC implementation (SeverinBitterli/betaflight, ADRC-Implementation
                                    // branch); standard ADRC theory component, unvalidated here.
+    uint16_t dtermFilterHz;       // low-pass cutoff on z2 where it feeds the control law's D term
+                                   // ONLY - the ESO keeps integrating the raw z2, so the observer
+                                   // loop gains no phase lag (the ADRC analogue of dterm_lpf). 0 =
+                                   // disabled. Off by default - unvalidated; targets the measured
+                                   // gyro-noise ceiling on wc ("horn" on throttle-up).
 
     // Liftoff-gate thresholds (see adrcUpdatePerLoopState() in adrc.c for the state machine these
     // drive). Community-validated defaults from danusha2345/ADRC-betaflight, but craft-dependent -
@@ -110,6 +115,7 @@ typedef struct adrcCoefficient_s {
 typedef struct adrcRuntime_s {
     adrcCoefficient_t coefficient[XYZ_AXIS_COUNT];
     pt2Filter_t gyroFilter[XYZ_AXIS_COUNT]; // low-pass ahead of the ESO; see gyroFilterHz above
+    pt2Filter_t dtermFilter[XYZ_AXIS_COUNT]; // low-pass on z2 feeding the D term only; see dtermFilterHz
     float z1[XYZ_AXIS_COUNT]; // ESO estimate of angular rate [deg/s]
     float z2[XYZ_AXIS_COUNT]; // ESO estimate of angular acceleration [deg/s^2]
     float z3[XYZ_AXIS_COUNT]; // ESO estimate of lumped rate-plant disturbance [deg/s^3]

@@ -1618,6 +1618,7 @@ static bool blackboxWriteSysinfo(void)
                                                                             currentPidProfile->adrc.b0[FD_PITCH],
                                                                             currentPidProfile->adrc.b0[FD_YAW]);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GYRO_LPF_HZ, "%d",       currentPidProfile->adrc.gyroFilterHz);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_DTERM_LPF_HZ, "%d",      currentPidProfile->adrc.dtermFilterHz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_HOVER_THROTTLE, "%d",    currentPidProfile->adrc.hoverThrottlePercent);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_SIGMA_DECAY, "%d",       currentPidProfile->adrc.sigmaDecay);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_TD_HZ, "%d",             currentPidProfile->adrc.tdHz);
