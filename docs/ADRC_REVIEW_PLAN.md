@@ -16,6 +16,7 @@ Betaflight. Все последующие изменения ADRC должны �
   `ac4481674eaf`.
 - Точно прошитый D-term firmware head: `c1f5b2e80888` (code head
   `ac4481674eaf` + pre-flash tracker commits).
+- Post-bench evidence записан commit `a31f203d9b`.
 - Config submodule обеих финальных линий: `57abd54d632d`.
 - Официальный PR: [betaflight/betaflight#15400](https://github.com/betaflight/betaflight/pull/15400).
 - Состояние PR при повторной проверке 2026-07-11: `OPEN`, `DRAFT`,
@@ -898,7 +899,7 @@ PR #15400.
 | 2026-07-11 | ADRC-015 | DONE | `7ade8d8089` | PID, mutation | Чистый auto-rearm epoch после Crash Flip |
 | 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
 | 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
-| 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
+| 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808`; evidence `a31f203d9b` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
 
 ## Принятые решения и остаточные блокеры
 
