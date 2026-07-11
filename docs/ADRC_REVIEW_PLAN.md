@@ -22,6 +22,12 @@ Betaflight. Все последующие изменения ADRC должны �
 - Состояние PR при повторной проверке 2026-07-11: `OPEN`, `DRAFT`,
   `REVIEW_REQUIRED`, head по-прежнему `a138a5dd19fe`; локальные исправления в
   PR не отправлены.
+- ОБНОВЛЕНИЕ (вечер 2026-07-11, по отмашке пользователя): remediation-серия
+  ОТПРАВЛЕНА в PR force-push'ем — head `a138a5dd19` → `9d04e46d57` (rebase на
+  `6ecfb45f93` + 15 remediation commits + `git rm` этого tracker из дерева
+  PR) → `04813845dc` (fix ADRC-017). Бэкапы: fork `adrc-remediation-main`,
+  `adrc-remediation-dterm`, `adrc-pr-push`. Отчётный комментарий:
+  betaflight#15400 issuecomment-4947193088.
 - Итог ревизии: **REQUEST CHANGES**.
 
 Последний commit `a138a5dd19fe` меняет только комментарии. Функционально
@@ -245,7 +251,7 @@ thrust-linearization domain. Все три исправлены перечисл
 | ADRC-014 | P0 | Bumpless yaw-spin recovery | final main | DONE | `ee9a153767` |
 | ADRC-015 | P0 | ADRC reset на всём Crash Flip | final main | DONE | `7ade8d8089` |
 | ADRC-016 | P0 | Thrust-linearized collective feedback | final main | DONE | `1b19666f6c` |
-| ADRC-017 | P0 | ADRC state/gate reset на переходе арма | final main | TODO | — |
+| ADRC-017 | P0 | ADRC state/gate reset на переходе арма | PR line + final D-term | DONE | `04813845dc` (PR), `f4c809a12d` (D-term) |
 
 ## Детальные пункты
 
@@ -768,8 +774,11 @@ Acceptance criteria:
 ### ADRC-017 — ADRC state/gate reset на переходе арма
 
 - Приоритет: **P0**.
-- Статус: `TODO` — finding подтверждён стендом и полётом, fix не реализован.
-- Implementation commit(s): —.
+- Статус: `DONE`.
+- Implementation commit(s): `04813845dc` (PR line), `f4c809a12d` (D-term
+  cherry-pick). Rising-edge reset в `updateAdrcSharedState()` по
+  `ARMING_FLAG(ARMED)` (новое поле `pidRuntime.adrcWasArmed`), независим от
+  `pid_at_min_throttle`.
 - Затронутые места:
   - `src/main/fc/core.c` (`tryArm()`/disarm path) либо arm-transition hook в
     `src/main/flight/pid.c`;
@@ -802,15 +811,20 @@ Evidence:
 
 Acceptance criteria:
 
-- [ ] На переходе disarm→arm сбрасываются per-axis ESO state и liftoff gate
+- [x] На переходе disarm→arm сбрасываются per-axis ESO state и liftoff gate
       (новый arm epoch), независимо от `pid_at_min_throttle`.
-- [ ] Regression test: открытый gate + ненулевой z3 перед повторным армом →
-      после арма gate закрыт, z3 = 0; тест падает на текущем head.
-- [ ] Semantics «gate открыт от первого liftoff до disarm» выполняется
+- [x] Regression test (`testAdrcArmTransitionStartsFreshEpoch`): открытый
+      gate + z3 = 1e5 перед повторным армом → после арма gate закрыт, z3 = 0;
+      проверено stash-прогоном, что тест падает на pre-fix head.
+- [x] Semantics «gate открыт от первого liftoff до disarm» выполняется
       буквально (не «до конца power cycle»).
-- [ ] Mid-flight пути (`pidResetIterm`, launch control, 3D reversal) не
-      затронуты.
-- [ ] ADRC/PID/gate E2E suites проходят с `-Werror`.
+- [x] Mid-flight пути (`pidResetIterm`, launch control, 3D reversal) не
+      затронуты — reset только на rising edge армed-флага.
+- [x] Suites с `-Werror`: PR line — PID 29, ADRC 39, gate E2E aggregate 31,
+      mixer 11; D-term line — PID aggregate 31, ADRC 46. F405 firmware build
+      проходит.
+- [ ] Полётная проверка ре-арма на исправленном билде (второй арм в сессии
+      должен начинаться с закрытым gate и z3 = 0 в первом сэмпле лога).
 
 ## Mamba F722: backup, прошивка и стендовая проверка
 
@@ -960,6 +974,7 @@ PR #15400.
 | 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
 | 2026-07-11 | ADRC-001,013 | flight evidence | — | Логи 8–9 `c1f5b2e808` | Airmode-взлёт bumpless, z1 corr 0.997/2.5 ms, saturation 0 %, оба лога целы |
 | 2026-07-11 | ADRC-017 | TODO (finding) | — | USB-стенд + логи 8–9 | Gate/ESO переживают disarm (`pid_at_min_throttle=ON` делает reset-ветку мёртвой); z3 ≈ 128k въехал во 2-й арм |
+| 2026-07-11 | ADRC-017 | DONE | `04813845dc`/`f4c809a12d` | PID 29, gate E2E 31, ADRC 39/46, F405 | Rising-edge reset на арме; characterization-тест падает на pre-fix head |
 | 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
 | 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808`; evidence `a31f203d9b` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
 
