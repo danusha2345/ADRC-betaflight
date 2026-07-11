@@ -14,6 +14,8 @@ Betaflight. Все последующие изменения ADRC должны �
 - Локальный code head основной линии: `1b19666f6c5e`.
 - Локальный code head D-term линии до этого обновления tracker:
   `ac4481674eaf`.
+- Точно прошитый D-term firmware head: `c1f5b2e80888` (code head
+  `ac4481674eaf` + pre-flash tracker commits).
 - Config submodule обеих финальных линий: `57abd54d632d`.
 - Официальный PR: [betaflight/betaflight#15400](https://github.com/betaflight/betaflight/pull/15400).
 - Состояние PR при повторной проверке 2026-07-11: `OPEN`, `DRAFT`,
@@ -437,8 +439,10 @@ Acceptance criteria:
       доступное значение.
 - [x] `pgStore`/reset/`pgLoad` round-trip сохраняет новый cutoff и соседние
       поля без смещения последующих профилей.
-- [ ] CLI save/reboot/load проверен на реальном EEPROM/config storage path.
-- [ ] Новый отдельно маркированный hex собран только после прохождения теста.
+- [x] CLI save/reboot/load проверен на реальном Mamba EEPROM/config storage
+      path; после минимум трёх reboot `diff all` совпадает 187/187 команд.
+- [x] Новый отдельно маркированный hex собран только после прохождения теста:
+      firmware `c1f5b2e808`, target `MAMBAF722_I2C`.
 - [x] Старый `c1db43820` hex не распространяется как актуальный.
 
 Предпочтительное направление: отдельный ADRC parameter group вместо
@@ -680,6 +684,8 @@ Acceptance criteria:
 - [x] Полный `make EXTRA_FLAGS=-Werror test-all` проходит локально.
 - [x] Clean generic F405/F411 и exact `MAMBAF722_I2C` builds проходят с
       `-Werror` на обеих финальных линиях.
+- [x] Exact D-term firmware `c1f5b2e808` прошит на Mamba, config восстановлен,
+      минимум три reboot и 8 kHz hot-loop bench прошли без зависаний/late.
 - [ ] Официальная firmware matrix проходит.
 - [ ] Release workflow либо падает при любом board failure, либо полнота
       artifacts проверяется отдельным обязательным job.
@@ -804,15 +810,56 @@ PG14→PG15 не является PID-only migration: rejected PG делает �
 - [x] Clean exact `MAMBAF722_I2C` build проходит с `-Werror`.
 - [x] `git diff --check` чист, tracker commits локальны; GitNexus обновлён до
       tracker head и показывает актуальный индекс.
-- [ ] Собран и хэширован exact firmware после commit этого tracker.
-- [ ] Выполнена DFU-прошивка выбранной D-term ветки.
-- [ ] Восстановлен CLI config без `###ERROR`/batch errors.
-- [ ] Сверены target, firmware/config SHA, ADRC tune, serial/features/aux/VTX,
+- [x] Собран и хэширован exact firmware после commit pre-flash tracker.
+- [x] Выполнена DFU-прошивка выбранной D-term ветки.
+- [x] Восстановлен CLI config без `###ERROR`/batch errors.
+- [x] Сверены target, firmware/config SHA, ADRC tune, serial/features/aux/VTX,
       mixer/thrust/crashflip settings и `diff all`.
-- [ ] Выполнены минимум три последовательных reboot/reconnect без зависания.
-- [ ] Несколько снимков `tasks` не показывают scheduler overruns/аномальный
-      рост PID/FILTER load; результат сопоставлен с baseline.
+- [x] Выполнены минимум три последовательных reboot/reconnect без зависания.
+- [x] Несколько снимков `tasks` показывают hot-loop late 0 и PID max ниже
+      125 µs; измеримый рост PID/FILTER load сопоставлен с baseline ниже.
 - [ ] Полётная проверка оставлена пользователю и не считается выполненной.
+
+Фактический стендовый результат:
+
+- Прошит firmware `c1f5b2e8088821d4768381de086ae57d34af059d`, config
+  `57abd54d632d8ec93dbbe14193de0a521c45185c`, target `MAMBAF722_I2C`.
+- DFU записал оба element (480 и 387864 bytes) полностью и завершился с
+  exit code 0; VCP вернулся штатно.
+- HEX SHA-256:
+  `a2dbe3c883471374b875877e161680eea9b8810cc685c4bb27a9af4d18fa3a79`.
+- DFU SHA-256:
+  `ef07f4df7c566e5838d29abef7548a562f34b8e06d16e8429a41aeb795f5f15f`.
+- ELF SHA-256:
+  `0e0abcdca86b6f5aca9dab9bf552c3c723dff6b30ab98828d92d41a317b2c261`.
+- Restore output: 441 строк, SHA-256
+  `44986a21c7f69e5d7e2f535430b824360bea1a8c5198ca6a3b567b16aa81b1e6`;
+  `###ERROR`, unknown/invalid command и batch errors отсутствуют.
+- После persistence/reboot текущий `diff all` машинно сравнен с
+  `restore_cli.txt`: expected 187 commands, observed 187, missing 0, extra 0.
+- Reboot logs SHA-256: `bfbc5fd579d8be5f338b9b57279ec83ca9c6a38a828b56fa2db7a0c8c38c8b39`,
+  `fc0edc73d40747f01d525acdb1d48177fa7f6a947ea6eda2648344f9bccec7c4`,
+  `5abcd3406f56caf43ea8d36dc70b307e00b26e471474426d2637431e8f939664`;
+  финальный контрольный лог
+  `0fee9b03357838f2bccc3e12e9c7eeb15368c4105061b99f7a2c63b033c573e9`.
+
+Стабильные 8 kHz snapshots после restore:
+
+| Snapshot | CPU | GYRO avg/max | FILTER avg/max | PID avg/max | GYRO/FILTER/PID late |
+|---|---:|---:|---:|---:|---:|
+| baseline `c1db43820` | 43% | 2/5 µs | 9/17 µs | 41/59 µs | 0/0/0 |
+| reboot 1 `c1f5b2e80` | 49% | 2/5 µs | 9/20 µs | 52/74 µs | 0/0/0 |
+| reboot 2 `c1f5b2e80` | 49% | 2/6 µs | 9/15 µs | 49/68 µs | 0/0/0 |
+| reboot 3 `c1f5b2e80` | 49% | 2/6 µs | 8/15 µs | 48/69 µs | 0/0/0 |
+| final, uptime 69 s | 49% | 2/6 µs | 9/15 µs | 48/74 µs | 0/0/0 |
+
+Вывод: зависаний/reconnect failures и пропусков hot loop не обнаружено.
+Финальный D-term build с cutoff 0 показывает PID avg выше старой прошивки
+примерно на 7–11 µs и CPU выше примерно на 6 процентных пунктов. Это не
+изолированный A/B только для cutoff: между firmware есть и остальные ADRC/
+upstream изменения. Наблюдавшийся PID max 74 µs остаётся ниже 124–125 µs
+cycle deadline на F722. Это стенд без LiPo, движения и полёта; flight verdict
+из этих измерений не выводится.
 
 ## Порядок выполнения
 
@@ -851,6 +898,7 @@ PR #15400.
 | 2026-07-11 | ADRC-015 | DONE | `7ade8d8089` | PID, mutation | Чистый auto-rearm epoch после Crash Flip |
 | 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
 | 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
+| 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
 
 ## Принятые решения и остаточные блокеры
 
@@ -869,8 +917,7 @@ PR #15400.
    реконструируются обратно в axis torque: они осознанно остаются lumped
    disturbance; для текущей Mamba активен legacy mixer.
 8. До `DONE` по ADRC-001/006/007/012/013 нужны: F411 DWT timing/stack
-   high-water, стендовый EEPROM/CLI restore, upstream CI/release и полётные
-   логи точного firmware SHA.
+   high-water, upstream CI/release и полётные логи точного firmware SHA.
 9. Integrated yaw, tricopter и fixed-wing authority не валидированы; на
    текущей Mamba integrated yaw выключен.
 10. Вне ADRC scope найдено, что CLI display config size в `config_eeprom.c`
