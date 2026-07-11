@@ -68,6 +68,23 @@ protected:
     adrcProfile_t profile;
     adrcRuntime_t runtime;
 
+    void expectDtermFilterCorruptionRecovers(float corruptGain, float corruptState1, float expectedGain)
+    {
+        adrcResetState(&runtime, FD_ROLL);
+        runtime.dtermFilter[FD_ROLL].k = corruptGain;
+        runtime.dtermFilter[FD_ROLL].state = 17.0f;
+        runtime.dtermFilter[FD_ROLL].state1 = corruptState1;
+
+        const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+
+        EXPECT_FLOAT_EQ(expectedGain, runtime.dtermFilter[FD_ROLL].k);
+        EXPECT_FLOAT_EQ(0.0f, runtime.dtermFilter[FD_ROLL].state);
+        EXPECT_FLOAT_EQ(0.0f, runtime.dtermFilter[FD_ROLL].state1);
+        EXPECT_FLOAT_EQ(0.0f, out.P);
+        EXPECT_FLOAT_EQ(0.0f, out.I);
+        EXPECT_FLOAT_EQ(0.0f, out.D);
+    }
+
     void SetUp() override
     {
         simulatedThrottle = 0.0f;
@@ -885,6 +902,90 @@ TEST_F(AdrcUnittest, DtermLpfAttenuatesOnlyTheControlPath)
     EXPECT_FLOAT_EQ(5000.0f, runtime.z2[FD_ROLL]);     // raw observer state untouched
 }
 
+TEST_F(AdrcUnittest, DtermLpfRuntimeCutoffTransitionIsBumplessAndReturnsToExactBypass)
+{
+    constexpr float dT = 0.000125f;
+    profile.gyroFilterHz = 0;
+    profile.dtermFilterHz = 0;
+    adrcInitConfig(&profile, &runtime, dT);
+    adrcResetState(&runtime, FD_ROLL);
+
+    runtime.z2[FD_ROLL] = 5000.0f;
+    const adrcOutput_t bypass = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    ASSERT_FLOAT_EQ(5000.0f, runtime.dtermFilter[FD_ROLL].state);
+    ASSERT_FLOAT_EQ(5000.0f, runtime.dtermFilter[FD_ROLL].state1);
+
+    // A live 0 -> nonzero update changes only the gain. With a steady input, preserving both PT2
+    // states makes the first filtered output identical to the preceding bypassed output.
+    profile.dtermFilterHz = 20;
+    adrcInitConfig(&profile, &runtime, dT);
+    EXPECT_FLOAT_EQ(5000.0f, runtime.dtermFilter[FD_ROLL].state);
+    EXPECT_FLOAT_EQ(5000.0f, runtime.dtermFilter[FD_ROLL].state1);
+    EXPECT_GT(runtime.dtermFilter[FD_ROLL].k, 0.0f);
+    EXPECT_LT(runtime.dtermFilter[FD_ROLL].k, 1.0f);
+
+    runtime.z1[FD_ROLL] = 0.0f;
+    const adrcOutput_t filteredSteady = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    EXPECT_FLOAT_EQ(bypass.D, filteredSteady.D);
+    EXPECT_TRUE(isfinite(filteredSteady.D));
+
+    // The enabled filter must then move continuously from the old value toward a new raw step.
+    runtime.z1[FD_ROLL] = 0.0f;
+    runtime.z3[FD_ROLL] = 0.0f;
+    runtime.z2[FD_ROLL] = -5000.0f;
+    const adrcOutput_t filteredStep = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    EXPECT_GT(runtime.dtermFilter[FD_ROLL].state, -5000.0f);
+    EXPECT_LT(runtime.dtermFilter[FD_ROLL].state, 5000.0f);
+    EXPECT_TRUE(isfinite(filteredStep.D));
+
+    const float stateBeforeBypass = runtime.dtermFilter[FD_ROLL].state;
+    const float state1BeforeBypass = runtime.dtermFilter[FD_ROLL].state1;
+    profile.dtermFilterHz = 0;
+    adrcInitConfig(&profile, &runtime, dT);
+    EXPECT_FLOAT_EQ(stateBeforeBypass, runtime.dtermFilter[FD_ROLL].state);
+    EXPECT_FLOAT_EQ(state1BeforeBypass, runtime.dtermFilter[FD_ROLL].state1);
+    EXPECT_FLOAT_EQ(1.0f, runtime.dtermFilter[FD_ROLL].k);
+
+    runtime.z1[FD_ROLL] = 0.0f;
+    runtime.z3[FD_ROLL] = 0.0f;
+    runtime.z2[FD_ROLL] = 1234.0f;
+    const adrcOutput_t bypassAgain = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    const float expectedD = -runtime.coefficient[FD_ROLL].kd * 1234.0f / runtime.coefficient[FD_ROLL].b0;
+    EXPECT_FLOAT_EQ(1234.0f, runtime.dtermFilter[FD_ROLL].state);
+    EXPECT_FLOAT_EQ(1234.0f, runtime.dtermFilter[FD_ROLL].state1);
+    EXPECT_FLOAT_EQ(expectedD, bypassAgain.D);
+    EXPECT_TRUE(isfinite(bypassAgain.D));
+}
+
+TEST_F(AdrcUnittest, NonFiniteDtermFilterState1Recovers)
+{
+    profile.dtermFilterHz = 20;
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    const float validGain = runtime.dtermFilter[FD_ROLL].k;
+
+    expectDtermFilterCorruptionRecovers(validGain, NAN, validGain);
+}
+
+TEST_F(AdrcUnittest, InvalidDtermFilterGainRecovers)
+{
+    struct CorruptGainCase {
+        const char *name;
+        float gain;
+    };
+    const CorruptGainCase cases[] = {
+        { "negative", -0.01f },
+        { "above one", 1.01f },
+        { "NaN", NAN },
+        { "+infinity", INFINITY },
+        { "-infinity", -INFINITY },
+    };
+
+    for (const CorruptGainCase &testCase : cases) {
+        SCOPED_TRACE(testCase.name);
+        expectDtermFilterCorruptionRecovers(testCase.gain, 23.0f, 1.0f);
+    }
+}
+
 TEST_F(AdrcUnittest, ResetSeedsDtermFilter)
 {
     // adrcResetState() must clear the D-term filter along with z2 - leftover filter state would
@@ -908,23 +1009,35 @@ TEST_F(AdrcUnittest, ResetSeedsDtermFilter)
     EXPECT_FLOAT_EQ(0.0f, out.D);
 }
 
-TEST_F(AdrcUnittest, DtermDebugModeLogsRawAndFilteredZ2)
+TEST_F(AdrcUnittest, DtermDebugModeMapsRawAndFilteredZ2ForAllAxes)
 {
-    // debug_mode = ADRC_DTERM: [0/1] roll z2 pre/post filter - the A/B evidence channel for the
-    // filter itself.
-    profile.dtermFilterHz = 20;
+    // debug_mode = ADRC_DTERM: roll [0/1], pitch [2/3], yaw [4/5], then roll D x10 [6].
+    profile.dtermFilterHz = 100;
     constexpr float dT = 0.000125f;
     adrcInitConfig(&profile, &runtime, dT);
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         adrcResetState(&runtime, axis);
     }
+    for (int i = 0; i < DEBUG16_VALUE_COUNT; i++) {
+        debug[i] = 0;
+    }
     debugMode = DEBUG_ADRC_DTERM;
 
-    runtime.z2[FD_ROLL] = 5000.0f;
-    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    const int16_t rawZ2[] = { 4000, 8000, 12000 };
+    int16_t rollD = 0;
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        runtime.z2[axis] = rawZ2[axis];
+        adrcApplyControl(&runtime, axis, 0.0f, 0.0f, dT, 500.0f);
+
+        EXPECT_EQ(rawZ2[axis], debug[axis * 2]);
+        EXPECT_GT(debug[axis * 2 + 1], 0);
+        EXPECT_LT(debug[axis * 2 + 1], rawZ2[axis]);
+        if (axis == FD_ROLL) {
+            rollD = debug[6];
+        }
+    }
     debugMode = 0;
 
-    EXPECT_EQ(5000, debug[0]);          // raw z2
-    EXPECT_LT(abs(debug[1]), 500);      // filtered z2, heavily attenuated on a fresh step
-    EXPECT_NE(debug[0], debug[1]);
+    EXPECT_NE(0, rollD);
+    EXPECT_EQ(rollD, debug[6]); // pitch/yaw updates must not overwrite the roll-only D channel
 }
