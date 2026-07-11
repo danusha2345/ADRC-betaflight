@@ -245,6 +245,7 @@ thrust-linearization domain. Все три исправлены перечисл
 | ADRC-014 | P0 | Bumpless yaw-spin recovery | final main | DONE | `ee9a153767` |
 | ADRC-015 | P0 | ADRC reset на всём Crash Flip | final main | DONE | `7ade8d8089` |
 | ADRC-016 | P0 | Thrust-linearized collective feedback | final main | DONE | `1b19666f6c` |
+| ADRC-017 | P0 | ADRC state/gate reset на переходе арма | final main | TODO | — |
 
 ## Детальные пункты
 
@@ -279,7 +280,12 @@ Acceptance criteria:
 - [ ] После firmware build выполнен контролируемый Airmode takeoff test на
       точном SHA; ссылка на лог записана ниже.
 
-Flight evidence после исправления: —.
+Flight evidence после исправления: первый полёт `c1f5b2e808` 2026-07-11
+(`blackbox/mamba/flash_2026-07-11_c1f5b2e808.bfl`, log 8): AIRMODE feature
+включён, gate открылся по gyro-условию на отрыве (t = 11.11 s, pitch
+20–26 deg/s около 50 ms), переход bumpless — axisP/axisD и моторы непрерывны,
+без транзиента (у pre-fix `btfl_001-AIR` в этой же точке была ~1.3 s
+осцилляция). Airmode takeoff criterion выполнен на точном SHA.
 
 Принятое правило: при `closed → open` сохраняются `z1/z2/z3`, TD и gyro
 filter, но `lastOutput` предыдущей grounded-эпохи обнуляется. Первый открытый
@@ -759,6 +765,53 @@ Acceptance criteria:
 публикуется base collective, а residual рассматривается как lumped disturbance.
 На текущей Mamba используется `MIXER_LEGACY`, не `MIXER_DYNAMIC`.
 
+### ADRC-017 — ADRC state/gate reset на переходе арма
+
+- Приоритет: **P0**.
+- Статус: `TODO` — finding подтверждён стендом и полётом, fix не реализован.
+- Implementation commit(s): —.
+- Затронутые места:
+  - `src/main/fc/core.c` (`tryArm()`/disarm path) либо arm-transition hook в
+    `src/main/flight/pid.c`;
+  - `src/test/unit/pid_unittest.cc` / gate E2E suite.
+
+Finding:
+
+При штатном дефолте `pid_at_min_throttle = ON` поле
+`pidRuntime.pidStabilisationEnabled` остаётся true и в disarm, поэтому ветка
+`!pidStabilisationEnabled` в `pidController()` — единственный вызов
+`adrcResetAllState()` и единственное место закрытия liftoff gate — мёртвый
+код. `tryArm()` не сбрасывает ни classic I, ни ADRC. Gate и ESO state живут
+сквозь disarm неограниченно. Инвариант в комментарии
+`adrcZeroThrottleItermReset()` («живой ESO не может намотаться на земле —
+gate держит b0*u в нуле») ломается, как только gate открыт на земле: контур
+публикует выход, моторы его не прикладывают, разница уходит в z3.
+
+Evidence:
+
+- USB-стенд 2026-07-11 (`msp_capture.py`, RX выключен): gate latched open
+  85 s в disarm (строки d7 = +100 при throttle < 35 % исключают per-loop
+  пересчёт), z3 на клипе ±524k.
+- Полёт `c1f5b2e808` (логи 8–9, интервал между армами 1.6 s): log 8 — на
+  посадке с открытым gate z3-roll намотался до ≥524k rail; disarm его НЕ
+  очистил; log 9 — gate открыт с первого сэмпла, z3-roll ≈ 128k (I ≈ 32)
+  въехал в новый арм. Здесь исход benign (z3 распался за ~2 s до подъёма
+  газа, взлёт 7 deg/s uncommanded), worst case — мгновенный ре-арм + punch
+  с I до ~131 (26 % pidSumLimit); защита от наземной намотки отсутствует для
+  каждого арма после первого за power cycle.
+
+Acceptance criteria:
+
+- [ ] На переходе disarm→arm сбрасываются per-axis ESO state и liftoff gate
+      (новый arm epoch), независимо от `pid_at_min_throttle`.
+- [ ] Regression test: открытый gate + ненулевой z3 перед повторным армом →
+      после арма gate закрыт, z3 = 0; тест падает на текущем head.
+- [ ] Semantics «gate открыт от первого liftoff до disarm» выполняется
+      буквально (не «до конца power cycle»).
+- [ ] Mid-flight пути (`pidResetIterm`, launch control, 3D reversal) не
+      затронуты.
+- [ ] ADRC/PID/gate E2E suites проходят с `-Werror`.
+
 ## Mamba F722: backup, прошивка и стендовая проверка
 
 Контроллер: `MAMBAF722_I2C`, STM32F722, стабильный USB path
@@ -819,7 +872,14 @@ PG14→PG15 не является PID-only migration: rejected PG делает �
 - [x] Выполнены минимум три последовательных reboot/reconnect без зависания.
 - [x] Несколько снимков `tasks` показывают hot-loop late 0 и PID max ниже
       125 µs; измеримый рост PID/FILTER load сопоставлен с baseline ниже.
-- [ ] Полётная проверка оставлена пользователю и не считается выполненной.
+- [x] Полётная проверка выполнена пользователем 2026-07-11: два арма, indoor
+      hover (логи 8–9 в `blackbox/mamba/flash_2026-07-11_c1f5b2e808.bfl`,
+      flash после скачивания стёрт). Насыщения моторов 0.0 % в обоих логах,
+      z1-трекинг corr 0.997 при лаге 2.5 ms (roll), b0 scale корректно 1.0
+      (газ ниже hover 35 %), bumpless gate open подтверждён (ADRC-001).
+      Оба лога дописаны полностью; на flash оставалось ~1 MB (~13 s) — на
+      грани. Полёт также воспроизвёл ADRC-017 (см. секцию выше): gate и
+      z3 ≈ 128k пережили disarm и въехали во второй арм.
 
 Фактический стендовый результат:
 
@@ -898,6 +958,8 @@ PR #15400.
 | 2026-07-11 | ADRC-014 | DONE | `ee9a153767` | mutation, PID/ADRC/gate | Скрытый yaw-spin `z3` не возвращается после recovery |
 | 2026-07-11 | ADRC-015 | DONE | `7ade8d8089` | PID, mutation | Чистый auto-rearm epoch после Crash Flip |
 | 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
+| 2026-07-11 | ADRC-001,013 | flight evidence | — | Логи 8–9 `c1f5b2e808` | Airmode-взлёт bumpless, z1 corr 0.997/2.5 ms, saturation 0 %, оба лога целы |
+| 2026-07-11 | ADRC-017 | TODO (finding) | — | USB-стенд + логи 8–9 | Gate/ESO переживают disarm (`pid_at_min_throttle=ON` делает reset-ветку мёртвой); z3 ≈ 128k въехал во 2-й арм |
 | 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
 | 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808`; evidence `a31f203d9b` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
 
