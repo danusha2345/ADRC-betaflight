@@ -192,7 +192,8 @@ config_eeprom_unittest_SRC := \
 
 config_eeprom_unittest_DEFINES := \
 		CONFIG_IN_RAM= \
-		EEPROM_SIZE=4096
+		EEPROM_SIZE=4096 \
+		USE_ADRC=
 
 config_eeprom_unittest_INCLUDE_DIRS := \
 		$(TEST_DIR)/config_eeprom
