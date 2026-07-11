@@ -2,6 +2,27 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## What's new in b3
+
+- **Rebased onto current Betaflight master** (`6ecfb45f93`).
+- **Full remediation round** (17 tracked findings, each with characterization
+  tests): bumpless liftoff-gate open (fixes the takeoff oscillation bout seen
+  in the first airmode log), crash recovery decoupled from classic D, stable
+  TD/ESO discretization at every supported loop rate, finite-value defenses
+  that survive `-ffast-math`, the observer now fed the actually-applied mixer
+  output (normalization, saturation, ALT_HOLD/GPS_RESCUE overrides,
+  thrust-linearization domain), clean yaw-spin/Crash Flip state handling.
+- **Fresh ADRC epoch on every arm** (ADRC-017): the liftoff gate and
+  disturbance estimate no longer survive disarm into the next arm cycle
+  (flight-reproduced on b2-era code: a post-landing z3 windup entered the
+  next arm with the gate already open).
+- **Settings survive from b2**: the profile layout and PG version are
+  unchanged, so upgrading b2 → b3 keeps your tune (still: `diff all` backup
+  first). Upgrading from b1 resets profiles — see below.
+- **STM32F446 builds don't include ADRC**: that MCU's 512k flash is full with
+  the default feature set. F446-based boards get a working classic-PID build;
+  `set pid_type = ADRC` won't exist there. All other targets are unaffected.
+
 ## Upgrading from b1
 
 The first freestyle blackbox on this branch exposed two tuning-default problems, both
