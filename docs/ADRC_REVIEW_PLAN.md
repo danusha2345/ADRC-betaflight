@@ -106,8 +106,14 @@ Remotes в этом workspace:
 
 ### GitHub CI
 
-- Повторная проверка выполнена 2026-07-11 13:38 UTC.
-- Текущий удалённый head PR `a138a5dd19fe` имеет 53/53 зелёных checks.
+- Повторная проверка выполнена 2026-07-11 14:18 UTC.
+- Текущий удалённый head PR `a138a5dd19fe221c34be1ac6bd40551fc9b44344`,
+  recorded base `4e411ac3ce4fdb5952a21326e5185c29ef7f25fd`; текущий
+  `upstream/master` уже `6ecfb45f938e4996fbb568b21eafa7057446a906`.
+- GitHub сообщает `mergeable=true`, `mergeable_state=blocked`,
+  `rebaseable=false`; запрошенный reviewer — `Quick-Flash`.
+- В PR 13 conversation comments, 0 formal reviews и 0 inline review comments.
+- Head PR имеет 53/53 зелёных checks.
 - [Основной run 29113914811](https://github.com/betaflight/betaflight/actions/runs/29113914811)
   завершил 51/51 jobs, включая полный `test-all` и firmware matrix.
 - `CodeRabbit / Review = success` не является независимым review: review был
@@ -193,7 +199,7 @@ Rebase 38 ADRC-коммитов на `upstream/master` прошёл без ко�
 
 Финальная локальная матрица после clean build/test:
 
-| Линия | Mixer | ADRC | PID | Gate E2E | `-ffast-math` | `test-all` | F405 | F411 | Mamba F722 |
+| Линия | Mixer | ADRC | PID | PID+Gate E2E aggregate | `-ffast-math` | `test-all` | F405 | F411 | Mamba F722 |
 |---|---:|---:|---:|---:|---|---|---|---|---|
 | main `1b19666f6c` | 11/11 | 39/39 | 28/28 | 30/30 | PASS | PASS | PASS | PASS | PASS |
 | D-term `ac4481674e` | 11/11 | 46/46 | 30/30 | 32/32 | PASS | PASS | PASS | PASS | PASS |
@@ -748,20 +754,21 @@ Acceptance criteria:
 
 ## Mamba F722: backup, прошивка и стендовая проверка
 
-Контроллер: `MAMBAF722_I2C`, STM32F722, USB id
-`Betaflight_Betaflight_-_MAMBAF722_I2C_203E39564638-if00`. Исходная прошивка:
+Контроллер: `MAMBAF722_I2C`, STM32F722, стабильный USB path
+`/dev/serial/by-id/usb-Betaflight_Betaflight_-_MAMBAF722_I2C_203E39564638-if00`.
+Исходная прошивка:
 2026.6.0-alpha `c1db43820`, config revision `9e1bee9`. LiPo не подключён;
 моторные и полётные проверки запрещены в этом этапе.
 
 Сохранённые файлы до прошивки находятся в
 `.scratch/bench/mambaf722_i2c_2026-07-11/`:
 
-| Файл | SHA-256 |
-|---|---|
-| `diff_all_c1db43820.txt` | `c48b033c463dc3ae6e46b7d71b5031920b4785d609896c6585d274775744b52e` |
-| `dump_all_c1db43820.txt` | `ddff3ec79f8355249be3e9ba5fd5ac011ca522c32b740b267050a1a3e37db6a9` |
-| `baseline_c1db43820.txt` | `4233b7ac5c8f9dd616e3325170c6aeedad0979c1db89b605f8402213ac2c2705` |
-| `restore_cli.txt` | `8a0d012014bf51bad50857cacbf4a7e9120e0bef058bd381f8ac2ed6d997988d` |
+| Файл | Строк | SHA-256 |
+|---|---:|---|
+| `diff_all_c1db43820.txt` | 242 | `c48b033c463dc3ae6e46b7d71b5031920b4785d609896c6585d274775744b52e` |
+| `dump_all_c1db43820.txt` | 1474 | `ddff3ec79f8355249be3e9ba5fd5ac011ca522c32b740b267050a1a3e37db6a9` |
+| `baseline_c1db43820.txt` | 165 | `4233b7ac5c8f9dd616e3325170c6aeedad0979c1db89b605f8402213ac2c2705` |
+| `restore_cli.txt` | 231 | `8a0d012014bf51bad50857cacbf4a7e9120e0bef058bd381f8ac2ed6d997988d` |
 
 Restore audit: все 143 `set` names и все 16 CLI command types существуют в
 точной новой Mamba сборке. Target config между revisions не менялся. В restore
@@ -770,14 +777,19 @@ Restore audit: все 143 `set` names и все 16 CLI command types сущес�
 `b0 scale max=9`; остаются новые `0` и `3`. D-term cutoff остаётся `0`.
 
 Контрольная конфигурация для сверки после restore: profile 0, `pid_type=ADRC`,
-8 kHz gyro/PID, DSHOT600, bidirectional DSHOT off, `MIXER_LEGACY`,
+8 kHz gyro/PID (`pid_process_denom=1`), DSHOT600, bidirectional DSHOT off,
+`MIXER_LEGACY`,
 `thrust_linear=20`, `crashflip_auto_rearm=OFF`, `pid_at_min_throttle=ON`.
 ADRC: `wc=40`, `wo=120`, `b0=4000` на всех осях, gyro LPF 150 Hz,
 hover 35%, sigma 3, TD 0, liftoff throttle 40%, gyro 20 dps, hold 25 ms,
-idle hold 5 ms, gated decay 200 ms, D-term LPF 0.
+idle throttle 5%, gated decay 200 ms, D-term LPF 0.
+После reset намеренно должны остаться новые безопасные
+`adrc_liftoff_idle_hold_ms=0` и `adrc_b0_scale_max=3`, а не старые 500/9;
+`debug_mode=ADRC_DTERM` возвращается restore script.
 
-Старый 8 kHz scheduler baseline: CPU около 43%, GYRO avg 2 µs, FILTER avg
-9 µs, PID avg 40–41 µs и max 59–65 µs при cycle time 124–125 µs.
+Старый 8 kHz scheduler baseline: CPU 43%, cycle time 124 µs, GYRO avg/max
+2/5 µs, FILTER 9/17 µs, PID 41/59 µs, late 0. Питание только USB:
+0S, около 0.44 V, LiPo отсутствует.
 
 PG14→PG15 не является PID-only migration: rejected PG делает весь
 `readEEPROM()` неуспешным, Betaflight выполняет полный reset и rewrite.
@@ -790,6 +802,8 @@ PG14→PG15 не является PID-only migration: rejected PG делает �
 - [x] Restore script проверен против exact ELF и не возвращает старые unsafe
       defaults.
 - [x] Clean exact `MAMBAF722_I2C` build проходит с `-Werror`.
+- [x] `git diff --check` чист, tracker commits локальны; GitNexus обновлён до
+      tracker head и показывает актуальный индекс.
 - [ ] Собран и хэширован exact firmware после commit этого tracker.
 - [ ] Выполнена DFU-прошивка выбранной D-term ветки.
 - [ ] Восстановлен CLI config без `###ERROR`/batch errors.
