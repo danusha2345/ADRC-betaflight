@@ -124,7 +124,11 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 // The layout is unchanged, but a version-match memcpy would keep the old stored values - and 500
 // specifically re-creates the mid-air gate closures the new default exists to prevent, on every
 // config saved from a prior build. Flight safety over stored-profile continuity: force the reset.
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 14);
+// 15: adrc_dterm_lpf_hz appends a uint16_t to the embedded ADRC profile and grows every persisted
+// pidProfile_t. Reject PG14 before pgLoad() can partially memcpy its shorter array across the new
+// profile boundaries. Version 15 exhausts the four-bit PG version field; another ADRC layout
+// change should use a separate parameter group instead of wrapping this version.
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 15);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {

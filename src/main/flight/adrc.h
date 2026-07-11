@@ -63,12 +63,6 @@ typedef struct adrcProfile_s {
                                    // part of the danusha2345 port, independently added by a third
                                    // ADRC implementation (SeverinBitterli/betaflight, ADRC-Implementation
                                    // branch); standard ADRC theory component, unvalidated here.
-    uint16_t dtermFilterHz;       // low-pass cutoff on z2 where it feeds the control law's D term
-                                   // ONLY - the ESO keeps integrating the raw z2, so the observer
-                                   // loop gains no phase lag (the ADRC analogue of dterm_lpf). 0 =
-                                   // disabled. Off by default - unvalidated; targets the measured
-                                   // gyro-noise ceiling on wc ("horn" on throttle-up).
-
     // Liftoff-gate thresholds (see adrcUpdatePerLoopState() in adrc.c for the state machine these
     // drive). Community-validated defaults from danusha2345/ADRC-betaflight, but craft-dependent -
     // in particular liftoffThrottlePercent has no relationship to hoverThrottlePercent above unless
@@ -91,6 +85,12 @@ typedef struct adrcProfile_s {
                                 // configured airborne decay (not per-axis)
     uint8_t b0ThrottleScaleMax; // ceiling on the throttle-scaled b0 multiplier (see
                                 // hoverThrottlePercent above); scaling is never applied below 1x
+    uint16_t dtermFilterHz;     // low-pass cutoff on z2 where it feeds the control law's D term
+                                 // ONLY - the ESO keeps integrating the raw z2, so the observer
+                                 // loop gains no phase lag (the ADRC analogue of dterm_lpf). 0 =
+                                 // disabled. Off by default - unvalidated; targets the measured
+                                 // gyro-noise ceiling on wc ("horn" on throttle-up). Appended to
+                                 // keep all pre-existing ADRC member offsets stable in PG15.
 } adrcProfile_t;
 
 // Precomputed per-axis coefficients derived from adrcProfile_t at profile-load time, so the hot

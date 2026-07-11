@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <cmath>
+#include <cstring>
 
 #include "unittest_macros.h"
 #include "gtest/gtest.h"
@@ -1610,4 +1611,74 @@ TEST(pidControllerTest, testAdrcAppliedOutputRejectsInvalidScaleAndClassicProfil
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         EXPECT_FLOAT_EQ(42.0f, pidRuntime.adrc.lastOutput[axis]);
     }
+}
+
+TEST(pidControllerTest, testPidProfilePg14BlobIsRejectedAndReset)
+{
+    resetTest();
+
+    const pgRegistry_t *pidProfileRegistry = pgFind(PG_PID_PROFILE);
+    ASSERT_NE(nullptr, pidProfileRegistry);
+    ASSERT_EQ(sizeof(pidProfile_t) * PID_PROFILE_COUNT, pgSize(pidProfileRegistry));
+    EXPECT_EQ(268U, sizeof(pidProfile_t));
+    EXPECT_EQ(1072, pgSize(pidProfileRegistry));
+
+    // Reconstruct the exact PG14 array layout by serializing each current profile without the
+    // newly-added uint16_t. Known non-default values make any accidental partial memcpy visible.
+    constexpr size_t dtermFilterOffset = offsetof(pidProfile_t, adrc.dtermFilterHz);
+    constexpr size_t legacyProfileSize = sizeof(pidProfile_t) - sizeof(uint16_t);
+    uint8_t legacyPg14Blob[legacyProfileSize * PID_PROFILE_COUNT] = {};
+    EXPECT_EQ(1064U, sizeof(legacyPg14Blob));
+    pidProfile_t *legacySource = pidProfilesMutable(0);
+    legacySource->pid_type = PID_TYPE_ADRC;
+    legacySource->adrc.gyroFilterHz = 321;
+    legacySource->adrc.liftoffThrottlePercent = 77;
+    legacySource->motor_output_limit = 42;
+
+    for (int profileIndex = 0; profileIndex < PID_PROFILE_COUNT; profileIndex++) {
+        const uint8_t *source = reinterpret_cast<const uint8_t *>(pidProfiles(profileIndex));
+        uint8_t *destination = legacyPg14Blob + profileIndex * legacyProfileSize;
+        std::memcpy(destination, source, dtermFilterOffset);
+        std::memcpy(destination + dtermFilterOffset,
+            source + dtermFilterOffset + sizeof(uint16_t),
+            sizeof(pidProfile_t) - dtermFilterOffset - sizeof(uint16_t));
+    }
+
+    EXPECT_EQ(pgSize(pidProfileRegistry) - sizeof(uint16_t) * PID_PROFILE_COUNT, sizeof(legacyPg14Blob));
+    EXPECT_FALSE(pgLoad(pidProfileRegistry, legacyPg14Blob, sizeof(legacyPg14Blob), 14));
+    EXPECT_EQ(15, pgVersion(pidProfileRegistry));
+
+    for (int profileIndex = 0; profileIndex < PID_PROFILE_COUNT; profileIndex++) {
+        const pidProfile_t *loadedProfile = pidProfiles(profileIndex);
+        EXPECT_EQ(PID_TYPE_CLASSIC, loadedProfile->pid_type);
+        EXPECT_EQ(0, loadedProfile->adrc.dtermFilterHz);
+        EXPECT_EQ(150, loadedProfile->adrc.gyroFilterHz);
+        EXPECT_EQ(40, loadedProfile->adrc.liftoffThrottlePercent);
+        EXPECT_EQ(100, loadedProfile->motor_output_limit);
+    }
+}
+
+TEST(pidControllerTest, testPidProfilePg15RoundTripPreservesAdrcDtermField)
+{
+    resetTest();
+
+    const pgRegistry_t *pidProfileRegistry = pgFind(PG_PID_PROFILE);
+    ASSERT_NE(nullptr, pidProfileRegistry);
+    uint8_t pg15Blob[sizeof(pidProfile_t) * PID_PROFILE_COUNT] = {};
+    pidProfile_t *storedProfile = pidProfilesMutable(0);
+    storedProfile->pid_type = PID_TYPE_ADRC;
+    storedProfile->adrc.dtermFilterHz = 123;
+    storedProfile->adrc.liftoffThrottlePercent = 77;
+    storedProfile->motor_output_limit = 42;
+
+    EXPECT_EQ(sizeof(pg15Blob), pgStore(pidProfileRegistry, pg15Blob, sizeof(pg15Blob)));
+    pgReset(pidProfileRegistry);
+    ASSERT_EQ(0, pidProfiles(0)->adrc.dtermFilterHz);
+
+    EXPECT_TRUE(pgLoad(pidProfileRegistry, pg15Blob, sizeof(pg15Blob), 15));
+    const pidProfile_t *loadedProfile = pidProfiles(0);
+    EXPECT_EQ(PID_TYPE_ADRC, loadedProfile->pid_type);
+    EXPECT_EQ(123, loadedProfile->adrc.dtermFilterHz);
+    EXPECT_EQ(77, loadedProfile->adrc.liftoffThrottlePercent);
+    EXPECT_EQ(42, loadedProfile->motor_output_limit);
 }
