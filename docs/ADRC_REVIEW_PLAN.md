@@ -7,13 +7,18 @@ Betaflight. Все последующие изменения ADRC должны �
 ## Базовая точка
 
 - Дата ревизии: 2026-07-11.
-- Основная ветка: `adrc-gate-fix`.
+- Актуальный `upstream/master`: `6ecfb45f938e`.
+- Основная локальная ветка: `codex/adrc-main-final-local`.
+- Экспериментальная D-term ветка для стенда: `codex/adrc-dterm-final-local`.
 - Проверенный head исходной ревизии: `a138a5dd19fe`.
-- Локальный implementation/test head основной линии: `2a8ed176cf2c`.
-- Локальный implementation/test head D-term линии: `2ddd4c4222`.
+- Локальный code head основной линии: `1b19666f6c5e`.
+- Локальный code head D-term линии до этого обновления tracker:
+  `ac4481674eaf`.
+- Config submodule обеих финальных линий: `57abd54d632d`.
 - Официальный PR: [betaflight/betaflight#15400](https://github.com/betaflight/betaflight/pull/15400).
-- Merge base на момент ревизии: `b6bf0f5ab8`.
-- Состояние PR на момент ревизии: `OPEN`, `DRAFT`, `REVIEW_REQUIRED`.
+- Состояние PR при повторной проверке 2026-07-11: `OPEN`, `DRAFT`,
+  `REVIEW_REQUIRED`, head по-прежнему `a138a5dd19fe`; локальные исправления в
+  PR не отправлены.
 - Итог ревизии: **REQUEST CHANGES**.
 
 Последний commit `a138a5dd19fe` меняет только комментарии. Функционально
@@ -64,8 +69,10 @@ Betaflight. Все последующие изменения ADRC должны �
 | `repo/master` | `4028af2aab` | Legacy inline ADRC и старые flight logs | Только evidence/reference |
 | `adrc-toggle-fixes` | `d45d6b0c9c` | Ранний модульный вариант | История fixes |
 | `adrc-review-fixes-2` | `71bd38ff95` | Промежуточные CLI/safety fixes | История fixes |
-| `adrc-gate-fix` | `2a8ed176cf` | Локальная основная линия исправлений и mixer E2E tests поверх head PR #15400 | Не push; требует ADRC-012/013 |
-| `codex/adrc-dterm-remediation` | `2ddd4c4222` | Исправленный экспериментальный D-term LPF + PG15 + tests | Не push; перед прошивкой сохранить `diff all` |
+| `adrc-gate-fix` | `a797ada388` | Историческая доребейзная линия исправлений | Только reference |
+| `codex/adrc-main-final-local` | `1b19666f6c` | Финальная основная линия, rebased на `6ecfb45f93` | Не push; локальная reviewed база |
+| `codex/adrc-dterm-final-local` | `ac4481674e` | Финальная основная линия + opt-in D-term LPF, PG15 и EEPROM tests | Не push; выбранная линия стендовой прошивки |
+| `codex/adrc-dterm-remediation` | `20b2685db0` | Доребейзная D-term remediation | Только reference |
 | `adrc-dterm-lpf` | `665bbb1dc5` | Исходный небезопасный экспериментальный D-term LPF | Только reference, не прошивать |
 | `pr15400-builds` | `69053ba918` | Release workflow поверх `0079d685` | Источник release b2 |
 
@@ -99,7 +106,8 @@ Remotes в этом workspace:
 
 ### GitHub CI
 
-- Текущий head PR имеет 53/53 зелёных checks.
+- Повторная проверка выполнена 2026-07-11 13:38 UTC.
+- Текущий удалённый head PR `a138a5dd19fe` имеет 53/53 зелёных checks.
 - [Основной run 29113914811](https://github.com/betaflight/betaflight/actions/runs/29113914811)
   завершил 51/51 jobs, включая полный `test-all` и firmware matrix.
 - `CodeRabbit / Review = success` не является независимым review: review был
@@ -109,6 +117,8 @@ Remotes в этом workspace:
   Actions runs.
 - Release workflow не завершает shard ненулевым exit при единичной ошибке
   board build. Для b2 полнота отдельно подтверждена набором 623/623 assets.
+- Локальные heads `1b19666f6c`/`ac4481674e` в GitHub CI не проверялись и ни в
+  один remote не отправлялись; зелёные checks PR нельзя приписывать им.
 
 ### Flight evidence
 
@@ -147,68 +157,85 @@ gate-open transition из ADRC-001.
 
 ## Локальное состояние после исправлений
 
-Основная линия `adrc-gate-fix`:
+Финальная основная линия `codex/adrc-main-final-local`:
 
-- `7d69539a63` — feedback фактически доступной mixer authority и
+- `c3311a0ba9` — feedback фактически доступной mixer authority и
   post-override throttle;
-- `5d862e6a73` — bumpless gate-open/re-open и невакуумные gate tests;
-- `11fd579d92` — disarmed-only semantics перехода CLASSIC↔ADRC;
-- `73c5bc34a2` — независимые от classic D crash detection и подавление
+- `1bdfffcef1` — bumpless gate-open/re-open и невакуумные gate tests;
+- `fc2b9cca4c` — disarmed-only semantics перехода CLASSIC↔ADRC;
+- `1321ef4c1b` — независимые от classic D crash detection и подавление
   `I/z3` на полном recovery loop;
-- `538931a201` — стабильный TD, loop-rate cap ESO, физические state limits и
+- `62fe21523a` — стабильный TD, loop-rate cap ESO, физические state limits и
   finite recovery, включая `-ffast-math`;
-- `6ea7c11aac` — feedback фактического yaw limit во время yaw-spin recovery;
-- `2a8ed176cf` — восемь real-`mixTable()` regression tests для mixer feedback
-  и автоматических throttle override.
+- `2e891d6f18` — feedback фактического yaw limit;
+- `ab98b77127`, `72e47757e8`, `799ff89e60` — real-`mixTable()`, dynamic/EZ
+  Landing и gate feedback epoch regression tests;
+- `555f575a70` — обязательная повторная запись EEPROM после rejected/missing
+  PG, включая default-only config;
+- `ee9a153767` — bumpless yaw-spin recovery без скрытого `z3`;
+- `7ade8d8089` — полный ADRC reset на каждом Crash Flip loop;
+- `1b19666f6c` — публикация thrust-linearized collective в домене реально
+  приложенной тяги.
 
-Отдельная D-term линия `codex/adrc-dterm-remediation`:
+Финальная D-term линия `codex/adrc-dterm-final-local` добавляет:
 
-- `ed747bbb0c` — opt-in `adrc_dterm_lpf_hz`, debug и blackbox metadata;
-- `a0d8dbc8d0` — PG14 rejection, PG15 round-trip и перенос нового поля в
-  конец `adrcProfile_t`;
-- `2ca9126ac2` — синхронизация yaw-spin fix с основной линией;
-- `6447e513fe` — runtime cutoff transitions, filter corruption recovery и
-  multi-axis debug tests;
-- `2ddd4c4222` — тот же real-`mixTable()` regression harness, что в main.
+- `6791636cad` — opt-in `adrc_dterm_lpf_hz`, debug и blackbox metadata;
+- `6da893a48b` — PG14 rejection, PG15 layout и перенос нового поля в конец
+  `adrcProfile_t`;
+- `121f09b176` — runtime cutoff transitions, corruption recovery и multi-axis
+  debug tests;
+- `ac4481674e` — реальный PG14→PG15 EEPROM reset/rewrite/reload и PG15
+  multi-profile round-trip.
 
-Ни одна ветка не отправлена в remote. Код собран и протестирован локально;
-полётной валидации этих SHA пока нет.
+Rebase 38 ADRC-коммитов на `upstream/master` прошёл без конфликтов;
+`range-diff` сохранил эквивалентность исходной серии. Ни одна финальная ветка
+не отправлена в remote. Полётной валидации этих SHA нет.
 
-Финальная локальная матрица:
+Финальная локальная матрица после clean build/test:
 
-| Линия | Mixer | ADRC | PID | `-ffast-math` | `test-all` | F405 | F411 |
-|---|---:|---:|---:|---|---|---|---|
-| main `2a8ed176cf` | 8/8 | 39/39 | 24/24 | PASS | PASS | PASS | PASS |
-| D-term `2ddd4c4222` | 8/8 | 46/46 | 26/26 | PASS | PASS | PASS | PASS |
+| Линия | Mixer | ADRC | PID | Gate E2E | `-ffast-math` | `test-all` | F405 | F411 | Mamba F722 |
+|---|---:|---:|---:|---:|---|---|---|---|---|
+| main `1b19666f6c` | 11/11 | 39/39 | 28/28 | 30/30 | PASS | PASS | PASS | PASS | PASS |
+| D-term `ac4481674e` | 11/11 | 46/46 | 30/30 | 32/32 | PASS | PASS | PASS | PASS | PASS |
 
-Оба `test-all` запускались после `make test_clean` с `EXTRA_FLAGS=-Werror`.
-Целевые Mixer/ADRC/PID suites дополнительно прошли с
-`EXTRA_FLAGS='-Werror -ffast-math'`.
+Оба `test-all` запускались после полной очистки с `EXTRA_FLAGS=-Werror`.
+Целевые EEPROM/Mixer/ADRC/PID/Gate suites дополнительно прошли с
+`EXTRA_FLAGS='-Werror -ffast-math'`: main EEPROM 2/2, D-term EEPROM 4/4.
 
-Финальный GitNexus compare с `a138a5dd19` видит 12 файлов/139 symbols и 8
-затронутых realtime flows (`pidController`/`mixTable`), формальный risk
-`HIGH`. Это ожидаемый blast radius для изменений control/mixer hot path;
-поэтому дополнительно выполнен независимый source-order review. Он нашёл
-только yaw-spin limit gap, исправленный в `6ea7c11aac`; повторный review
-default path и compile guards новых blocker не нашёл.
+Размеры clean D-term build `ac4481674e`:
+
+| Target | Flash | RAM | Дополнительно |
+|---|---:|---:|---:|
+| `STM32F405` | FLASH1 625540/1015808 (61.58%) | RAM 101808/131072 (77.67%) | CCM 13636/65536 |
+| `STM32F411` | FLASH1 473650/491520 (96.36%) | RAM 102932/131072 (78.53%) | flash headroom 17870 B |
+| `MAMBAF722_I2C` | AXIM_FLASH1 387864/491520 (78.91%) | DTCM 30408/65536; SRAM1 56020/180224 | ITCM 16008/16384 (97.71%) |
+
+Независимый source-order review после rebase нашёл три дополнительных
+production blocker: yaw-spin hidden state, Crash Flip state learning и
+thrust-linearization domain. Все три исправлены перечисленными выше commits;
+повторный review default path, D-term delta и compile guards новых blocker не
+нашёл.
 
 ## Сводный план
 
 | ID | Приоритет | Кратко | Ветка | Статус | Implementation commit(s) |
 |---|---|---|---|---|---|
-| ADRC-001 | P0 | Bumpless liftoff gate open | `adrc-gate-fix` | IMPLEMENTED | `5d862e6a73` |
-| ADRC-002 | P0 | Crash detector без зависимости от classic D | `adrc-gate-fix` | DONE | `73c5bc34a2` |
-| ADRC-003 | P0 | ADRC I/z3 во время crash recovery | `adrc-gate-fix` | DONE | `73c5bc34a2` |
-| ADRC-004 | P0 | Устойчивая TD discretization | `adrc-gate-fix` | DONE | `538931a201` |
-| ADRC-005 | P0 | Loop-rate safe ESO | `adrc-gate-fix` | DONE | `538931a201` |
-| ADRC-006 | P0 | Persisted schema для D-term LPF | `codex/adrc-dterm-remediation` | IMPLEMENTED | `ed747bbb0c`, `a0d8dbc8d0`, `6447e513fe` |
-| ADRC-007 | P1 | Фактически приложенный mixer feedback | `adrc-gate-fix` | IMPLEMENTED | `7d69539a63`, `6ea7c11aac`, `2a8ed176cf` |
-| ADRC-008 | P1 | Post-override throttle для ADRC | `adrc-gate-fix` | DONE | `7d69539a63`, `2a8ed176cf` |
-| ADRC-009 | P1 | State limits и finite-value defenses | `adrc-gate-fix` | DONE | `538931a201` |
-| ADRC-010 | P1 | Семантика CLASSIC↔ADRC handover | `adrc-gate-fix` | DONE | `11fd579d92` |
-| ADRC-011 | P1 | Исправить vacuous gate tests | `adrc-gate-fix` | DONE | `5d862e6a73` |
-| ADRC-012 | P1 | End-to-end tests и F411 cycle budget | `adrc-gate-fix` | BLOCKED | F411 timing, dynamic/closed-loop E2E |
-| ADRC-013 | P1 | Rebase, CI, release b3 и точный re-flight | `adrc-gate-fix` | BLOCKED | Нужны ADRC-001…012 |
+| ADRC-001 | P0 | Bumpless liftoff gate open | final main | IMPLEMENTED | `1bdfffcef1`, `799ff89e60` |
+| ADRC-002 | P0 | Crash detector без зависимости от classic D | final main | DONE | `1321ef4c1b` |
+| ADRC-003 | P0 | ADRC I/z3 во время crash recovery | final main | DONE | `1321ef4c1b` |
+| ADRC-004 | P0 | Устойчивая TD discretization | final main | DONE | `62fe21523a` |
+| ADRC-005 | P0 | Loop-rate safe ESO | final main | DONE | `62fe21523a` |
+| ADRC-006 | P0 | Persisted schema и EEPROM recovery для D-term LPF | final D-term | IMPLEMENTED | `6791636cad`, `6da893a48b`, `121f09b176`, `555f575a70`, `ac4481674e` |
+| ADRC-007 | P1 | Фактически приложенный mixer feedback | final main | IMPLEMENTED | `c3311a0ba9`, `2e891d6f18`, `ab98b77127`, `72e47757e8` |
+| ADRC-008 | P1 | Post-override throttle для ADRC | final main | DONE | `c3311a0ba9`, `ab98b77127`, `1b19666f6c` |
+| ADRC-009 | P1 | State limits и finite-value defenses | final main | DONE | `62fe21523a` |
+| ADRC-010 | P1 | Семантика CLASSIC↔ADRC handover | final main | DONE | `fc2b9cca4c` |
+| ADRC-011 | P1 | Исправить vacuous gate tests | final main | DONE | `1bdfffcef1` |
+| ADRC-012 | P1 | End-to-end tests и F411 cycle budget | final main/D-term | IMPLEMENTED | `ab98b77127`, `72e47757e8`, `799ff89e60`; F411 timing внешний |
+| ADRC-013 | P1 | Rebase, CI, release b3 и точный re-flight | final main/D-term | IMPLEMENTED | rebase/local matrix готовы; official CI/release/flight внешние |
+| ADRC-014 | P0 | Bumpless yaw-spin recovery | final main | DONE | `ee9a153767` |
+| ADRC-015 | P0 | ADRC reset на всём Crash Flip | final main | DONE | `7ade8d8089` |
+| ADRC-016 | P0 | Thrust-linearized collective feedback | final main | DONE | `1b19666f6c` |
 
 ## Детальные пункты
 
@@ -216,7 +243,7 @@ default path и compile guards новых blocker не нашёл.
 
 - Приоритет: **P0**.
 - Статус: `IMPLEMENTED` — локально закрыто, flight criterion остаётся.
-- Implementation commit(s): `5d862e6a73`.
+- Implementation commit(s): `1bdfffcef1`, `799ff89e60`.
 - Затронутые места:
   - `src/main/flight/adrc.c`: gate transition, `lastOutput` и ESO update;
   - `src/test/unit/adrc_unittest.cc`;
@@ -255,7 +282,7 @@ loop. Mutation/revert старого поведения ломает новые 
 
 - Приоритет: **P0**.
 - Статус: `DONE`.
-- Implementation commit(s): `73c5bc34a2`.
+- Implementation commit(s): `1321ef4c1b`.
 - Затронутые места:
   - `src/main/flight/pid.c`;
   - `src/test/unit/pid_unittest.cc`.
@@ -280,7 +307,7 @@ Acceptance criteria:
 
 - Приоритет: **P0**.
 - Статус: `DONE`.
-- Implementation commit(s): `73c5bc34a2`.
+- Implementation commit(s): `1321ef4c1b`.
 - Затронутые места:
   - `src/main/flight/pid.c`;
   - `src/main/flight/adrc.c` и `adrc.h` при необходимости;
@@ -312,7 +339,7 @@ Acceptance criteria:
 
 - Приоритет: **P0** при включённом `adrc_td_hz`.
 - Статус: `DONE`.
-- Implementation commit(s): `538931a201`.
+- Implementation commit(s): `62fe21523a`.
 - Затронутые места:
   - `src/main/flight/adrc.c`;
   - `src/main/cli/settings.c`;
@@ -347,7 +374,7 @@ Acceptance criteria:
 
 - Приоритет: **P0** для разрешённых экстремальных конфигураций.
 - Статус: `DONE`.
-- Implementation commit(s): `538931a201`.
+- Implementation commit(s): `62fe21523a`.
 - Затронутые места:
   - `src/main/flight/adrc.c`;
   - `src/main/cli/settings.c`;
@@ -375,8 +402,9 @@ Acceptance criteria:
 
 - Приоритет: **P0**, блокирует использование `adrc-dterm-lpf`.
 - Статус: `IMPLEMENTED` — schema локально безопасна, flight/release отсутствуют.
-- Implementation commit(s): `ed747bbb0c`, `a0d8dbc8d0`, `6447e513fe`.
-- Ветка: `codex/adrc-dterm-remediation`.
+- Implementation commit(s): `6791636cad`, `6da893a48b`, `121f09b176`,
+  `555f575a70`, `ac4481674e`.
+- Ветка: `codex/adrc-dterm-final-local`.
 - Затронутые места:
   - `src/main/flight/pid.h`;
   - `src/main/pg/pg_ids.h`/регистрация PID profile;
@@ -423,16 +451,18 @@ reset/rewrite, а не только reset PID profiles. Поэтому до пр
 
 Независимый повторный review не нашёл code-correctness blocker. Остаточный
 risk: даже при cutoff `0` две PT1-ступени остаются в hot path, а при включении
-фильтр добавляет фазу в D/control path. На F411 D-term ветка добавляет около
-1404 bytes text и 48 bytes BSS к main и занимает примерно 96.36% FLASH1.
+фильтр добавляет фазу в D/control path. На F411 D-term ветка добавляет 1228
+bytes text и 48 bytes BSS к main и занимает 96.36% FLASH1.
 Функция остаётся `off by default` до DWT 8 kHz и A/B blackbox/flight sweep.
 
 ### ADRC-007 — Фактически приложенный mixer feedback
 
 - Приоритет: **P1**.
 - Статус: `IMPLEMENTED` — основные uniform-scale paths и mixer E2E готовы;
-  точная модель `MIXER_DYNAMIC` и closed-loop z3 drift остаются в ADRC-012.
-- Implementation commit(s): `7d69539a63`, `6ea7c11aac`, `2a8ed176cf`.
+  exact mixed-axis reconstruction осознанно не добавлена в realtime path,
+  flight criterion остаётся.
+- Implementation commit(s): `c3311a0ba9`, `2e891d6f18`, `ab98b77127`,
+  `72e47757e8`.
 - Затронутые места:
   - `src/main/flight/pid.c`;
   - `src/main/flight/mixer.c`;
@@ -449,8 +479,8 @@ Acceptance criteria:
 
 - [x] Для legacy/linear/EZ Landing observer получает приложенный uniform
       normalization/attenuation scale, включая effective yaw-spin limit.
-- [ ] Для `MIXER_DYNAMIC` observer получает фактически приложенный axis command либо доказанно
-      эквивалентный scale.
+- [x] Для `MIXER_DYNAMIC` real mixer test доказывает точный uniform scale;
+      mixed-axis redistribution задокументирована как lumped disturbance.
 - [x] Real-`mixTable()` tests покрывают legacy mixer, linear mixer и
       no-Airmode attenuation.
 - [ ] Saturation test не вызывает ложный устойчивый drift `z3`.
@@ -470,7 +500,7 @@ disturbance. Точная обратная реконструкция axis torqu
 
 - Приоритет: **P1**.
 - Статус: `DONE`.
-- Implementation commit(s): `7d69539a63`, `2a8ed176cf`.
+- Implementation commit(s): `c3311a0ba9`, `ab98b77127`, `1b19666f6c`.
 - Затронутые места:
   - `src/main/flight/adrc.c`;
   - `src/main/flight/mixer.c`;
@@ -498,7 +528,7 @@ authority.
 
 - Приоритет: **P1**.
 - Статус: `DONE`.
-- Implementation commit(s): `538931a201`.
+- Implementation commit(s): `62fe21523a`.
 - Затронутые места:
   - `src/main/flight/adrc.c`;
   - profile validation/init;
@@ -530,7 +560,7 @@ runtime bounds, а finite check читает IEEE-754 exponent напрямую 
 
 - Приоритет: **P1**, latent для stock runtime.
 - Статус: `DONE`.
-- Implementation commit(s): `11fd579d92`.
+- Implementation commit(s): `fc2b9cca4c`.
 - Затронутые места:
   - `src/main/flight/pid_init.c`;
   - `src/main/flight/adrc.c`;
@@ -567,7 +597,7 @@ observer state.
 
 - Приоритет: **P1**, выполнять вместе с первым gate-related fix.
 - Статус: `DONE`.
-- Implementation commit(s): `5d862e6a73`.
+- Implementation commit(s): `1bdfffcef1`.
 - Затронуто: `src/test/unit/adrc_unittest.cc`.
 
 Finding:
@@ -587,18 +617,22 @@ Acceptance criteria:
 ### ADRC-012 — End-to-end tests и F411 cycle budget
 
 - Приоритет: **P1**.
-- Статус: `BLOCKED` — доступные host/build/mixer проверки выполнены; точный
-  cycle deadline требует реального F411, остаются dynamic/closed-loop cases.
-- Implementation/test commit(s): `2a8ed176cf`, `6447e513fe`, `2ddd4c4222`.
+- Статус: `IMPLEMENTED` — все доступные host/build/E2E проверки выполнены;
+  точный 8 kHz cycle deadline требует реального F411.
+- Implementation/test commit(s): `ab98b77127`, `72e47757e8`, `799ff89e60`,
+  `121f09b176`, `ac4481674e`.
 
 Обязательное покрытие:
 
 - [x] Полный `pidController` ADRC path, а не только isolated `adrc.c`.
-- [ ] Первый gate open и opt-in re-arm.
+- [x] Первый gate open и opt-in re-arm через реальную цепочку
+      `pidController → pidUpdateAdrcAppliedOutput → ESO` следующего loop.
 - [x] Crash recovery и GPS Rescue.
 - [x] Real-`mixTable()` normalization/saturation feedback для legacy/linear,
       no-Airmode, yaw-spin, motor-stop и crashflip.
 - [x] Real-`mixTable()` ALT_HOLD/GPS_RESCUE throttle.
+- [x] `MIXER_EZLANDING` и uniform normalization в `MIXER_DYNAMIC`; mixed-axis
+      redistribution явно оставлена в lumped disturbance.
 - [x] TD/ESO sweep по loop rates и граничным настройкам.
 - [x] High-FSR gyro и non-finite recovery.
 - [x] PG rejection/reset и round-trip для нового D-term layout.
@@ -606,15 +640,15 @@ Acceptance criteria:
 - [x] Зафиксированы RAM/flash delta для generic F405/F411.
 - [ ] Зафиксирован измеренный запас до 125 µs deadline и stack high-water mark.
 
-Размеры final main head `6ea7c11aac` относительно `a138a5dd19`:
+Размеры clean final main head `1b19666f6c` относительно `a138a5dd19`:
 
 | Target | Метрика | Baseline | Final | Delta | Остаток |
 |---|---:|---:|---:|---:|---:|
-| F405 | FLASH1 | 621420 | 624328 | +2908 B | 391480 B |
-| F405 | RAM | 101756 | 101784 | +28 B | 29288 B |
+| F405 | FLASH1 | 621420 | 624700 | +3280 B | 391108 B |
+| F405 | RAM | 101756 | 101792 | +36 B | 29280 B |
 | F405 | CCM | 13596 | 13600 | +4 B | 51936 B |
-| F411 | FLASH1 | 469798 | 472214 | +2416 B | 19306 B |
-| F411 | RAM | 102860 | 102876 | +16 B | 28196 B |
+| F411 | FLASH1 | 469798 | 472422 | +2624 B | 19098 B |
+| F411 | RAM | 102860 | 102884 | +24 B | 28188 B |
 
 Обе generic firmware сборки проходят ARM GCC 13.3.1 с `-Werror`. Статический
 assembly audit показал рост ADRC hot path (`pidController` на F405 примерно
@@ -628,15 +662,18 @@ hardware evidence.
 ### ADRC-013 — Rebase, CI, release b3 и точный re-flight
 
 - Приоритет: **P1**, финальный integration gate.
-- Статус: `BLOCKED` до завершения ADRC-001…012.
-- Implementation/release commit(s): —.
+- Статус: `IMPLEMENTED` локально; official CI, release и полёт остаются
+  внешними acceptance criteria.
+- Локальные integration heads: main `1b19666f6c`, D-term `ac4481674e`.
 
 Acceptance criteria:
 
-- [ ] Ветка rebased на актуальный `upstream/master`.
-- [ ] `src/config` обновлён до совместимой актуальной revision.
+- [x] Обе финальные ветки rebased на `upstream/master` `6ecfb45f93`.
+- [x] `src/config` обновлён до `57abd54d632d`.
 - [x] `git diff --check` чист на локальных heads.
 - [x] Полный `make EXTRA_FLAGS=-Werror test-all` проходит локально.
+- [x] Clean generic F405/F411 и exact `MAMBAF722_I2C` builds проходят с
+      `-Werror` на обеих финальных линиях.
 - [ ] Официальная firmware matrix проходит.
 - [ ] Release workflow либо падает при любом board failure, либо полнота
       artifacts проверяется отдельным обязательным job.
@@ -646,11 +683,122 @@ Acceptance criteria:
 - [ ] Для каждого лога записаны SHA, target, diff конфигурации и verdict.
 - [ ] Только после этого PR снимается с draft.
 
-Локальный `upstream/master` на проверке: `6ecfb45f93`; remediation branch
-имеет 9 upstream-only и 33 branch-only commits. `merge-tree` не показал
-очевидных conflict markers, но реальный rebase и обновление `src/config` не
-выполнялись: это отдельный integration stage, после которого изменятся SHA и
-нужно заново прогнать firmware matrix.
+Rebase выполнен реально, без конфликтов. `range-diff` подтвердил эквивалентность
+38-коммитной ADRC-серии, затем поверх неё добавлены локальные E2E/EEPROM/state
+fixes. Официальный PR всё ещё указывает на старый `a138a5dd19`; локальные
+проверки не заменяют upstream CI.
+
+### ADRC-014 — Bumpless yaw-spin recovery
+
+- Приоритет: **P0**.
+- Статус: `DONE`.
+- Implementation commit(s): `ee9a153767`.
+
+Finding: во время yaw-spin recovery наружный I term был равен нулю, но
+внутренний `z3` продолжал жить. После снятия recovery первый обычный loop мог
+вернуть скрытое disturbance скачком вплоть до `pidSumLimit`.
+
+Acceptance criteria:
+
+- [x] `z3` обнулён до и после ESO update на всём recovery epoch.
+- [x] Первый loop после выхода не возвращает stale I/disturbance.
+- [x] `lastOutput` остаётся реально приложенной командой для rate observer.
+- [x] Mutation старого поведения воспроизводит kick; regression проходит в
+      обычной и `-ffast-math` матрице.
+
+### ADRC-015 — ADRC reset на всём Crash Flip
+
+- Приоритет: **P0** для `crashflip_auto_rearm=ON`.
+- Статус: `DONE`.
+- Implementation commit(s): `7ade8d8089`.
+
+Finding: ESO мог обучиться скрытой turtle-команде и открыть liftoff gate. При
+автоматическом re-arm выход из Crash Flip возможен без disarm и старый state
+мог попасть в первый обычный loop.
+
+Acceptance criteria:
+
+- [x] При ADRC state/gate/terms/Sum сбрасываются на каждом Crash Flip loop.
+- [x] Auto-rearm начинает обычный control epoch с чистого state.
+- [x] Classic PID path не изменён.
+- [x] Сохранённая Mamba имеет `crashflip_auto_rearm=OFF`, но общий latent path
+      всё равно закрыт.
+
+### ADRC-016 — Thrust-linearized collective feedback
+
+- Приоритет: **P0** для `thrust_linear > 0`.
+- Статус: `DONE`.
+- Implementation commit(s): `1b19666f6c`.
+
+Finding: при сохранённом `thrust_linear=20` mixer публиковал inverse-
+compensated throttle `0.352`, хотя реальный collective составлял примерно
+`0.40032`. Из-за этого 40% liftoff gate фактически сдвигался примерно к 45%,
+а `b0` scheduling недооценивал приложенную тягу.
+
+Acceptance criteria:
+
+- [x] ADRC получает guarded forward-linearized constrained collective.
+- [x] `motorStopped` по-прежнему публикует нулевые throttle и authority.
+- [x] Real mixer test с target-equivalent thrust formula проходит 11/11.
+- [x] Mutation старого feedback-domain поведения ломает 10 из 11 tests.
+
+Для TL с ненулевым axis mix средний физический collective остаётся нелинейным;
+публикуется base collective, а residual рассматривается как lumped disturbance.
+На текущей Mamba используется `MIXER_LEGACY`, не `MIXER_DYNAMIC`.
+
+## Mamba F722: backup, прошивка и стендовая проверка
+
+Контроллер: `MAMBAF722_I2C`, STM32F722, USB id
+`Betaflight_Betaflight_-_MAMBAF722_I2C_203E39564638-if00`. Исходная прошивка:
+2026.6.0-alpha `c1db43820`, config revision `9e1bee9`. LiPo не подключён;
+моторные и полётные проверки запрещены в этом этапе.
+
+Сохранённые файлы до прошивки находятся в
+`.scratch/bench/mambaf722_i2c_2026-07-11/`:
+
+| Файл | SHA-256 |
+|---|---|
+| `diff_all_c1db43820.txt` | `c48b033c463dc3ae6e46b7d71b5031920b4785d609896c6585d274775744b52e` |
+| `dump_all_c1db43820.txt` | `ddff3ec79f8355249be3e9ba5fd5ac011ca522c32b740b267050a1a3e37db6a9` |
+| `baseline_c1db43820.txt` | `4233b7ac5c8f9dd616e3325170c6aeedad0979c1db89b605f8402213ac2c2705` |
+| `restore_cli.txt` | `8a0d012014bf51bad50857cacbf4a7e9120e0bef058bd381f8ac2ed6d997988d` |
+
+Restore audit: все 143 `set` names и все 16 CLI command types существуют в
+точной новой Mamba сборке. Target config между revisions не менялся. В restore
+сохранены user-specific feature/serial/beacon/aux/vtxtable/settings, но
+намеренно не возвращаются старые небезопасные defaults `hold=500` и
+`b0 scale max=9`; остаются новые `0` и `3`. D-term cutoff остаётся `0`.
+
+Контрольная конфигурация для сверки после restore: profile 0, `pid_type=ADRC`,
+8 kHz gyro/PID, DSHOT600, bidirectional DSHOT off, `MIXER_LEGACY`,
+`thrust_linear=20`, `crashflip_auto_rearm=OFF`, `pid_at_min_throttle=ON`.
+ADRC: `wc=40`, `wo=120`, `b0=4000` на всех осях, gyro LPF 150 Hz,
+hover 35%, sigma 3, TD 0, liftoff throttle 40%, gyro 20 dps, hold 25 ms,
+idle hold 5 ms, gated decay 200 ms, D-term LPF 0.
+
+Старый 8 kHz scheduler baseline: CPU около 43%, GYRO avg 2 µs, FILTER avg
+9 µs, PID avg 40–41 µs и max 59–65 µs при cycle time 124–125 µs.
+
+PG14→PG15 не является PID-only migration: rejected PG делает весь
+`readEEPROM()` неуспешным, Betaflight выполняет полный reset и rewrite.
+Поэтому восстановление `restore_cli.txt` после первого boot обязательно.
+
+Стендовый чек-лист:
+
+- [x] Сохранены и хэшированы `diff all`, полный `dump all`, baseline и
+      очищенный restore script.
+- [x] Restore script проверен против exact ELF и не возвращает старые unsafe
+      defaults.
+- [x] Clean exact `MAMBAF722_I2C` build проходит с `-Werror`.
+- [ ] Собран и хэширован exact firmware после commit этого tracker.
+- [ ] Выполнена DFU-прошивка выбранной D-term ветки.
+- [ ] Восстановлен CLI config без `###ERROR`/batch errors.
+- [ ] Сверены target, firmware/config SHA, ADRC tune, serial/features/aux/VTX,
+      mixer/thrust/crashflip settings и `diff all`.
+- [ ] Выполнены минимум три последовательных reboot/reconnect без зависания.
+- [ ] Несколько снимков `tasks` не показывают scheduler overruns/аномальный
+      рост PID/FILTER load; результат сопоставлен с baseline.
+- [ ] Полётная проверка оставлена пользователю и не считается выполненной.
 
 ## Порядок выполнения
 
@@ -662,9 +810,10 @@ Acceptance criteria:
 4. ADRC-009 — finite/state defenses.
 5. ADRC-007 и ADRC-008 — фактический actuator/throttle feedback.
 6. ADRC-010 — зафиксировать поддерживаемую handover semantics.
-7. ADRC-012 — end-to-end coverage и cycle budget.
-8. ADRC-006 — перенос fixes в D-term branch и безопасная PG schema.
-9. ADRC-013 — rebase, полный CI, b3 и flight validation.
+7. ADRC-014, ADRC-015 и ADRC-016 — recovery/Crash Flip/thrust-domain state.
+8. ADRC-012 — end-to-end coverage и cycle budget.
+9. ADRC-006 — перенос fixes в D-term branch и безопасная PG schema/EEPROM.
+10. ADRC-013 — rebase, полный CI, b3 и flight validation.
 
 ADRC-006 ведётся отдельно от основного PR, пока D-term LPF не принят в scope
 PR #15400.
@@ -675,18 +824,19 @@ PR #15400.
 
 | Дата | ID | Статус | Implementation commit | Проверки | Примечание |
 |---|---|---|---|---|---|
-| 2026-07-11 | ADRC-007,008 | IMPLEMENTED | `7d69539a63` | ADRC/PID, F405 | Applied mixer scale и post-override throttle; mode E2E остаётся |
-| 2026-07-11 | ADRC-001,011 | IMPLEMENTED/DONE | `5d862e6a73` | ADRC/PID, mutation | Новый actuator-feedback epoch на gate open/re-open |
-| 2026-07-11 | ADRC-010 | DONE | `11fd579d92` | PID handover tests | Disarmed-only transition semantics |
-| 2026-07-11 | ADRC-002,003 | DONE | `73c5bc34a2` | ADRC 39/39, PID 24/24 | D=0, GPS Rescue, late-axis crash, bumpless exit |
-| 2026-07-11 | ADRC-004,005,009 | DONE | `538931a201` | ADRC/PID, `-ffast-math`, F405/F411 | TD/ESO/finite/state hardening |
-| 2026-07-11 | ADRC-007 | IMPLEMENTED | `6ea7c11aac` | ADRC 39/39, PID 24/24, F405/F411 | Effective yaw-spin limit; integration re-review finding fixed |
-| 2026-07-11 | ADRC-007,008,012 | IMPLEMENTED/DONE | `2a8ed176cf` | mixer 8/8, ADRC 39/39, PID 24/24; normal и `-ffast-math` | Real-`mixTable()` regression harness |
-| 2026-07-11 | ADRC-006 | IMPLEMENTED | `ed747bbb0c` | ADRC 43/43, PID 26/26, F405 | D-term LPF feature port, не использовать отдельно |
-| 2026-07-11 | ADRC-006 | IMPLEMENTED | `a0d8dbc8d0` | PG14 reject, PG15 round-trip | Обязателен вместе с feature commit |
-| 2026-07-11 | ADRC-006,007 | IMPLEMENTED | `2ca9126ac2` | `-Werror -ffast-math`, F405 | D-term head синхронизирован с yaw-spin fix |
-| 2026-07-11 | ADRC-006 | IMPLEMENTED | `6447e513fe` | ADRC 46/46, PID 26/26, `-ffast-math` | Cutoff transitions, corruption recovery, debug mapping |
-| 2026-07-11 | ADRC-007,008,012 | IMPLEMENTED/DONE | `2ddd4c4222` | mixer 8/8, ADRC 46/46, PID 26/26, `test-all` | Mixer E2E tests синхронизированы в D-term branch |
+| 2026-07-11 | ADRC-007,008 | IMPLEMENTED/DONE | `c3311a0ba9` | ADRC/PID, F405 | Applied mixer scale и post-override throttle |
+| 2026-07-11 | ADRC-001,011 | IMPLEMENTED/DONE | `1bdfffcef1` | ADRC/PID, mutation | Новый actuator-feedback epoch на gate open/re-open |
+| 2026-07-11 | ADRC-010 | DONE | `fc2b9cca4c` | PID handover tests | Disarmed-only transition semantics |
+| 2026-07-11 | ADRC-002,003 | DONE | `1321ef4c1b` | ADRC 39/39, PID | D=0, GPS Rescue, late-axis crash, bumpless exit |
+| 2026-07-11 | ADRC-004,005,009 | DONE | `62fe21523a` | normal/`-ffast-math`, F405/F411 | TD/ESO/finite/state hardening |
+| 2026-07-11 | ADRC-007 | IMPLEMENTED | `2e891d6f18`, `72e47757e8` | real mixer normal/`-ffast-math` | Effective yaw limit, dynamic и EZ Landing feedback |
+| 2026-07-11 | ADRC-007,008,012 | IMPLEMENTED | `ab98b77127`, `799ff89e60` | mixer 11/11, gate main 30/30 | Real mixer и полный feedback epoch E2E |
+| 2026-07-11 | ADRC-006 | IMPLEMENTED | `6791636cad`, `6da893a48b`, `121f09b176` | ADRC 46/46, PID 30/30 | D-term opt-in, PG15 и runtime transitions |
+| 2026-07-11 | ADRC-006 | IMPLEMENTED | `555f575a70`, `ac4481674e` | EEPROM 4/4, `test-all` | Rejected PG принудительно переписывается и чисто reload'ится |
+| 2026-07-11 | ADRC-014 | DONE | `ee9a153767` | mutation, PID/ADRC/gate | Скрытый yaw-spin `z3` не возвращается после recovery |
+| 2026-07-11 | ADRC-015 | DONE | `7ade8d8089` | PID, mutation | Чистый auto-rearm epoch после Crash Flip |
+| 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
+| 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
 
 ## Принятые решения и остаточные блокеры
 
@@ -701,6 +851,14 @@ PR #15400.
    uniform mixer modes передавать normalization scale. `MIXER_DYNAMIC`
    per-motor redistribution пока остаётся lumped disturbance.
 6. CLASSIC↔ADRC: только disarmed transition; mid-air гарантия удалена.
-7. До `DONE` по ADRC-001/006/007/012/013 нужны: `MIXER_DYNAMIC`/closed-loop
-   z3 tests, F411 DWT timing, полный EEPROM/CLI boot test, upstream rebase/CI
-   и полётные логи точных firmware SHA.
+7. Exact `MIXER_DYNAMIC` mixed-axis redistribution и nonlinear TL residual не
+   реконструируются обратно в axis torque: они осознанно остаются lumped
+   disturbance; для текущей Mamba активен legacy mixer.
+8. До `DONE` по ADRC-001/006/007/012/013 нужны: F411 DWT timing/stack
+   high-water, стендовый EEPROM/CLI restore, upstream CI/release и полётные
+   логи точного firmware SHA.
+9. Integrated yaw, tricopter и fixed-wing authority не валидированы; на
+   текущей Mamba integrated yaw выключен.
+10. Вне ADRC scope найдено, что CLI display config size в `config_eeprom.c`
+    двигает pointer на `sizeof(storedCrc)`, а не `sizeof(*storedCrc)`. Это не
+    затрагивает load/write/CRC и оставлено `DEFERRED` как отдельная задача.
