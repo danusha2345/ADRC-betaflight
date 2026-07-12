@@ -2,6 +2,24 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## What's new in b4
+
+The first flight logs on b3 (thanks @bvandevliet) caught **a regression of the
+b3 remediation round** — both defects root-caused from the logs and fixed:
+
+- **The "twitchy" feel is gone**: b3's authority-scaled observer feedback
+  silently over-gained the loop by up to ~1.9× at 10–30% throttle without
+  airmode, producing a sustained 24–26 Hz roll/pitch limit cycle. The observer
+  feedback semantics are reverted to the frame every flight-validated b0 was
+  calibrated in.
+- **Throttle-punch "nose dip rebound" reduced**: the b0 throttle schedule now
+  reads an ~80 ms low-passed collective, so a throttle chop no longer yanks
+  the effective gain back up 3× faster than the disturbance estimate can
+  re-adapt (also removes a gain modulation at the loop resonance that the
+  post-mixer collective was feeding in under airmode).
+- **Settings survive from b2/b3** (same PG layout) — `diff all` backup first,
+  as always.
+
 ## What's new in b3
 
 - **Rebased onto current Betaflight master** (`6ecfb45f93`).
