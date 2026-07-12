@@ -252,6 +252,8 @@ thrust-linearization domain. Все три исправлены перечисл
 | ADRC-015 | P0 | ADRC reset на всём Crash Flip | final main | DONE | `7ade8d8089` |
 | ADRC-016 | P0 | Thrust-linearized collective feedback | final main | DONE | `1b19666f6c` |
 | ADRC-017 | P0 | ADRC state/gate reset на переходе арма | PR line + final D-term | DONE | `04813845dc` (PR), `f4c809a12d` (D-term) |
+| ADRC-018 | P0 | Пропорциональный authority-фидбек перегейнивает контур (26 Гц limit cycle) | PR line + final D-term | DONE | `c718282ad6` (PR), `ab7d4467b8` (D-term) |
+| ADRC-019 | P1 | Сырой пост-миксерный collective в b0-schedule: 26 Гц модуляция + punch-rebound | PR line + final D-term | DONE | `79f8b6041d` (PR), `52f961b080` (D-term) |
 
 ## Детальные пункты
 
@@ -826,6 +828,56 @@ Acceptance criteria:
 - [ ] Полётная проверка ре-арма на исправленном билде (второй арм в сессии
       должен начинаться с закрытым gate и z3 = 0 в первом сэмпле лога).
 
+### ADRC-018 — Пропорциональный authority-фидбек перегейнивает контур
+
+- Приоритет: **P0** (лётная регрессия ремедиации).
+- Статус: `DONE`.
+- Implementation commit(s): `c718282ad6` (PR line), `ab7d4467b8` (D-term).
+
+Finding:
+
+Пункт ремедиации #4 стал кормить ESO командой, умноженной на authority-scale
+миксера (`scale*u`). Это молча переопределило смысл b0: все облётанные тюны
+калибровались со СТАРОЙ семантикой, где пропорциональная нормализация миксера
+была внутри контура и её впитывал z3. С честным `scale*u` z3 «восстанавливает»
+недостающую authority, и контур перегейнен в 1/scale ровно там, где scale < 1 —
+низкий газ без airmode (scale = airmodeTransitionPercent ≈ 0.55–0.8).
+
+Evidence (полётный A/B 2026-07-12, тюн байт-в-байт — дифф заголовков = только
+vbatref): на ремедиированном b3 — чистый limit cycle 24–26 Гц roll/pitch
+(~30 °/с, >90 % мощности ошибки в одном тоне, есть в нефильтрованном гиро),
+полоса газа 10–30 %, исчезает >35 %; на дофиксовом c1db43820 — ~1 °/с там же.
+Замкнутая симуляция точной ESO/PD-математики воспроизводит направление и
+частоту (~25 Гц). Логи: blackbox/bvandevliet/btfl_AIR2.bbl, btfl_ACRO2.bbl.
+
+Fix: scale потребляется как БИНАРНЫЙ признак applied/not-applied (0 = motor
+stop / Crash Flip), в фидбек идёт неотмасштабированный constrain(Sum).
+Остальное из #4 сохранено (override-aware collective, TL-домен, кламп).
+Характеризационные тесты (ожидания 500 вместо 250) падают на предыдущем head.
+
+### ADRC-019 — Сырой пост-миксерный collective в b0-schedule
+
+- Приоритет: **P1**.
+- Статус: `DONE`.
+- Implementation commit(s): `79f8b6041d` (PR line), `52f961b080` (D-term).
+
+Finding:
+
+b0-schedule читал опубликованный post-mixer collective сырым; тот включает
+per-loop constrain миксера и потому отслеживает осевую активность самого
+контура (airmode поднимает collective под размах микса). Два измеренных
+следствия: (1) debug[7] качается 1.0↔2.8 при ровном стике 20 % — модуляция
+усиления на частоте резонанса (в AIR-логе corr(tone, d7-модуляция) = +0.79);
+(2) на сбросе газа scale схлопывался 3→1 за ~80 мс — быстрее реадаптации ESO,
+z3, намотанный через раздутый b0, переприкладывался на scale 1 → «клевок»
+(rebound) 80–95 °/с (до cap 3 было 132–180 °/с с рейлингом z3).
+
+Fix: pt1 2 Гц (~80 мс) на collective ТОЛЬКО для b0-schedule (гейт по-прежнему
+на сыром значении — детект liftoff должен быть быстрым). Модуляция 26 Гц
+давится ~13×, релиз scale на сбросе газа совпадает со временем реадаптации
+ESO. Характеризационные тесты (release-градиент, modulation-ripple) падают
+на предыдущем head.
+
 ## Mamba F722: backup, прошивка и стендовая проверка
 
 Контроллер: `MAMBAF722_I2C`, STM32F722, стабильный USB path
@@ -974,6 +1026,8 @@ PR #15400.
 | 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
 | 2026-07-11 | ADRC-001,013 | flight evidence | — | Логи 8–9 `c1f5b2e808` | Airmode-взлёт bumpless, z1 corr 0.997/2.5 ms, saturation 0 %, оба лога целы |
 | 2026-07-11 | ADRC-017 | TODO (finding) | — | USB-стенд + логи 8–9 | Gate/ESO переживают disarm (`pid_at_min_throttle=ON` делает reset-ветку мёртвой); z3 ≈ 128k въехал во 2-й арм |
+| 2026-07-12 | ADRC-018 | DONE | `c718282ad6`/`ab7d4467b8` | полётный A/B Bob'а (b3 vs c1db43820) + симуляция | scale*u-фидбек перегейнивал контур 1/scale → limit cycle 24–26 Гц; scale теперь бинарный |
+| 2026-07-12 | ADRC-019 | DONE | `79f8b6041d`/`52f961b080` | те же логи (d7 1.0↔2.8; rebound на +330–440 мс после chop) | pt1 2 Гц на collective для b0-schedule |
 | 2026-07-11 | ADRC-017 | DONE | `04813845dc`/`f4c809a12d` | PID 29, gate E2E 31, ADRC 39/46, F405 | Rising-edge reset на арме; characterization-тест падает на pre-fix head |
 | 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
 | 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808`; evidence `a31f203d9b` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
