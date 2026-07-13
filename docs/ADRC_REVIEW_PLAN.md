@@ -235,7 +235,7 @@ thrust-linearization domain. Все три исправлены перечисл
 
 | ID | Приоритет | Кратко | Ветка | Статус | Implementation commit(s) |
 |---|---|---|---|---|---|
-| ADRC-001 | P0 | Bumpless liftoff gate open | final main | IMPLEMENTED | `1bdfffcef1`, `799ff89e60` |
+| ADRC-001 | P0 | Bumpless liftoff gate open | final main | DONE | `1bdfffcef1`, `799ff89e60` |
 | ADRC-002 | P0 | Crash detector без зависимости от classic D | final main | DONE | `1321ef4c1b` |
 | ADRC-003 | P0 | ADRC I/z3 во время crash recovery | final main | DONE | `1321ef4c1b` |
 | ADRC-004 | P0 | Устойчивая TD discretization | final main | DONE | `62fe21523a` |
@@ -252,15 +252,18 @@ thrust-linearization domain. Все три исправлены перечисл
 | ADRC-015 | P0 | ADRC reset на всём Crash Flip | final main | DONE | `7ade8d8089` |
 | ADRC-016 | P0 | Thrust-linearized collective feedback | final main | DONE | `1b19666f6c` |
 | ADRC-017 | P0 | ADRC state/gate reset на переходе арма | PR line + final D-term | DONE | `04813845dc` (PR), `f4c809a12d` (D-term) |
-| ADRC-018 | P0 | Пропорциональный authority-фидбек перегейнивает контур (26 Гц limit cycle) | PR line + final D-term | DONE | `c718282ad6` (PR), `ab7d4467b8` (D-term) |
-| ADRC-019 | P1 | Сырой пост-миксерный collective в b0-schedule: 26 Гц модуляция + punch-rebound | PR line + final D-term | DONE | `79f8b6041d` (PR), `52f961b080` (D-term) |
+| ADRC-018 | P0 | Пропорциональный authority-фидбек перегейнивает контур (26 Гц limit cycle) | PR line + final D-term | IMPLEMENTED | `c718282ad6` (PR), `ab7d4467b8` (D-term); ждёт b4 flight |
+| ADRC-019 | P1 | Сырой пост-миксерный collective в b0-schedule: 26 Гц модуляция + punch-rebound | PR line + final D-term | IMPLEMENTED | `79f8b6041d` (PR), `52f961b080` (D-term); ждёт b4 flight |
+| ADRC-020 | P2 | Ground/air-семантика opt-in re-arm (запрос Bob'а): удалить из PR или accel-условие | — | OPEN | решение за автором PR; наша рекомендация — удалить |
+| ADRC-021 | P2 | Идентификация кривой b0 по полётным данным (запрос Bob'а) | — | OPEN | блокировано перелётом b4; протокол в публичном трекере |
+| ADRC-022 | P2 | Консервативные дефолты для типового 5″ (запрос Bob'а) | — | OPEN | блокировано ADRC-021 + мультикрафт-данные (≥3 квада) |
 
 ## Детальные пункты
 
 ### ADRC-001 — Bumpless liftoff gate open
 
 - Приоритет: **P0**.
-- Статус: `IMPLEMENTED` — локально закрыто, flight criterion остаётся.
+- Статус: `DONE` — flight criterion закрыт точным логом 2026-07-11.
 - Implementation commit(s): `1bdfffcef1`, `799ff89e60`.
 - Затронутые места:
   - `src/main/flight/adrc.c`: gate transition, `lastOutput` и ESO update;
@@ -285,7 +288,7 @@ Acceptance criteria:
       состояние либо `b0u` вводится ограниченным blend.
 - [x] Повторное открытие при opt-in re-arm покрыто тем же правилом.
 - [x] ADRC/PID unit tests проходят с `-Werror`.
-- [ ] После firmware build выполнен контролируемый Airmode takeoff test на
+- [x] После firmware build выполнен контролируемый Airmode takeoff test на
       точном SHA; ссылка на лог записана ниже.
 
 Flight evidence после исправления: первый полёт `c1f5b2e808` 2026-07-11
@@ -825,13 +828,13 @@ Acceptance criteria:
 - [x] Suites с `-Werror`: PR line — PID 29, ADRC 39, gate E2E aggregate 31,
       mixer 11; D-term line — PID aggregate 31, ADRC 46. F405 firmware build
       проходит.
-- [ ] Полётная проверка ре-арма на исправленном билде (второй арм в сессии
-      должен начинаться с закрытым gate и z3 = 0 в первом сэмпле лога).
+- [x] Полётная проверка ре-арма на исправленном билде: во втором арме Bob'а
+      2026-07-12 в том же power cycle gate стартовал закрытым, z3 ≈ 0.
 
 ### ADRC-018 — Пропорциональный authority-фидбек перегейнивает контур
 
 - Приоритет: **P0** (лётная регрессия ремедиации).
-- Статус: `DONE`.
+- Статус: `IMPLEMENTED` — code/tests готовы, подтверждение перелётом b4 остаётся.
 - Implementation commit(s): `c718282ad6` (PR line), `ab7d4467b8` (D-term).
 
 Finding:
@@ -858,7 +861,7 @@ stop / Crash Flip), в фидбек идёт неотмасштабирован�
 ### ADRC-019 — Сырой пост-миксерный collective в b0-schedule
 
 - Приоритет: **P1**.
-- Статус: `DONE`.
+- Статус: `IMPLEMENTED` — code/tests готовы, подтверждение перелётом b4 остаётся.
 - Implementation commit(s): `79f8b6041d` (PR line), `52f961b080` (D-term).
 
 Finding:
@@ -877,6 +880,49 @@ Fix: pt1 2 Гц (~80 мс) на collective ТОЛЬКО для b0-schedule (ге
 давится ~13×, релиз scale на сбросе газа совпадает со временем реадаптации
 ESO. Характеризационные тесты (release-градиент, modulation-ripple) падают
 на предыдущем head.
+
+### ADRC-020 — Ground/air-семантика opt-in re-arm
+
+- Приоритет: **P2** (default 0 безопасен; вопрос о судьбе фичи).
+- Статус: `OPEN` — поднято Bob'ом 13.07.2026 (#issuecomment-4955593186).
+- Суть: throttle+gyro не различают посадку и спокойный mid-air float строго.
+  Accel |1g| — естественный дискриминатор (земля 0.99g vs float 0.1–0.5g),
+  но не строгий (установившийся аэродинамический спуск → ~1g) и тянет
+  USE_ACC/vibration/craft-зависимость.
+- Варианты: (a) удалить `adrc_liftoff_idle_hold_ms` и re-arm-ветку из PR
+  (после ADRC-017 наземный сценарий = disarm→arm) — НАША РЕКОМЕНДАЦИЯ;
+  (b) оставить off-деф. + sustained |acc|≈1g, гейтить flight evidence.
+- Ответ дан в #issuecomment-4961079280; решение за Bob'ом.
+
+### ADRC-021 — Идентификация кривой b0
+
+- Приоритет: **P2**.
+- Статус: `OPEN` — блокировано перелётом b4 (чистые данные).
+- Кандидаты: fixed (scale=1), quadratic+cap (текущая), linear+cap,
+  fitted power/blended.
+- Протокол предложен Bob'у в #issuecomment-4961079280: одинаковые
+  roll/pitch-дублеты в бинах collective ~25/35/50/65 % (классифицировать
+  постфактум по реальному post-mixer collective), wc/wo/b0 неизменны,
+  debug_mode=ADRC; клипы/normalization/recovery-сэмплы исключить; панчи —
+  отдельный transient-чек. Гейн оценивать из lag-aligned связи приложенного
+  осевого возбуждения и углового ускорения; z3 — только кросс-чек
+  (lumped disturbance, не прямое измерение b0). Фит по ≥2 разным 5″.
+- До завершения cap=3 — safety bound, не модель.
+
+### ADRC-022 — Консервативные дефолты типового 5″
+
+- Приоритет: **P2**.
+- Статус: `OPEN` — блокировано ADRC-021 и мультикрафт-данными.
+- Критерий зафиксирован в ответе #issuecomment-4961079280: дефолты
+  (wc/wo/b0, пороги гейта, adrc_b0_scale_max) — консервативная точка
+  типового 5″ фристайла; `pid_type = ADRC` = безопасный drop-in.
+  Текущие 60/100/2000 — «flight-validated starting point» (2 крафта),
+  не финальный дефолт. wc заранее НЕ занижать — «консервативный тюн»
+  замаскирует дефект модели b0, который исследует ADRC-021.
+- Приёмка: ≥3 типовых 5″, одинаковый набор манёвров; нет узкополосного
+  limit cycle, низкая сатурация, приемлемые overshoot/settling, нет
+  punch/chop rebound; выбирать из нижней спокойной части общей
+  устойчивой области.
 
 ## Mamba F722: backup, прошивка и стендовая проверка
 
@@ -1026,11 +1072,12 @@ PR #15400.
 | 2026-07-11 | ADRC-016 | DONE | `1b19666f6c` | mixer 11/11, mutation 10 failures | Feedback в домене реально приложенной thrust-linearized тяги |
 | 2026-07-11 | ADRC-001,013 | flight evidence | — | Логи 8–9 `c1f5b2e808` | Airmode-взлёт bumpless, z1 corr 0.997/2.5 ms, saturation 0 %, оба лога целы |
 | 2026-07-11 | ADRC-017 | TODO (finding) | — | USB-стенд + логи 8–9 | Gate/ESO переживают disarm (`pid_at_min_throttle=ON` делает reset-ветку мёртвой); z3 ≈ 128k въехал во 2-й арм |
-| 2026-07-12 | ADRC-018 | DONE | `c718282ad6`/`ab7d4467b8` | полётный A/B Bob'а (b3 vs c1db43820) + симуляция | scale*u-фидбек перегейнивал контур 1/scale → limit cycle 24–26 Гц; scale теперь бинарный |
-| 2026-07-12 | ADRC-019 | DONE | `79f8b6041d`/`52f961b080` | те же логи (d7 1.0↔2.8; rebound на +330–440 мс после chop) | pt1 2 Гц на collective для b0-schedule |
+| 2026-07-12 | ADRC-018 | IMPLEMENTED (ждёт b4 flight) | `c718282ad6`/`ab7d4467b8` | полётный A/B Bob'а (b3 vs c1db43820) + симуляция | scale*u-фидбек перегейнивал контур 1/scale → limit cycle 24–26 Гц; scale теперь бинарный |
+| 2026-07-12 | ADRC-019 | IMPLEMENTED (ждёт b4 flight) | `79f8b6041d`/`52f961b080` | те же логи (d7 1.0↔2.8; rebound на +330–440 мс после chop) | pt1 2 Гц на collective для b0-schedule |
 | 2026-07-11 | ADRC-017 | DONE | `04813845dc`/`f4c809a12d` | PID 29, gate E2E 31, ADRC 39/46, F405 | Rising-edge reset на арме; characterization-тест падает на pre-fix head |
 | 2026-07-11 | ADRC-013 | IMPLEMENTED | main `1b19666f6c`, D-term `ac4481674e` | clean `test-all`, fastmath, F405/F411/Mamba | Rebase/local integration готовы, push отсутствует |
 | 2026-07-11 | ADRC-006,012,013 | IMPLEMENTED | firmware `c1f5b2e808`; evidence `a31f203d9b` | DFU, exact restore 187/187, 3+ reboot, 8 kHz tasks | Mamba bench без LiPo/моторов; flight остаётся внешним |
+| 2026-07-13 | ADRC-020,021,022 | OPEN (заведены) | публичный трекер `0b2b548c14` (fork master) | — | Запросы Bob'а #issuecomment-4955593186; ответ #issuecomment-4961079280: сначала перелёт b4 без изменений, re-arm рекомендовано удалить, b0 = sys-id, дефолты последними |
 
 ## Принятые решения и остаточные блокеры
 
