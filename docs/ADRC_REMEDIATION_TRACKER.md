@@ -103,6 +103,22 @@ same maneuver set; accept: no narrowband limit cycle, low saturation,
 acceptable overshoot/settling, no punch/chop rebound; pick from the lower,
 calm part of the common stable region).
 
+## How to help test
+
+Flight-test reports from experienced pilots are welcome, especially on typical
+5″ freestyle builds. Please use the
+[`adrc-pr15400-b4`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b4)
+pre-release (based on PR head `79f8b6041d`) and keep the tune unchanged for
+comparison runs.
+
+The immediate priority is the b4 regression re-flight: check the 10–30 %
+throttle acro band for the former 24–26 Hz oscillation, repeat controlled
+punch→chops, and include an AIR-mode zero-throttle drop. Please attach or link
+the Blackbox log in [PR #15400](https://github.com/betaflight/betaflight/pull/15400)
+with the craft/target, exact firmware tag, `diff all`, flight mode, prop and
+battery setup, and timestamps for the relevant manoeuvres. ADRC remains
+experimental and opt-in; use conservative conditions and leave safety margin.
+
 ## External acceptance criteria still pending
 
 - Official upstream CI matrix on the current head (needs maintainer
