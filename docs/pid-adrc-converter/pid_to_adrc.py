@@ -53,7 +53,8 @@ Two-part strategy
 
    is a plain quadratic in g. This has a real, positive, physically valid
    (g > 1 - see below) root only when Q falls in the family's achievable
-   band, (0.25, 0.4]. When it does, Tsettle follows from Ki/Kp, wc = 6/Ts,
+   band, (0.25, 0.4) - open at 0.4 too, since Q = 0.4 would require exactly
+   g = 1, which the g > 1 rule excludes. When it does, Tsettle follows from Ki/Kp, wc = 6/Ts,
    wo = g*wc, and b0 comes straight out of the Kp equation - an exact,
    zero-residual match. Even then, the resulting (wc, wo, b0) must still be
    checked against Betaflight's CLI ranges (wc: 5-300, wo: 10-600, b0:
@@ -66,7 +67,7 @@ Two-part strategy
    not a second usable design.
 
 2. CONSTRAINED BEST FIT (fallback): real Betaflight tunes routinely have
-   Q outside (0.25, 0.4] entirely - e.g. the stock roll/pitch defaults give
+   Q outside (0.25, 0.4) entirely - e.g. the stock roll/pitch defaults give
    Q ~= 0.15-0.16, nowhere near the achievable band, because classic D is
    small relative to P/I in a way this exact ADRC family cannot reproduce
    at ANY (wc, wo, b0). Searching for the "closest" g without bounds is
@@ -113,8 +114,8 @@ Caveats (read before trusting the output)
 
 Usage
 -----
-    python pid_to_adrc.py --p 45 --i 80 --d 30
-    python pid_to_adrc.py --p 45 --i 80 --d 0 --pin-wc 42            # yaw
+    python pid_to_adrc.py --p 45 --i 80 --d 30 --axis roll
+    python pid_to_adrc.py --p 45 --i 80 --d 0 --pin-wc 42 --axis yaw
     python pid_to_adrc.py --stock                                    # roll/pitch/yaw defaults
     python pid_to_adrc.py --p 45 --i 80 --d 30 --w-p 1 --w-i 1 --w-d 0.3
 """
@@ -293,8 +294,15 @@ def _residual_and_b0(wc: float, wo: float, kp: float, ki: float, kd: float,
     terms = [t for t in terms if t is not None]
     total_w = sum(w for _, w in terms)
     y = sum(t * w for t, w in terms) / total_w  # log(b0)
+    # The residual is a convex quadratic in y, so clamping the unconstrained
+    # optimum into the CLI b0 range IS the constrained optimum for this fixed
+    # (wc, wo). Without the clamp, extreme tunes made the "CLI-VALID FIT"
+    # emit b0 far outside the CLI range (e.g. P=1/I=1/D=1 -> b0=379237).
+    y = min(max(y, math.log(B0_MIN)), math.log(B0_MAX))
     resid = sum(w * (t - y) ** 2 for t, w in terms)
-    return resid, math.exp(y)
+    # exp(log(B0_MAX)) can land a few ULP above B0_MAX - clamp again in the
+    # linear domain so a pegged b0 still passes the CLI range check exactly.
+    return resid, min(max(math.exp(y), B0_MIN), B0_MAX)
 
 
 def _golden_min(f, lo: float, hi: float, iters: int = 60) -> float:
@@ -362,7 +370,7 @@ def solve_pinned_g(kp: float, ki: float, g: float) -> AdrcSolution:
     gains classic PID uses fairly directly (unlike D, which gets reshaped by
     D_max/TPA/dterm filtering, and which we've *proven* is unreachable at
     ANY (wc, wo, b0) for real Betaflight tunes whose Q=Ki*Kd/Kp^2 falls
-    outside (0.25, 0.4]) - so matching Kp/Ki exactly and anchoring the one
+    outside (0.25, 0.4)) - so matching Kp/Ki exactly and anchoring the one
     remaining degree of freedom to an independently-documented community
     ratio (not a specific current default value) is the most defensible
     from-scratch derivation available, short of an unreliable from-scratch
@@ -396,18 +404,25 @@ def resolve(kp: float, ki: float, kd: float, g: float = DEFAULT_G,
     2. Otherwise, default to solve_pinned_g() - match Kp/Ki exactly at the
        community-convention g, and leave Kd unmatched (with its mismatch
        reported, not hidden). This is the recommended path: see its
-       docstring for why chasing Kd is actively counterproductive.
-    3. Only if full_fit=True, use the CLI-constrained weighted fit across
-       all three gains instead - useful to see "how far off can any tune
-       get on Kd", but not recommended as the primary answer, since it
-       distorts wc/wo/b0 chasing a target that's provably unreachable.
+       docstring for why chasing Kd is actively counterproductive. If the
+       pinned-g solution itself lands outside the CLI box (extreme but
+       CLI-legal classic tunes, e.g. P=255/I=1: wc rounds to 0), fall back
+       to (3) - settings the CLI would reject are worse than an inexact fit.
+    3. Only if full_fit=True (or as the fallback above), use the
+       CLI-constrained weighted fit across all three gains instead - useful
+       to see "how far off can any tune get on Kd", but not recommended as
+       the primary answer, since it distorts wc/wo/b0 chasing a target
+       that's provably unreachable.
     """
     for s in solve_exact(kp, ki, kd):
         if s.cli_valid:
             return s
     if full_fit:
         return constrained_fit(kp, ki, kd, weights)
-    return solve_pinned_g(kp, ki, g)
+    pinned = solve_pinned_g(kp, ki, g)
+    if pinned.cli_valid:
+        return pinned
+    return constrained_fit(kp, ki, kd, weights)
 
 
 def solve_pinned_wc(kp: float, ki: float, wc: float) -> AdrcSolution:
@@ -463,8 +478,14 @@ def print_solution(label: str, p: float, i: float, d: float, sol: AdrcSolution,
         err_pct = 100 * (achieved - target) / target
         print(f"    {name}: achieved={achieved:.6f}  target={target:.6f}  ({err_pct:+.1f}%)")
     if not sol.cli_valid:
-        print("  WARNING: outside Betaflight's CLI-valid ranges "
-              f"(wc:[{WC_MIN:.0f},{WC_MAX:.0f}] wo:[{WO_MIN:.0f},{WO_MAX:.0f}] b0:[{B0_MIN:.0f},{B0_MAX:.0f}])")
+        # Only the pinned-wc (D=0) path can still get here - resolve() falls
+        # back to the box-constrained fit instead of returning out-of-range
+        # values. Refuse to print settings the CLI would reject.
+        print(f"  NO SETTINGS EMITTED: wc={sol.wc:.2f} wo={sol.wo:.2f} b0={sol.b0:.1f} is outside "
+              f"Betaflight's CLI-valid ranges "
+              f"(wc:[{WC_MIN:.0f},{WC_MAX:.0f}] wo:[{WO_MIN:.0f},{WO_MAX:.0f}] b0:[{B0_MIN:.0f},{B0_MAX:.0f}]) "
+              "- adjust the inputs (e.g. a different --pin-wc).")
+        return
     if sol.method == "constrained-fit":
         # Only a bounded search can meaningfully "hit a wall" - an exact or
         # pinned solution landing near a bound is coincidental, not evidence
@@ -477,9 +498,16 @@ def print_solution(label: str, p: float, i: float, d: float, sol: AdrcSolution,
         if pegged:
             print(f"  (note: {', '.join(pegged)} pegged at its CLI bound - the fit wants to go further "
                   "but the CLI range stops it there)")
-    print(f"    -> adrc_wc_{label.lower()} = {round(sol.wc)}   "
-          f"adrc_wo_{label.lower()} = {round(sol.wo)}   "
-          f"adrc_b0_{label.lower()} = {round(sol.b0)}")
+    suffix = label.lower()
+    if suffix in STOCK_PID:
+        print(f"    -> adrc_wc_{suffix} = {round(sol.wc)}   "
+              f"adrc_wo_{suffix} = {round(sol.wo)}   "
+              f"adrc_b0_{suffix} = {round(sol.b0)}")
+    else:
+        # No --axis given: only adrc_*_{roll,pitch,yaw} exist in the CLI, so
+        # don't fabricate an "adrc_wc_axis" command that doesn't parse.
+        print(f"    -> wc = {round(sol.wc)}   wo = {round(sol.wo)}   b0 = {round(sol.b0)}   "
+              "(apply as adrc_{wc,wo,b0}_<roll|pitch|yaw>, or pass --axis)")
 
 
 def main() -> None:
@@ -504,6 +532,9 @@ def main() -> None:
     ap.add_argument("--w-d", type=float, default=1.0, help="--full-fit weight for Kd (default 1.0)")
     ap.add_argument("--stock", action="store_true",
                      help="Run the built-in Betaflight stock roll/pitch/yaw defaults instead")
+    ap.add_argument("--axis", choices=sorted(STOCK_PID),
+                     help="Axis the single-tune result is for - selects the real CLI suffix "
+                          "(adrc_*_roll/pitch/yaw) in the output")
     args = ap.parse_args()
     weights = (args.w_p, args.w_i, args.w_d)
 
@@ -529,6 +560,7 @@ def main() -> None:
             ap.error("--p/--i/--d are required unless --stock is given")
 
         kp, ki, kd = cli_to_gains(args.p, args.i, args.d)
+        label = args.axis.capitalize() if args.axis else "Axis"
 
         if args.d == 0 or kd <= 0:
             if args.pin_wc is None:
@@ -537,10 +569,10 @@ def main() -> None:
                 print("  (note: --full-fit/--g/--w-p/--w-i/--w-d have no effect on the "
                       "D=0 path, which always uses solve_pinned_wc())")
             sol = solve_pinned_wc(kp, ki, args.pin_wc)
-            print_solution("Axis", args.p, args.i, args.d, sol, (kp, ki, 0.0))
+            print_solution(label, args.p, args.i, args.d, sol, (kp, ki, 0.0))
         else:
             sol = resolve(kp, ki, kd, g=args.g, weights=weights, full_fit=args.full_fit)
-            print_solution("Axis", args.p, args.i, args.d, sol, (kp, ki, kd))
+            print_solution(label, args.p, args.i, args.d, sol, (kp, ki, kd))
     except ValueError as e:
         ap.error(str(e))
 

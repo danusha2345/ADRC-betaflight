@@ -112,7 +112,7 @@ terms and between the observer's "I-like" (`z3`) and "D-filter-like" behavior
 to a fixed, non-adjustable shape. Confirmed via the PID↔ADRC equivalence work
 ([`docs/pid-adrc-converter/pid_to_adrc.py`](pid-adrc-converter/pid_to_adrc.py), cross-checked
 against arXiv:2501.11374 and `ActiveDisturbanceRejectionControl.jl`): classic
-tunes with `Q = Ki·Kd/Kp²` outside `(0.25, 0.4]` — i.e. most real tunes,
+tunes with `Q = Ki·Kd/Kp²` outside `(0.25, 0.4)` — i.e. most real tunes,
 including stock — have **no exact ADRC equivalent at any `(wc, wo, b0)`**,
 because that band is exactly what a repeated-pole placement can reach. This
 isn't a bug, it's the direct cost of collapsing 3 classic gains into fewer,
