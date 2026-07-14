@@ -45,17 +45,16 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 
 ## Open items
 
-### ADRC-020 — Ground/air re-arm semantics (raised by @bvandevliet)
+### ADRC-020 — Ground/air re-arm semantics (raised by @bvandevliet) — RESOLVED
 
-The opt-in mid-air gate re-arm (`adrc_liftoff_idle_hold_ms`, default 0) still
-cannot strictly distinguish a landing from a calm mid-air float using
-throttle+gyro alone. Accelerometer magnitude is the natural discriminator
-(measured: 0.99 g on ground vs 0.1–0.5 g in the float windows that
-false-triggered the old always-on re-arm), but it is not strict either
-(steady aerodynamic descent approaches 1 g) and adds `USE_ACC`/vibration/craft
-dependence.
+The opt-in mid-air gate re-arm (`adrc_liftoff_idle_hold_ms`, default 0) could not
+strictly distinguish a landing from a calm mid-air float using throttle+gyro
+alone. Accelerometer magnitude is the natural discriminator (measured: 0.99 g on
+ground vs 0.1–0.5 g in the float windows that false-triggered the old always-on
+re-arm), but it is not strict either (steady aerodynamic descent approaches 1 g)
+and adds `USE_ACC`/vibration/craft dependence.
 
-Options on the table:
+Options that were on the table:
 
 - **(a) Remove the opt-in re-arm from the initial PR entirely.** After
   ADRC-017 every arm starts a fresh epoch, so ground re-tries are simply
@@ -64,7 +63,18 @@ Options on the table:
 - **(b) Keep it off-by-default and add a sustained `|acc| ≈ 1 g` condition**,
   gated on independent flight evidence across the existing logs first.
 
-Status: OPEN — decision pending with the PR author.
+**Decision: (a).** `adrc_liftoff_idle_throttle` and `adrc_liftoff_idle_hold_ms`
+are removed entirely - the fields, the CLI entries, the blackbox header lines,
+and the re-arm branch in `adrcUpdatePerLoopState()` - rather than kept and
+hardened. This changes `adrcProfile_t`'s layout (`gatedZ3DecayRate`/
+`b0ThrottleScaleMax` shift to earlier offsets), so `PG_PID_PROFILE` is bumped
+14 → 15 to force a profile reset on old blobs, per the ADRC-006 precedent.
+Covered by a new release-notes entry (`.github/adrc-release-notes.md`, "What's
+new in b5") warning pilots their profile will reset.
+
+Status: DONE — implemented on `pr15400-builds-b4` (adrc.c/.h, settings.c,
+parameter_names.h, blackbox.c, unit tests updated/removed accordingly); not yet
+committed as of this writing.
 
 ### ADRC-021 — b0 throttle-curve identification (raised by @bvandevliet)
 
