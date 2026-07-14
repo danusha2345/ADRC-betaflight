@@ -9,15 +9,19 @@ originals and the analysis scripts live in this directory.
 
 - Decode: `blackbox_decode <log>.bbl` (betaflight/blackbox-tools, defaults) →
   one CSV per log; fs = 1592 Hz (median of `time` deltas).
-- Run `analyze_b4.py` (per-throttle-bin tone table, b0-scale stats, punch and
-  zero-throttle detection, gate epochs) and `analyze_b4_deep.py`
-  (time-resolved worst windows with context) from this directory after
-  adjusting the `BASE` path to where the CSVs are.
+- Run `analyze_b4.py` (per-throttle-bin tone table, b0-scale stats, gate
+  epochs, zero-throttle segments), `analyze_b4_deep.py` (time-resolved worst
+  windows with context) and `analyze_b4_punches.py` (the punch→chop rebound
+  table across builds — the punch detector in `analyze_b4.py` uses stricter
+  legacy thresholds and finds no events; the punches script is the source of
+  the rebound numbers) from this directory after adjusting the `BASE` path to
+  where the CSVs are.
 - Tone metric: 1 s Hann windows, 50 % overlap; dominant PSD peak in 10–40 Hz
   (15–35 Hz in the deep script); "tone amplitude" = RMS integrated over
-  peak ±2 Hz; "tone fraction" = that RMS over the 5–100 Hz RMS. Windows count
-  as airborne when gate (sign of `debug[7]`) is open ≥ 90 % of the window and
-  all motors are on.
+  peak ±2 Hz; "tone fraction" = that RMS over the 5–100 Hz RMS — an
+  **amplitude (RMS) fraction; the power fraction is its square**. Windows
+  count as airborne when gate (sign of `debug[7]`) is open ≥ 90 % of the
+  window and all motors are on.
 - Throttle % = `(rcCommand[3] − 1000)/10` (stick, not post-mixer collective).
 - Steady-stick windows (for b0-scale stats): max |setpoint roll/pitch| < 30
   deg/s, throttle std < 2 %, gate open.
@@ -75,7 +79,8 @@ names are Bob's file labels, not log-verified modes):
 | 20–25 % | 0.79 | 4.8 | 24.1 | 5.8 | 1.1 | **10.1** |
 | 25–30 % | 0.94 | 4.2 | — | — | 1.2 | **10.9** |
 
-- Frequency unchanged: 24–27 Hz, 93–100 % of error power in the single tone,
+- Frequency unchanged: 24–27 Hz, with 93–100 % of the 5–100 Hz RMS in the
+  single tone (amplitude fraction; the power fraction is its square),
   present in `gyroUnfilt` too (not a filter artifact).
 - **btfl_003 is baseline-clean end to end** (1.1–1.2 deg/s ≈ baseline 0.8–0.9)
   across the hover band, through punches and 670 deg/s flips — on the b3 head
@@ -90,8 +95,9 @@ names are Bob's file labels, not log-verified modes):
   t=10.5–11.5 s, 19–26 deg/s), and during the low-throttle landing approach
   (log2 t=25–26.5 s). Between ignitions the same flight is quiet for ~20 s at
   the same stick positions.
-- No correlation with battery voltage (raging 15.2–15.6 V vs quiet 15.4–16.0 V)
-  or motor-floor clipping fraction.
+- No obvious association with battery voltage (window medians: raging
+  15.2–15.6 V vs quiet 15.4–16.0 V) or motor-floor clipping fraction — a
+  medians comparison, not a formal correlation test.
 
 Tracked as **ADRC-024**. Hypotheses (leading first, none established —
 the ADRC-021 doublet data is the discriminator):
@@ -109,39 +115,49 @@ the ADRC-021 doublet data is the discriminator):
 
 ### ADRC-019b (punch→chop rebound) — NOT improved
 
-Calm-stick punch→chop events, peak |pitch gyro| in the 0.6 s after the chop:
+Calm-stick punch→chop events (see `analyze_b4_punches.py` — its output is
+this table), peak |pitch gyro| in the 0.6 s after the chop, deg/s:
 
-| build | events | median | max | z3P peak |
+| build | events | peakP median | max | z3P peak (calm events) |
 |---|---|---|---|---|
 | baseline (scale cap 9, pre-remed) | 2 | 152 | 171 | 524k (debug rail) |
 | b3 "ACRO2" (cap 3) | 5 | 80 | 95 | 271k |
-| b4 (all logs) | 9 | 80–97 | **181** | 498–524k |
+| b4 log2 | 5 | 97 | **181** | 498k |
+| b4 log3 | 2 | 80.5 | 85 | 280k |
+| b4 log4 | 2 | 45 | 75 | 233k |
+| b4 pooled | 9 | 76 | **181** | 498k |
 
-The 2 Hz release LPF did not measurably reduce the rebound (Bob's "maybe
-slightly improved" matches log3/log4; log2's 87 %-punch produced 181 deg/s —
-b3-worst level). The b0-scale still traverses 3.00→1.00 on every chop. z3
-excursions during punches: z3P hits the ±524k debug rail in log2 (0.20 % of
-samples) and log3 (1.50 %; z3R 0.7 %); log4 peaks at ~478k without railing.
-The rebound **coincides with** the z3 transient (thrust-collapse pitch moment
-+ observer re-learning after adapting under a ×3-inflated gain frame) — a
-consistent mechanism, but correlation, not established causation. Either way
-the release *rate* is ruled out as the dominant knob; candidate directions are
-the b0 law itself (ADRC-021) and/or an explicit throttle-transition
-feed-forward. Tracked as **ADRC-025**.
+The 2 Hz release LPF produced no measurable improvement in these flights —
+b4 pooled median 76 vs b3's 80, with the worst single event (181 deg/s on the
+87 %-punch) at baseline-worst level. Bob's "maybe slightly improved" matches
+log3/log4 (medians 80.5/45); log2 does not. This does **not** exclude the
+release rate as a contributing factor (no controlled same-maneuver A/B) — it
+shows the LPF alone is not sufficient. The b0-scale still traverses
+3.00→1.00 on every chop. z3 excursions (whole-log statistics, including
+piloted maneuvers): z3P hits the ±524k debug rail in log2 (0.20 % of samples)
+and log3 (1.50 %; z3R 0.7 %); log4 peaks at ~478k without railing. The
+rebound **coincides with** the z3 transient (thrust-collapse pitch moment +
+observer re-learning after adapting under a ×3-inflated gain frame) — a
+consistent mechanism, but correlation, not established causation. Candidate
+directions: the b0 law itself (ADRC-021) and/or an explicit
+throttle-transition feed-forward. Tracked as **ADRC-025**.
 
-### AIR zero-throttle drop — WORKS ✓ (Bob's subjective report, consistent with the logs)
+### Zero-throttle drop — consistent with Bob's report
 
-Zero-throttle airborne segments (≥ 0.8 s) show controlled behavior; the
-high-gyro-RMS ones coincide with commanded maneuvers; median |acc| 0.22–0.62 g
-confirms sustained airborne descent states handled with the gate open and no
-false re-arm.
+Bob reports the AIR-mode zero-throttle drop is handled fine; since flight
+mode is not recoverable from the logs (above), the logs can only be checked
+for consistency, and they are: zero-throttle airborne segments (≥ 0.8 s) show
+controlled behavior, the high-gyro-RMS ones coincide with commanded
+maneuvers, and median |acc| 0.22–0.62 g confirms sustained airborne descent
+states handled with the gate open and no false re-arm.
 
 ## Bottom line
 
 b4 confirmed the two fixes it carried where the logs can speak (scale·u
 always-on over-gain: not reproduced, one fully clean flight; d7 modulation:
 gone) and falsified two hopes (episodic 26 Hz ring in disturbance-rich states;
-punch rebound unchanged). The **leading hypothesis** — to be tested, not yet
-established — is b0 calibration/scheduling around and below hover, which is
-exactly what the ADRC-021 system-identification flight measures. ADRC-020 was
-closed by the PR author right after this flight (`eda3bb16eb`).
+punch rebound not measurably improved). The **leading hypothesis** — to be
+tested, not yet established — is b0 calibration/scheduling around and below
+hover, which is exactly what the ADRC-021 system-identification flight
+measures. ADRC-020 was closed by the PR author right after this flight
+(`eda3bb16eb`).
