@@ -110,7 +110,7 @@ Current `wc`/`wo` are Gao's standard bandwidth parameterization: each places a
 beta3=wo³` for the observer), which pins the ratio between the two virtual-PD
 terms and between the observer's "I-like" (`z3`) and "D-filter-like" behavior
 to a fixed, non-adjustable shape. Confirmed via the PID↔ADRC equivalence work
-([`tools/adrc/pid_to_adrc.py`](../tools/adrc/pid_to_adrc.py), cross-checked
+([`docs/pid-adrc-converter/pid_to_adrc.py`](pid-adrc-converter/pid_to_adrc.py), cross-checked
 against arXiv:2501.11374 and `ActiveDisturbanceRejectionControl.jl`): classic
 tunes with `Q = Ki·Kd/Kp²` outside `(0.25, 0.4]` — i.e. most real tunes,
 including stock — have **no exact ADRC equivalent at any `(wc, wo, b0)`**,
