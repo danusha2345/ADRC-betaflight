@@ -103,6 +103,38 @@ same maneuver set; accept: no narrowband limit cycle, low saturation,
 acceptable overshoot/settling, no punch/chop rebound; pick from the lower,
 calm part of the common stable region).
 
+### ADRC-023 — Decouple P:D (and I:filter) ratio via damping-ratio parameters (raised by @bvandevliet)
+
+Current `wc`/`wo` are Gao's standard bandwidth parameterization: each places a
+*repeated* pole (`kp=wc², kd=2·wc` for the control law; `beta1=3wo, beta2=3wo²,
+beta3=wo³` for the observer), which pins the ratio between the two virtual-PD
+terms and between the observer's "I-like" (`z3`) and "D-filter-like" behavior
+to a fixed, non-adjustable shape. Confirmed via the PID↔ADRC equivalence work
+([`tools/adrc/pid_to_adrc.py`](../tools/adrc/pid_to_adrc.py), cross-checked
+against arXiv:2501.11374 and `ActiveDisturbanceRejectionControl.jl`): classic
+tunes with `Q = Ki·Kd/Kp²` outside `(0.25, 0.4]` — i.e. most real tunes,
+including stock — have **no exact ADRC equivalent at any `(wc, wo, b0)`**,
+because that band is exactly what a repeated-pole placement can reach. This
+isn't a bug, it's the direct cost of collapsing 3 classic gains into fewer,
+less-interacting knobs.
+
+The lock is a parameterization choice, not a limit of ADRC/ESO as a
+framework. Standard pole-placement extension: replace the single `wc` with a
+natural frequency + damping ratio pair (`kp=ωn², kd=2·ζ·ωn`; `ζ=1` recovers
+today's behavior exactly), and similarly for the observer. This would restore
+independent P:D (and I:filter) shaping much closer to classic PID's feel,
+at the cost of two more CLI fields and the associated tuning-complexity
+increase ADRC's single-bandwidth-knob design was meant to avoid.
+
+Proposed framing: an opt-in **"expert mode"** — extra `adrc_*_damping`-style
+fields, hidden/defaulted to `1.0` (today's behavior) unless explicitly
+touched, so the default 3-knob (`wc`/`wo`/`b0`) tuning experience for typical
+pilots is completely unaffected. Not proposed as a change to the current PR
+or its defaults.
+
+Status: OPEN — future improvement, explicitly **not high priority**;
+raised for later consideration, not blocking b4 or any item above.
+
 ## How to help test
 
 Flight-test reports from experienced pilots are welcome, especially on typical
