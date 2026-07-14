@@ -40,8 +40,8 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-015 | Crash Flip: ESO could learn the turtle command and open the gate; auto-rearm entered flight with stale state | DONE | `7ade8d8089` | Crash-Flip loop reset tests | n/a | — |
 | ADRC-016 | With `thrust_linear > 0` the mixer published inverse-compensated throttle — 40 % gate threshold effectively shifted to ~45 %, `b0` schedule underestimated thrust | DONE | `1b19666f6c` | Real mixer test with target-equivalent thrust formula 11/11; mutation breaks 10/11 | n/a | — |
 | ADRC-017 | ESO state and liftoff gate survived disarm→arm (with default `pid_at_min_throttle=ON` the only reset branch was dead code); ground-wound `z3` up to the ±524k rail carried into the next arm | DONE | `04813845dc` | `testAdrcArmTransitionStartsFreshEpoch` fails pre-fix | **Verified in flight 2026-07-12** (second arm of the same power cycle starts gate-closed, `z3 ≈ 0`) | — |
-| ADRC-018 | Remediation regression: feeding the ESO the authority-*scaled* command (`scale·u`) silently re-defined b0's calibration frame — loop over-gained by `1/scale` at low throttle → sustained 24–26 Hz roll/pitch limit cycle | IMPLEMENTED | `c718282ad6` | Characterization tests (unscaled-feedback expectations) fail pre-fix | **b4 verification flight (2026-07-14, byte-identical tune): the always-on acro over-gain is confirmed gone** (b3 4–5 deg/s → b4 1.1 deg/s across the hover band ≈ pre-remediation baseline 0.8, through punches and 670 deg/s flips). An *episodic* ring at the same 26 Hz remains in disturbance-rich low-collective states — tracked separately as ADRC-024 | ADRC-024 |
-| ADRC-019 | b0 throttle schedule read the raw post-mixer collective: (1) mixer constrain tracks the loop's own axis activity → gain modulation at the resonance (`debug[7]` swinging 1.0↔2.8 at steady stick); (2) throttle chop collapsed the scale 3→1 in ~80 ms, faster than the ESO re-adapts → punch-chop rebound | IMPLEMENTED | `79f8b6041d` | Release-gradient and modulation-ripple characterization tests fail pre-fix | **b4 flight, split verdict**: (1) modulation FIXED — steady-window `debug[7]` swing p90 0.27–0.29 vs pre-fix 1.0↔2.8; (2) punch rebound NOT improved — post-chop pitch peaks 80–97 deg/s median (181 max) vs b3's 80–95; mechanism is the z3 transient itself, not the release rate — tracked as ADRC-025 | ADRC-025 |
+| ADRC-018 | Remediation regression: feeding the ESO the authority-*scaled* command (`scale·u`) silently re-defined b0's calibration frame — loop over-gained by `1/scale` at low throttle → sustained 24–26 Hz roll/pitch limit cycle | IMPLEMENTED | `c718282ad6` | Characterization tests (unscaled-feedback expectations) fail pre-fix | **b4 verification flight (2026-07-14, byte-identical tune): the always-on over-gain did not reproduce** — one full 41 s b4 flight is baseline-clean (1.1 deg/s across the hover band ≈ pre-remediation 0.8, through punches and 670 deg/s flips), which no b3 log achieved. A mode-specific (acro vs air) A/B is *not* establishable — airmode state is not recoverable from these logs (switch-based, not in headers/flags). An *episodic* ring at the same 26 Hz remains in disturbance-rich low-collective states — tracked separately as ADRC-024 | ADRC-024 |
+| ADRC-019 | b0 throttle schedule read the raw post-mixer collective: (1) mixer constrain tracks the loop's own axis activity → gain modulation at the resonance (`debug[7]` swinging 1.0↔2.8 at steady stick); (2) throttle chop collapsed the scale 3→1 in ~80 ms, faster than the ESO re-adapts → punch-chop rebound | IMPLEMENTED | `79f8b6041d` | Release-gradient and modulation-ripple characterization tests fail pre-fix | **b4 flight, split verdict**: (1) modulation FIXED — steady-window `debug[7]` swing p90 0.27–0.29 vs pre-fix 1.0↔2.8; (2) punch rebound NOT improved — post-chop pitch peaks 80–97 deg/s median (181 max) vs b3's 80–95; the release *rate* is ruled out as the dominant knob, and the rebound coincides with the z3 transient (consistent mechanism, causation not yet established) — tracked as ADRC-025 | ADRC-025 |
 
 ## Open items
 
@@ -64,9 +64,12 @@ Options on the table:
 - **(b) Keep it off-by-default and add a sustained `|acc| ≈ 1 g` condition**,
   gated on independent flight evidence across the existing logs first.
 
-Status: OPEN — decision made (2026-07-14, PR author): **(a), remove entirely**.
-The b4 verification flight has happened, so the removal is unblocked and can
-land with the next code push.
+Status: **CLOSED — implemented upstream by the PR author** right after the b4
+verification flight: `eda3bb16eb` "fix(adrc): remove unreliable mid-air
+liftoff-gate re-arm (ADRC-020)" (2026-07-14, −279 lines incl. the
+`adrc_liftoff_idle_*` params and their tests). The b4 flight logs predate this
+commit (built from `08ad602ce`), which is immaterial — the re-arm was
+off-by-default there.
 
 ### ADRC-021 — b0 throttle-curve identification (raised by @bvandevliet)
 
@@ -90,12 +93,13 @@ system-identification task on flight data, not by analogy:
   monotone curve across more than one 5″.
 
 Status: OPEN — **unblocked and now the critical path**: the b4 flight
-(2026-07-14) confirmed the acro regression gone, and both surviving defects
-(ADRC-024 episodic ring, ADRC-025 punch rebound) point at b0
-calibration/scheduling around and below hover — exactly what this protocol
-measures. Note the b4 craft hovers at 22 % vs the 35 % craft the default
-b0=2000 traces to (≈2.5× authority gap at hover by the quadratic law), so the
-25 % and 35 % collective bins matter most.
+(2026-07-14) showed the always-on over-gain not reproducing, and for both
+surviving defects (ADRC-024 episodic ring, ADRC-025 punch rebound) the
+*leading hypothesis* is b0 calibration/scheduling around and below hover —
+exactly what this protocol measures (and would falsify). Note the b4 craft
+hovers at 22 % vs the 35 % craft the default b0=2000 traces to (≈2.5×
+authority gap at hover by the quadratic law — a plausibility argument, not a
+plant-gain measurement), so the 25 % and 35 % collective bins matter most.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
@@ -164,20 +168,25 @@ simulation against these logs; (3) pure phase-margin shortfall at `wc=60`
 given `adrc_gyro_lpf 150` + craft latency — distinguished by the same
 ADRC-021 data.
 
-Status: OPEN — root cause; data: `blackbox/bvandevliet/b4/` analysis in the
-fork. Primary discriminator: the ADRC-021 doublet flight.
+Status: OPEN — root cause unknown; the b0 story above is the *leading
+hypothesis*, not an established cause. Data, methods and scripts:
+[`docs/flight-test-analysis/pr15400-b4/`](flight-test-analysis/pr15400-b4/)
+(the four `.bbl` originals, `ANALYSIS.md` with reproduction criteria, and the
+analysis scripts). Primary discriminator: the ADRC-021 doublet flight.
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
 Calm-stick post-chop pitch peaks: pre-remediation 152–171 deg/s → b3 80–95 →
 b4 80–97 median with a 181 deg/s outlier — the ADRC-019 release LPF smoothed
 the `debug[7]` trajectory but did **not** reduce the rebound. During every
-punch the b0 scale still traverses its full 3.00→1.00 range and z3 rails
-against its clamp (0.2–1.5 % of samples at the debug rail). The dominant
-mechanism is now the **z3 transient itself** — the thrust-collapse pitch
-moment plus the observer re-learning after adapting under a ×3-inflated gain
-frame — not the release *rate*. More filtering is the wrong knob; candidate
-directions: the b0 law itself (ADRC-021), and/or an explicit
+punch the b0 scale still traverses its full 3.00→1.00 range; z3P hits the
+±524k debug rail in two of three flight logs (0.20 % and 1.50 % of samples;
+the third peaks at ~478k without railing). The rebound **coincides with** the
+z3 transient — the thrust-collapse pitch moment plus the observer re-learning
+after adapting under a ×3-inflated gain frame — a consistent mechanism, but
+correlation, not established causation. What the data does rule out is the
+release *rate* as the dominant knob; more filtering is the wrong direction.
+Candidates: the b0 law itself (ADRC-021), and/or an explicit
 throttle-transition feed-forward (the "anti-gravity analog" the PR author
 asked about).
 
@@ -207,6 +216,9 @@ experimental and opt-in; use conservative conditions and leave safety margin.
 
 - Official upstream CI matrix on the current head (needs maintainer
   approve-and-run for collaborator pushes).
-- b4 re-fly (same tune): 10–30 % throttle acro band calm again, punch→chops
-  without rebound, AIR-mode zero-throttle drop.
+- ~~b4 re-fly (same tune)~~ — **happened 2026-07-14**; split outcome recorded
+  in ADRC-018/019 (always-on over-gain and d7 modulation gone; episodic ring
+  → ADRC-024, punch rebound → ADRC-025; AIR zero-throttle drop confirmed
+  working).
+- ADRC-021 doublet flight (now the primary pending flight evidence).
 - F411 8 kHz DWT cycle benchmark on real hardware (ADRC-012).
