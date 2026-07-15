@@ -71,6 +71,14 @@ liftoff-gate re-arm (ADRC-020)" (2026-07-14, −279 lines incl. the
 commit (built from `08ad602ce`), which is immaterial — the re-arm was
 off-by-default there.
 
+Removing the `adrc_liftoff_idle_*` fields shifts the `adrcProfile_t` layout,
+so the same commit bumps `PG_PID_PROFILE` 14 → 15: flashing any build from
+`eda3bb16eb` onward (including a future b5 prebuilt) over a b2–b4 install
+**resets PID profiles to defaults** — `diff all` first, and the b5 release
+notes must carry this warning. Build lineage for bisection reference:
+b1 = PG 12, b2–b4 = PG 14, current head = PG 15 (verified against
+`src/main/flight/pid.c` at each release tag).
+
 ### ADRC-021 — b0 throttle-curve identification (raised by @bvandevliet)
 
 The quadratic `(throttle/hover)²` law is capped at ×3 as a *safety bound*, not
@@ -158,7 +166,8 @@ present in `gyroUnfilt`) still **ignites on events** — gate open at takeoff
 approach — then self-sustains for seconds at 10–30 % throttle and decays. The
 same flight is quiet for tens of seconds at the same stick positions between
 ignitions; one of the four logs never rings at all despite punches and
-670 deg/s flips. No correlation with battery voltage or motor-floor clipping.
+670 deg/s flips. No obvious association with battery voltage or motor-floor
+clipping (a window-medians comparison, not a formal correlation test).
 
 Working hypotheses, in order: (1) **b0 under-calibration near/below hover on
 this craft** (hover 22 % vs the 35 %-hover craft b0=2000 traces to →
