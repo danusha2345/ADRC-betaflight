@@ -100,14 +100,32 @@ system-identification task on flight data, not by analogy:
   applied command as a cross-check rather than a direct b0 measurement. Fit a
   monotone curve across more than one 5″.
 
-Status: OPEN — **unblocked and now the critical path**: the b4 flight
-(2026-07-14) showed the always-on over-gain not reproducing, and for both
-surviving defects (ADRC-024 episodic ring, ADRC-025 punch rebound) the
-*leading hypothesis* is b0 calibration/scheduling around and below hover —
-exactly what this protocol measures (and would falsify). Note the b4 craft
-hovers at 22 % vs the 35 % craft the default b0=2000 traces to (≈2.5×
-authority gap at hover by the quadratic law — a plausibility argument, not a
-plant-gain measurement), so the 25 % and 35 % collective bins matter most.
+Status: **MEASURED (2026-07-16) — fix design pending.** The PR author flew the
+doublet protocol on 2026-07-15 (10 flights, SPEEDYBEE F7 MINI V2, build
+`35adbf14e6` = PR head + inactive-in-p1/p2 cascade commit); identification in
+[`docs/flight-test-analysis/pr15400-doublets/`](flight-test-analysis/pr15400-doublets/)
+(data, `identify_b0.py`, `fit_b0_law.py`, `ANALYSIS.md`). Measured, pooled
+over 159 windows / 9 logs / both axes:
+
+- **The quadratic law over-scales on this craft**: true plant-gain growth
+  hover→40–60 % collective is ×1.3–1.7 (band-stable across analysis
+  settings), vs the ×2.3–3 the shipped `clamp((c/hover)², 1, 3)` applies
+  there; in law scoring the shipped curve fits *worse than no schedule at
+  all* (RMS log2 0.541 vs 0.512), with sqrt (0.425) and linear (0.453) best.
+- **Below hover the true gain falls** (~0.56× at 10–15 %) while the clamp
+  holds the model at ×1 — `b0_eff` ≈1.6× too high there.
+- **The observer corroborates independently**: z3-on-u regression is negative
+  in every bin of every log checked (`b0_eff > b0_true` across the band,
+  worst above 30 % collective).
+- **Hover-band absolute b0 ≈ 2100–2300** (roll 2272 / pitch 2149, 1.5–25 Hz
+  band) — flight-confirms the default 2000 and the converter's 2252–2328 on a
+  second craft (feeds ADRC-022). Caveat: absolute values are band-dependent
+  (plant closer to first-order in rate); the *relative* law is band-stable.
+
+Fix candidates the data support: linear `c/h` or sqrt growth with a cap
+around 1.7–2 (not 3), plus revisiting the below-hover clamp at 1. Single
+craft so far — the "more than one 5″" requirement stands before changing the
+shipped law; jmsweng's craft is the natural second data point.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
