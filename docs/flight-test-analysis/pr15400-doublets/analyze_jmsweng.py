@@ -129,11 +129,28 @@ def main():
         gaps = np.where(np.diff(idxs) > fs * 0.2)[0]
         starts = np.r_[idxs[0], idxs[gaps + 1]]
         ends = np.r_[idxs[gaps], idxs[-1]]
+        # classify with +-0.5 s context: flip/loop if |gyro| >= 300 deg/s,
+        # zero-throttle if throttle dips <= 5 %, else UNEXPLAINED
+        counts = {"flip/loop": 0, "zero-thr": 0, "UNEXPLAINED": 0}
         print(f"z3 {ax}: {railed.mean()*100:.2f}% samples at debug rail, {len(starts)} episodes:")
-        for s0, e0 in list(zip(starts, ends))[:10]:
-            gy = np.abs(d["gyroADC[0 ]".replace(" ", "")][s0:e0+1]).max() if ax == "roll" else np.abs(d["gyroADC[1]"][s0:e0+1]).max()
+        gy_col = "gyroADC[0]" if ax == "roll" else "gyroADC[1]"
+        ctx = int(0.5 * fs)
+        for s0, e0 in zip(starts, ends):
+            c0, c1 = max(0, s0 - ctx), min(len(t), e0 + 1 + ctx)
+            gy_ep = np.abs(d[gy_col][s0:e0+1]).max()
+            gy_ctx = np.abs(d[gy_col][c0:c1]).max()
+            thr_min = thr[c0:c1].min()
+            if gy_ctx >= 300:
+                tag = "flip/loop"
+            elif thr_min <= 5:
+                tag = "zero-thr"
+            else:
+                tag = "UNEXPLAINED"
+            counts[tag] += 1
             print(f"  t={t[s0]:6.1f}-{t[e0]:.1f}s thr={thr[s0:e0+1].mean():3.0f}% "
-                  f"|gyro_{ax}|max={gy:5.0f} deg/s acc_z_min={d['accSmooth[2]'][s0:e0+1].min()/2048:.2f}g")
+                  f"|gyro_{ax}|max={gy_ep:5.0f} (ctx {gy_ctx:5.0f}) deg/s "
+                  f"acc_z_min={d['accSmooth[2]'][s0:e0+1].min()/2048:.2f}g thr_min={thr_min:3.0f}% [{tag}]")
+        print(f"  classification: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
 
     # wide-band scan of gyroUnfilt in calm windows (see aliasing note in the docstring)
     calm = (np.abs(d["setpoint[0]"]) < 40) & (np.abs(d["setpoint[1]"]) < 40)

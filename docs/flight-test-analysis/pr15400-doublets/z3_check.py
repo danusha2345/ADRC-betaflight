@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""ADRC-021 cross-check: regress the observer's z3 (roll, debug[2]*16) on the
-applied control u in the same windows as identify_b0.py. If b0_eff = b0*scale
-were exactly right, z3 would be uncorrelated with u; a negative slope means
-the ESO over-estimates its control authority (b0_eff > b0_true).
+"""ADRC-021 qualitative ESO model-residual cross-check: regress the
+observer's z3 (roll, debug[2]*16) on the applied control u. If
+b0_eff = b0*scale were exactly right, z3 would be uncorrelated with u; a
+negative slope means the ESO over-estimates its control authority
+(b0_eff > b0_true).
 
-Qualitative check: ESO bandwidth attenuates the fast component of z3, so
-slopes under-measure |b0_true - b0_eff|; sign and trend are the payload.
+NOT an independent plant-gain estimate - it reuses the same u, gyro and b0
+law as identify_b0.py. Windowing matches identify_b0.py's length, overlap,
+gate, no-clip and u-RMS criteria, but does NOT apply its R^2 >= 0.5 /
+positive-slope selection (plus it drops debug-railed windows). ESO bandwidth
+attenuates the fast component of z3, so slopes under-measure
+|b0_true - b0_eff|; sign and trend are the payload.
 
 Run from this directory after decoding the .bbl files.
 """

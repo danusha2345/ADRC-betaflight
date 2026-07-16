@@ -117,9 +117,10 @@ over 159 windows / 9 logs / both axes:
   the production exponent.
 - **Below hover the true gain falls** (~0.56× at 10–15 %) while the clamp
   holds the model at ×1 — `b0_eff` ≈1.6× too high there.
-- **The observer corroborates independently**: z3-on-u regression is negative
-  in every bin of every log checked (`b0_eff > b0_true` across the band,
-  worst above 30 % collective).
+- **The ESO's own model residual is consistent** (qualitative cross-check on
+  the same u/gyro/b0-law data, not an independent plant-gain estimate):
+  z3-on-u regression is negative in every bin of every log checked — the
+  sign of `b0_eff > b0_true` across the band, worst above 30 % collective.
 - **Hover-band absolute b0 ≈ 2100–2300** (roll 2272 / pitch 2149, 1.5–25 Hz
   band) — flight-confirms the default 2000 and the converter's 2252–2328 on a
   second craft (feeds ADRC-022). Caveat: absolute values are band-dependent
