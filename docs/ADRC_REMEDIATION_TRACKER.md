@@ -110,8 +110,11 @@ over 159 windows / 9 logs / both axes:
 - **The quadratic law over-scales on this craft**: true plant-gain growth
   hover→40–60 % collective is ×1.3–1.7 (band-stable across analysis
   settings), vs the ×2.3–3 the shipped `clamp((c/hover)², 1, 3)` applies
-  there; in law scoring the shipped curve fits *worse than no schedule at
-  all* (RMS log2 0.541 vs 0.512), with sqrt (0.425) and linear (0.453) best.
+  there; in law scoring on this corpus the shipped curve fits *worse than no
+  schedule at all* (RMS log2 0.541 vs 0.512; the code-vs-fixed gap shrinks
+  to +0.004 in the worst leave-one-log-out subset), with sqrt (0.425) and
+  linear (0.453) best — the data reject the quadratic, they do not yet pick
+  the production exponent.
 - **Below hover the true gain falls** (~0.56× at 10–15 %) while the clamp
   holds the model at ×1 — `b0_eff` ≈1.6× too high there.
 - **The observer corroborates independently**: z3-on-u regression is negative
@@ -127,11 +130,14 @@ around 1.7–2 (not 3), plus revisiting the below-hover clamp at 1.
 
 **Second craft confirms (2026-07-16)**: the same estimator on jmsweng's two
 b4 logs (DAKEFPVF405, 2300 kV, hover ≈ 31 %, 71 windows,
-`fit_b0_jmsweng.py`) measures growth 20→55 % collective of only ×1.4, sqrt
-again the best-scoring law, and *even a fixed b0 beats the shipped
-quadratic* there; hover-band absolute ≈ 1800–2100 (his b0=2000 spot-on). The
-protocol's "more than one 5″" requirement is met — the law fix is
-data-unblocked.
+`fit_b0_jmsweng.py`) measures growth 20→55 % collective of only ×1.4; sqrt
+scores best after pooling and *even a fixed b0 beats the shipped quadratic*
+there (per-log winners differ: fixed on one log, linear on the other);
+hover-band absolute ≈ 1800–2100 (his b0=2000 spot-on; the converter's
+2252/2328 ~18–22 % above the direct estimate on this craft). The protocol's
+"more than one 5″" requirement is met — sqrt and linear are the grounded
+candidates for a controlled A/B; the corpus rejects the quadratic without
+yet selecting the production exponent.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
@@ -209,18 +215,24 @@ hypothesis*, not an established cause. Data, methods and scripts:
 (the four `.bbl` originals, `ANALYSIS.md` with reproduction criteria, and the
 analysis scripts). Primary discriminator: the ADRC-021 doublet flight.
 
-**Measured discriminators (2026-07-16, `ring_sensitivity.py` in
+**Suggestive discriminators (2026-07-16, `ring_sensitivity.py` in
 [`pr15400-doublets/`](flight-test-analysis/pr15400-doublets/))**: at a fixed
-b0 law the ring **worsens with wc** (wc 85: 11 % of hover-band windows, tone
-to 39 deg/s), and **nearly vanishes with wo 150** (one window, 5.4 deg/s) or
-**with the wc≈37 converted tune** (one window, 6.5 deg/s), vs 2–9 %/20–33
-deg/s on the base wc 60/wo 100 — a loop/observer phase-margin signature,
-matching jmsweng's independent "wc ≈ 40 quiets it". The b0 over-scale
-measured in ADRC-021 remains the gain-scheduling backdrop; separating
-margin-only from margin+b0 needs a re-fly of the ring band after a b0-law
-fix. Cross-craft: jmsweng's hover band shows no 24–27 Hz ring (one
-suggestive post-power-loop window at 24 Hz), and his audible oscillation is
-a high-frequency mechanical/motor-band line, not this phenomenon.
+b0 law the **wc 85 flight shows increased ring incidence and amplitude**
+(11 % of hover-band windows, 5 episodes, tone to 39 deg/s vs the base
+wc 60/wo 100's 2–9 %, 2 episodes per log, 20–33 deg/s). The short wo 150
+flight (19 usable windows) contains no strong ring — one threshold-level
+window, 5.4 deg/s — but is too short to establish an incidence reduction;
+the wc≈37 converted tune shows one weak window per log. Consistent with a
+loop/observer phase-margin hypothesis (and with jmsweng's independent
+"wc ≈ 40 quiets it"), **not yet a causal discriminator** — flights were not
+randomized or maneuver-controlled. The b0 over-scale measured in ADRC-021
+remains the gain-scheduling backdrop; separating margin-only from margin+b0
+needs a controlled A/B (or at minimum a re-fly of the ring band after a
+b0-law fix). Cross-craft: jmsweng's hover band shows no sustained 24–27 Hz
+ring (one suggestive post-power-loop window at 24 Hz); his gyroUnfilt
+carries a strong high-frequency line that is a plausible mechanical/
+motor-band candidate for what he hears, though its link to the audible
+oscillation is unproven (no audio sync; aliasing at his 988 Hz log rate).
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
@@ -245,10 +257,14 @@ asked about).
 Status: OPEN — blocked on ADRC-021 (the b0 law determines how much of the
 transient is model error vs physics). 2026-07-15 flights re-confirm
 (`punches_20260715.py`): 18 pooled base-tune events, calm-stick peak-pitch
-median 60 / max 135 deg/s, scaling with punch height, z3-pitch railing at
-524k on the largest punch; converted tune shows the same (79–102 deg/s at
-45–54 % punches). ADRC-021 is now measured — a law fix plus re-measure is the
-cheapest next discriminator.
+median 60 / max 135 deg/s, scaling with punch height; one of the larger
+punches (79 %, 127 deg/s rebound) reaches the ±524k *debug telemetry clip*
+on z3-pitch — neither the highest-throttle nor the max-rebound event does,
+and the clip is not the ESO's internal clamp, so the true z3 magnitude there
+is unknown. Converted tune shows the same (79–102 deg/s at 45–54 % punches).
+ADRC-021 is now measured — a law fix plus re-measure is the cheapest next
+discriminator; the z3-saturation link remains correlation, not established
+cause.
 
 ## How to help test
 

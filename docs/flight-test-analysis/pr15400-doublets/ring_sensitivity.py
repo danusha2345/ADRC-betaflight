@@ -74,9 +74,12 @@ def main():
                 rings.append((t[s], fq, a, fr))
         if rings:
             worst = max(rings, key=lambda r: r[2])
+            # merge ring windows closer than 1.5 s into independent episodes
+            ts = sorted(r[0] for r in rings)
+            episodes = 1 + sum(1 for a, b in zip(ts, ts[1:]) if b - a > 1.5)
             print(f"{label:<22} {n:>9} {len(rings):>6} {100*len(rings)/max(n,1):>5.0f}% "
                   f"{np.median([r[1] for r in rings]):>6.1f} {worst[2]:>8.1f} "
-                  f"t={worst[0]:.1f}s@{worst[1]:.0f}Hz")
+                  f"ep={episodes} t={worst[0]:.1f}s@{worst[1]:.0f}Hz")
         else:
             print(f"{label:<22} {n:>9} {'0':>6} {'0':>5}% {'-':>6} {'-':>8}")
 
