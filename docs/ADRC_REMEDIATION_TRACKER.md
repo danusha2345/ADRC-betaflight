@@ -123,9 +123,15 @@ over 159 windows / 9 logs / both axes:
   (plant closer to first-order in rate); the *relative* law is band-stable.
 
 Fix candidates the data support: linear `c/h` or sqrt growth with a cap
-around 1.7–2 (not 3), plus revisiting the below-hover clamp at 1. Single
-craft so far — the "more than one 5″" requirement stands before changing the
-shipped law; jmsweng's craft is the natural second data point.
+around 1.7–2 (not 3), plus revisiting the below-hover clamp at 1.
+
+**Second craft confirms (2026-07-16)**: the same estimator on jmsweng's two
+b4 logs (DAKEFPVF405, 2300 kV, hover ≈ 31 %, 71 windows,
+`fit_b0_jmsweng.py`) measures growth 20→55 % collective of only ×1.4, sqrt
+again the best-scoring law, and *even a fixed b0 beats the shipped
+quadratic* there; hover-band absolute ≈ 1800–2100 (his b0=2000 spot-on). The
+protocol's "more than one 5″" requirement is met — the law fix is
+data-unblocked.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
@@ -203,6 +209,19 @@ hypothesis*, not an established cause. Data, methods and scripts:
 (the four `.bbl` originals, `ANALYSIS.md` with reproduction criteria, and the
 analysis scripts). Primary discriminator: the ADRC-021 doublet flight.
 
+**Measured discriminators (2026-07-16, `ring_sensitivity.py` in
+[`pr15400-doublets/`](flight-test-analysis/pr15400-doublets/))**: at a fixed
+b0 law the ring **worsens with wc** (wc 85: 11 % of hover-band windows, tone
+to 39 deg/s), and **nearly vanishes with wo 150** (one window, 5.4 deg/s) or
+**with the wc≈37 converted tune** (one window, 6.5 deg/s), vs 2–9 %/20–33
+deg/s on the base wc 60/wo 100 — a loop/observer phase-margin signature,
+matching jmsweng's independent "wc ≈ 40 quiets it". The b0 over-scale
+measured in ADRC-021 remains the gain-scheduling backdrop; separating
+margin-only from margin+b0 needs a re-fly of the ring band after a b0-law
+fix. Cross-craft: jmsweng's hover band shows no 24–27 Hz ring (one
+suggestive post-power-loop window at 24 Hz), and his audible oscillation is
+a high-frequency mechanical/motor-band line, not this phenomenon.
+
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
 Calm-stick post-chop pitch peaks (deg/s; table produced by
@@ -224,7 +243,12 @@ throttle-transition feed-forward (the "anti-gravity analog" the PR author
 asked about).
 
 Status: OPEN — blocked on ADRC-021 (the b0 law determines how much of the
-transient is model error vs physics).
+transient is model error vs physics). 2026-07-15 flights re-confirm
+(`punches_20260715.py`): 18 pooled base-tune events, calm-stick peak-pitch
+median 60 / max 135 deg/s, scaling with punch height, z3-pitch railing at
+524k on the largest punch; converted tune shows the same (79–102 deg/s at
+45–54 % punches). ADRC-021 is now measured — a law fix plus re-measure is the
+cheapest next discriminator.
 
 ## How to help test
 

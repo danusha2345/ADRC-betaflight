@@ -28,7 +28,8 @@ HP_HZ = 1.5          # rejects f drift (z3 dynamics live below ~1 Hz at steady s
 LP_HZ = 25.0         # keeps doublet band, bounds motor-lag phase bias
 MIN_U_RMS = 8.0      # pidSum units of band-limited excitation, else skip window
 MIN_R2 = 0.5
-MOTOR_LO, MOTOR_HI = 60, 1950   # clipping guard (motorOutput 48..2047)
+MOTOR_MIN, MOTOR_MAX = 48.0, 2047.0   # motorOutput header range (per craft)
+MOTOR_HI = 1950                       # clipping guard (low guard = MOTOR_MIN + 12)
 
 def load(path, axis):
     with open(path) as f:
@@ -57,8 +58,8 @@ def identify(path, axis, label):
                 -PIDSUM_LIMIT, PIDSUM_LIMIT)
     motors = np.vstack([d[f"motor[{i}]"] for i in range(4)])
     # mixer-collective proxy in %, same quantity the b0 schedule low-passes
-    coll = (motors.mean(axis=0) - 48.0) / (2047.0 - 48.0) * 100.0
-    no_clip = (motors.min(axis=0) > MOTOR_LO) & (motors.max(axis=0) < MOTOR_HI)
+    coll = (motors.mean(axis=0) - MOTOR_MIN) / (MOTOR_MAX - MOTOR_MIN) * 100.0
+    no_clip = (motors.min(axis=0) > MOTOR_MIN + 12) & (motors.max(axis=0) < MOTOR_HI)
 
     bl, al = butter(2, LP_HZ / (fs / 2), "low")
     gyro_lp = filtfilt(bl, al, d[f"gyroADC[{axis}]"])
