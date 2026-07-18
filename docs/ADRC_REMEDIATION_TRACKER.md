@@ -140,6 +140,16 @@ hover-band absolute ≈ 1800–2100 (his b0=2000 spot-on; the converter's
 candidates for a controlled A/B; the corpus rejects the quadratic without
 yet selecting the production exponent.
 
+**A/B build published (2026-07-18)**: prebuilt release
+[`adrc-pr15400-b5`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b5)
+= PR head `eda3bb16eb` + a fork-side per-PID-profile `adrc_b0_law` selector
+(`QUADRATIC` default = b4 behavior / `SQRT` / `LINEAR` / `FIXED`), so one
+flash A/Bs all candidates by switching profiles in the field; the active law
+is recorded in the blackbox header. Kept out of the PR branch by agreement
+with the PR author (the 4-bit PG version budget — this bump wraps 15 → 0;
+the winning law ships upstream alone). Next: the controlled same-craft A/B
+(same day, same packs, same maneuver script, randomized order if possible).
+
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
 Explicit criterion going forward: defaults (`wc/wo/b0`, gate thresholds,
