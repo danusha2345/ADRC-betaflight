@@ -365,6 +365,43 @@ TEST_F(AdrcUnittest, B0ThrottleScaleTracksSquareOfThrottleRatioAboveHover)
     EXPECT_NEAR(4.0f, runtime.b0ThrottleScale, 1e-3f);
 }
 
+TEST_F(AdrcUnittest, B0ThrottleScaleFollowsSelectedLaw)
+{
+    // ADRC-021 A/B selector: same 2x-hover operating point, one expectation per candidate law.
+    // The quadratic default is covered by B0ThrottleScaleTracksSquareOfThrottleRatioAboveHover.
+    profile.hoverThrottlePercent = 35;
+    profile.b0ThrottleScaleMax = 9; // ceiling out of the way - the law shapes are under test
+    simulatedThrottle = 0.70f;      // ratio = 2
+
+    profile.b0Law = ADRC_B0_LAW_SQRT;
+    settleB0ThrottleScale();
+    EXPECT_NEAR(1.41421f, runtime.b0ThrottleScale, 1e-3f);
+
+    profile.b0Law = ADRC_B0_LAW_LINEAR;
+    settleB0ThrottleScale();
+    EXPECT_NEAR(2.0f, runtime.b0ThrottleScale, 1e-3f);
+
+    profile.b0Law = ADRC_B0_LAW_FIXED;
+    settleB0ThrottleScale();
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
+}
+
+TEST_F(AdrcUnittest, B0LawAlternativesKeepBothClamps)
+{
+    // The "never below 1 / never above max" policy is law-independent.
+    profile.hoverThrottlePercent = 35;
+    profile.b0Law = ADRC_B0_LAW_SQRT;
+    simulatedThrottle = 0.0f; // below hover
+    settleB0ThrottleScale();
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
+
+    profile.hoverThrottlePercent = 10;
+    profile.b0Law = ADRC_B0_LAW_LINEAR;
+    simulatedThrottle = 1.0f; // ratio = 10 -> clamps to the default max (3)
+    settleB0ThrottleScale();
+    EXPECT_NEAR(3.0f, runtime.b0ThrottleScale, 1e-3f);
+}
+
 TEST_F(AdrcUnittest, B0ThrottleScaleNeverGoesBelowOne)
 {
     profile.hoverThrottlePercent = 35;

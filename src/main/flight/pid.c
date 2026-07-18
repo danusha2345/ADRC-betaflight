@@ -130,7 +130,11 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 // existed for). This changes adrcProfile_t's layout - gatedZ3DecayRate/b0ThrottleScaleMax shift to
 // earlier offsets - so, per the ADRC-006 precedent, force the reset rather than let a version-match
 // memcpy reinterpret an old blob's trailing bytes at the wrong fields.
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 15);
+// 0 (wrapped): adrc.b0Law appended (ADRC-021 A/B selector, fork-side b5 build only). The PG
+// version field is 4 bits (see PGR_PGN_MASK / pgVersion() in pg.h) so 15 wraps to 0, not 16;
+// pgLoad() checks equality, and no firmware in this lineage ever shipped version 0 (upstream
+// master is at 11, PR builds went 12/14/15), so the wrap still forces the reset everywhere.
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 0);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {

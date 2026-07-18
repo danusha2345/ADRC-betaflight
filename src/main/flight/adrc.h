@@ -44,6 +44,18 @@ typedef enum {
 #endif
 } pidType_e;
 
+// Candidate laws for the throttle-scheduled b0 (ADRC-021). Temporary fork-side A/B selector:
+// flight data from two crafts rejects the quadratic law (measured plant-gain growth to 40-60%
+// collective is x1.3-1.7 where the quadratic applies x2.3-3) but does not pick sqrt vs linear -
+// that needs a controlled same-craft A/B, one law per PID profile. The winner ships alone; this
+// enum does not go upstream.
+typedef enum {
+    ADRC_B0_LAW_QUADRATIC = 0, // (throttle/hover)^2 - the shipped law, kept as default
+    ADRC_B0_LAW_SQRT,          // sqrt(throttle/hover)
+    ADRC_B0_LAW_LINEAR,        // throttle/hover
+    ADRC_B0_LAW_FIXED,         // no throttle scheduling (scale held at 1)
+} adrcB0Law_e;
+
 // User-facing tunables, embedded as a single field in pidProfile_t. Defined unconditionally -
 // like the pidProfile_t field that embeds it - so the persisted profile layout is identical on
 // targets that exclude the ADRC code for flash budget (see common_pre.h / pid.h).
@@ -85,6 +97,8 @@ typedef struct adrcProfile_s {
                                 // configured airborne decay (not per-axis)
     uint8_t b0ThrottleScaleMax; // ceiling on the throttle-scaled b0 multiplier (see
                                 // hoverThrottlePercent above); scaling is never applied below 1x
+    uint8_t b0Law;              // adrcB0Law_e: which throttle->b0 schedule shape to apply (ADRC-021
+                                // A/B selector, not per-axis)
 } adrcProfile_t;
 
 #ifdef USE_ADRC

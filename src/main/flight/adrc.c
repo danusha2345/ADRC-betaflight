@@ -281,6 +281,9 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // full-throttle authority cut (~35-50%) independently implies true plant-gain growth from
     // hover to full of ~x2-3, not x8 - cap where validation ends. CLI-tunable for experiments.
     adrcProfile->b0ThrottleScaleMax = 3;
+    // ADRC-021 A/B selector (see adrcB0Law_e). Quadratic = the shipped behavior, kept as default
+    // so a profile reset flies exactly like b4; set sqrt/linear/fixed per PID profile to compare.
+    adrcProfile->b0Law = ADRC_B0_LAW_QUADRATIC;
 }
 
 void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime, float dT)
@@ -476,7 +479,26 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     const float hover = fmaxf(adrcProfile->hoverThrottlePercent * 0.01f, ADRC_HOVER_THROTTLE_MIN_FRACTION);
     const float throttleRatio = adrcRuntime->b0ScaleThrottle / hover;
     const float maxB0Scale = constrainf(adrcProfile->b0ThrottleScaleMax, 1.0f, ADRC_B0_SCALE_MAX);
-    adrcRuntime->b0ThrottleScale = constrainf(throttleRatio * throttleRatio, 1.0f, maxB0Scale);
+    // ADRC-021 A/B: candidate schedule shapes, selectable per PID profile (see adrcB0Law_e).
+    // throttleRatio < 1 maps below 1 under every law, so the "scale only UP" clamp above hover
+    // stays the sole low-side policy regardless of the selected shape.
+    float rawScale;
+    switch (adrcProfile->b0Law) {
+    case ADRC_B0_LAW_SQRT:
+        rawScale = sqrtf(fmaxf(throttleRatio, 0.0f));
+        break;
+    case ADRC_B0_LAW_LINEAR:
+        rawScale = throttleRatio;
+        break;
+    case ADRC_B0_LAW_FIXED:
+        rawScale = 1.0f;
+        break;
+    case ADRC_B0_LAW_QUADRATIC:
+    default:
+        rawScale = throttleRatio * throttleRatio;
+        break;
+    }
+    adrcRuntime->b0ThrottleScale = constrainf(rawScale, 1.0f, maxB0Scale);
 }
 
 adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRate, float currentPidSetpoint,
