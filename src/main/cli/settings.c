@@ -468,6 +468,11 @@ static const char * const lookupTableSpaMode[] = {
 static const char * const lookupTablePidType[] = {
     "CLASSIC", "ADRC"
 };
+
+// Order must match adrcB0Law_e (adrc.h). ADRC-021 A/B selector, fork-side only.
+static const char * const lookupTableAdrcB0Law[] = {
+    "QUADRATIC", "SQRT", "LINEAR", "FIXED"
+};
 #endif
 
 #ifdef USE_LED_STRIP
@@ -695,6 +700,7 @@ const lookupTableEntry_t lookupTables[] = {
     LOOKUP_TABLE_ENTRY(lookupTableSpaMode),
 #ifdef USE_ADRC
     LOOKUP_TABLE_ENTRY(lookupTablePidType),
+    LOOKUP_TABLE_ENTRY(lookupTableAdrcB0Law),
 #endif
 #ifdef USE_LED_STRIP
     LOOKUP_TABLE_ENTRY(lookupTableLEDProfile),
@@ -1432,6 +1438,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_ADRC_LIFTOFF_HOLD_MS,       VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 5000 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc.liftoffHoldMs) },
     { PARAM_NAME_ADRC_GATED_Z3_DECAY,        VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 2000 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc.gatedZ3DecayRate) },
     { PARAM_NAME_ADRC_B0_SCALE_MAX,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 1, 50 },    PG_PID_PROFILE, offsetof(pidProfile_t, adrc.b0ThrottleScaleMax) },
+    { PARAM_NAME_ADRC_B0_LAW,                VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_ADRC_B0_LAW }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.b0Law) },
 #endif
 
 // PG_TELEMETRY_CONFIG

@@ -1626,6 +1626,7 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_LIFTOFF_HOLD_MS, "%d",       currentPidProfile->adrc.liftoffHoldMs);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GATED_Z3_DECAY, "%d",        currentPidProfile->adrc.gatedZ3DecayRate);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_B0_SCALE_MAX, "%d",          currentPidProfile->adrc.b0ThrottleScaleMax);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_B0_LAW, "%d",                currentPidProfile->adrc.b0Law);
 #endif
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF1_TYPE, "%d",        currentPidProfile->dterm_lpf1_type);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF1_STATIC_HZ, "%d",   currentPidProfile->dterm_lpf1_static_hz);
