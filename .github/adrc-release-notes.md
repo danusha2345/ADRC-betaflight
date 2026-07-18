@@ -2,6 +2,39 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## What's new in b5
+
+- **`adrc_b0_law` — A/B selector for the throttle→b0 schedule** (ADRC-021,
+  fork-side only, will not go upstream): flight logs from two crafts measured
+  the shipped quadratic `(throttle/hover)²` law applying ×2.3–3 where the
+  plant gain only grows ×1.3–1.7; the data reject the quadratic but cannot
+  separate the sqrt vs linear candidates — that needs a controlled same-craft
+  A/B. New per-PID-profile CLI setting:
+
+  ```
+  set adrc_b0_law = QUADRATIC   # (throttle/hover)^2 — b4 behavior, default
+  set adrc_b0_law = SQRT        # sqrt(throttle/hover)
+  set adrc_b0_law = LINEAR      # throttle/hover
+  set adrc_b0_law = FIXED       # no throttle scheduling
+  ```
+
+  Suggested protocol: profile 1 = QUADRATIC, profile 2 = SQRT, profile 3 =
+  LINEAR — same craft, same day, same pack rotation, same maneuver script
+  (doublets, hover ring check, punch→chop), law switched by PID profile
+  between flights, randomized order if you can. The active law is recorded in
+  the blackbox header (`adrc_b0_law`); `set debug_mode = ADRC` as always.
+  Default QUADRATIC flies exactly like b4.
+- **Mid-air liftoff-gate re-arm removed entirely** (ADRC-020): b4 shipped it
+  off-by-default, b5 deletes it — throttle+gyro alone cannot distinguish a
+  landing from a calm mid-air float, and the fresh-epoch-on-arm behavior
+  already covers the ground-rep use case it existed for.
+- **PID profiles reset on first boot** when upgrading from **any** earlier
+  build (b1–b4): the profile layout changed twice since b4 (ADRC-020 field
+  removal, the new selector). `diff all` before flashing, re-apply and verify
+  after. (Technical footnote: the config version field is 4 bits, so this
+  bump wraps 15 → 0 — the version check is an equality check and no build in
+  this lineage ever shipped 0, so the wrap still forces the reset everywhere.)
+
 ## What's new in b4
 
 The first flight logs on b3 (thanks @bvandevliet) caught **a regression of the
