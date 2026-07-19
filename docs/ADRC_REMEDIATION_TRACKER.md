@@ -152,8 +152,12 @@ the winning law ships upstream alone). Next: the controlled same-craft A/B
 
 **A/B flown (2026-07-19)**: 12 b5 flights, one craft, all profiles at
 defaults 60/100/2000, only the law differing (SQRT ×3 / QUADRATIC ×4 /
-LINEAR ×4 / FIXED ×1 — the FIXED flight ended in a 12 s grass strike, so
-the control arm has no usable data). Analysis in
+LINEAR ×4 / FIXED ×1 — the FIXED flight was **deliberately ditched at
+12 s: unflyable** per the pilot, corroborated by telemetry — two
+self-sustained 25.5 Hz episodes, tone RMS 58–59 deg/s roll with ~10 % of
+samples at motor saturation at zero stick throttle, which answers the
+null-control question qualitatively: no b0 schedule at all is unflyable on
+this craft, so scheduling *does* help, the question is only its shape). Analysis in
 [`docs/flight-test-analysis/pr15400-b5-b0law/`](flight-test-analysis/pr15400-b5-b0law/)
 (data, `b5_ab.py`, `ANALYSIS.md`); the active law is verified from
 telemetry (debug[7] applied-scale vs law prediction, every log). Pooled law
@@ -169,8 +173,8 @@ b5 script's stricter gate; 41–58 / 3–12 / 8–15 % under the original
 `ring_sensitivity.py` criterion — same ranking) — the accuracy-optimal law
 removes the over-scaling that was suppressing the ring. Production read:
 LINEAR is the compromise on current loop code; SQRT is right *if* the
-margin hypothesis holds (see ADRC-024). Remaining: FIXED control flights,
-and the decisive margin experiment (SQRT + wc ≈ 40–50).
+margin hypothesis holds (see ADRC-024). Remaining: the decisive margin
+experiment (SQRT + wc ≈ 40–50); FIXED must not be re-flown on this craft.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
@@ -286,7 +290,13 @@ wc-85-worsens observation above, not yet established): a marginally-damped
 SQRT + wc ≈ 40–50 flight. Fix space if it holds: loop/observer margin at
 ~26 Hz (wc shaping; the fork's `adrc-dterm-lpf` z2-LPF is a separate
 untested candidate) rather than retaining the inaccurate law as an
-implicit gain cut.
+implicit gain cut. **The FIXED arm completes the dose-response**: the
+pilot ditched it at 12 s as unflyable — telemetry shows the same mode at
+25.5 Hz, tone RMS 58–59 deg/s (~3× the worst SQRT window) with ~10 % motor
+saturation at zero stick throttle. Ring severity is monotone in scheduling
+strength: FIXED (~59) > SQRT (≤17) > LINEAR (≤11) > QUADRATIC (≤8 deg/s
+worst window) — strong same-craft support for the gain-sensitivity of the
+mode, still short of proving the margin mechanism.
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 

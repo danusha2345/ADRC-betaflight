@@ -36,11 +36,23 @@
    114 (n=10), LINEAR 58 / 111 (n=17), QUADRATIC 71 / 145 (n=11) deg/s.
    Direction consistent with less high-collective over-scaling ⇒ smaller
    stored observer error at the chop; not conclusive at these n.
-4. **FIXED arm is lost**: its single flight is 12 s — brief hop, long
-   zero-throttle low glide over tall grass, grass strike (1915 deg/s tumble,
-   both z3 railed at the debug clip; DVR frames confirm grass contact).
-   2 usable identification windows, 0 hover-band ring windows. **Not a
-   control failure** — but the null-hypothesis control arm still has no data.
+4. **FIXED arm: unflyable — and that answers the null-control question.**
+   The initial read of this log ("grass strike, not a control failure") was
+   wrong: the pilot ditched deliberately because FIXED was far from flyable
+   (extreme ring on raising throttle, continued climb and ring after
+   dropping it, motors very hot after 12 s). Telemetry corroborates every
+   element: two self-sustained **25.5 Hz** episodes (4–6 s and 8–10 s) with
+   tone RMS **58–59 deg/s roll** — ~3× the worst SQRT window — during
+   which ~10 % of samples sit at motor saturation 2047 *at zero stick
+   throttle*, mean motor ~660 vs ~250 in the quiet segments (the climb and
+   the hot motors are the oscillation itself). Same mode as ADRC-024
+   (25–26 Hz). So "does scheduling help at all?" is answered qualitatively:
+   **yes — with no b0 schedule this craft's hover ring is unflyable**, even
+   though the fixed *shape* scores mid-pack on accuracy (0.186). Ring
+   severity is monotone in scheduling strength:
+   FIXED (~59) > SQRT (≤17) > LINEAR (≤11) > QUADRATIC (≤8 deg/s worst
+   window). Quantitative FIXED statistics remain thin (2 identification
+   windows) — but no more FIXED flights should be requested on this craft.
 
 **Practical read**: on current loop code, LINEAR is the best compromise
 (near-best accuracy, lowest ring short of quadratic, mid rebound); SQRT
@@ -62,8 +74,9 @@ difference between profiles is `adrc_b0_law`** (see the committed
 `diff all`): p1 = SQRT, p2 = FIXED, p3 = QUADRATIC, p4 = LINEAR (header
 `adrc_b0_law` 1/3/0/2 — cross-checked per log).
 
-Flights per arm: SQRT ×3, QUADRATIC ×4, LINEAR ×4, FIXED ×1 (the grass-strike
-flight), spread over 3 packs in mixed order. Originals (`.bbl`, `diff all`)
+Flights per arm: SQRT ×3, QUADRATIC ×4, LINEAR ×4, FIXED ×1 (deliberately
+ditched at 12 s — unflyable ring, see verdict item 4), spread over 3 packs
+in mixed order. Originals (`.bbl`, `diff all`)
 are preserved here; DVR/OSD archived offline (`blackbox/b5`, 2.6 GB).
 
 The active law is verified *from telemetry*, not just headers: debug[7]
@@ -83,8 +96,8 @@ windows where any motor rides the floor) and the axis test is
 first-axis-meeting-criteria vs loudest-axis. Under the original criterion
 the incidences are SQRT 58/41/57 %, LINEAR 13/8/8/15 %, QUADRATIC
 3/5/5/12 % — same ranking, higher absolutes; the FIXED flight then yields
-5 hover windows of which 4 ring (consistent in sign with the gain story,
-but n=5 from the aborted flight — not evidence). Caveats carried over: absolute b0 is analysis-band-dependent;
+5 hover windows of which 4 ring (n=5, but consistent with the pilot's
+report and the episode spectra in verdict item 4). Caveats carried over: absolute b0 is analysis-band-dependent;
 z3~u is a model-residual cross-check, not an independent estimate; maneuvers
 were pilot-flown, not scripted, so per-arm exposure differs (ring incidence
 is normalized per hover-band window to compensate).
@@ -102,14 +115,19 @@ z3~u slope medians (roll+pitch pooled), hover bin 18–27 % / high bin
 
 Ring incidence per flight (hover-band windows, 18–32 Hz tone > 5 deg/s,
 tone fraction > 0.5): SQRT 36 / 29 / 41 % · LINEAR 6 / 2 / 2 / 7 % ·
-QUADRATIC 1 / 0 / 2 / 0 % · FIXED — (0 usable windows).
+QUADRATIC 1 / 0 / 2 / 0 % · FIXED — (0 windows pass this gate; the flight's
+ring lives in the zero-stick-throttle segments, see verdict item 4).
+
+FIXED flight episode spectra (2 s segments): 25.5 Hz tone RMS 59.1 / 58.0
+deg/s roll (4–6 s / 8–10 s), 10.9 / 9.4 % of samples at motor 2047, mean
+motor 655 / 673 vs ~250 in quiet segments — at zero stick throttle.
 
 ## What would settle the remaining questions
 
-- **FIXED needs flights** (ADRC-021's null control): 1–2 hover + doublet
-  flights on p2. Prediction if the gain-margin story is right: ring ≥ SQRT's.
-- A SQRT (or FIXED) flight with wc ≈ 40–50 to test that margin, not the law,
-  controls the 26 Hz mode (ties into ADRC-024 and jmsweng's "wc ≈ 40
-  quiets it").
+- ~~FIXED needs flights~~ — answered by the pilot report + episode spectra:
+  no-schedule is unflyable on this craft; do **not** re-fly FIXED here.
+- **The decisive flight**: SQRT with wc ≈ 40–50 — tests whether margin, not
+  the law, controls the 26 Hz mode (ties into ADRC-024 and jmsweng's
+  "wc ≈ 40 quiets it").
 - Second craft (jmsweng): even QUADRATIC vs SQRT hover pairs would show
   whether the ring inversion is craft-specific.
