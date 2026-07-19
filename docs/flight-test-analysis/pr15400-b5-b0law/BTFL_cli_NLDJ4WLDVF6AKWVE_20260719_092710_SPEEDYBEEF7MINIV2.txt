@@ -1,0 +1,207 @@
+# 
+
+# diff all
+
+# version
+# Betaflight / STM32F7X2 (F722) 2026.6.0-alpha Jul 18 2026 / 12:14:08 (543f1a5ff) MSP API: 1.48
+# config rev: 57abd54
+
+# start the command batch
+batch start
+
+# reset configuration to default settings
+defaults nosave
+
+board_name SPEEDYBEEF7MINIV2
+manufacturer_id SPBE
+mcu_id 0017003a3232511630383830
+signature 
+
+# name: NLDj4wldvf6akwve
+
+# feature
+feature -AIRMODE
+feature TELEMETRY
+feature OSD
+
+# serial
+serial UART2 131073 115200 57600 0 115200
+serial UART3 64 115200 57600 0 115200
+
+# beacon
+beacon RX_LOST
+beacon RX_SET
+
+# aux
+aux 0 0 0 1700 2100 0 0
+aux 1 1 2 1700 2100 0 0
+aux 2 28 2 900 1300 0 0
+aux 3 35 4 1700 2100 1 0
+aux 4 35 5 1700 2100 1 0
+aux 5 36 4 1700 2100 0 0
+aux 6 36 5 1700 2100 0 0
+
+# rxfail
+rxfail 6 s 2000
+
+# master
+set gyro_lpf1_static_hz = 0
+set gyro_lpf2_static_hz = 1000
+set dyn_notch_count = 1
+set dyn_notch_q = 500
+set dyn_notch_min_hz = 130
+set gyro_lpf1_dyn_min_hz = 0
+set gyro_lpf1_dyn_max_hz = 1000
+set acc_calibration = -38,-4,25,1
+set rc_smoothing_auto_factor = 70
+set rc_smoothing_auto_factor_throttle = 50
+set blackbox_sample_rate = 1/2
+set blackbox_disable_rssi = ON
+set motor_kv = 2400
+set dshot_bidir = ON
+set motor_pwm_protocol = DSHOT300
+set motor_output_reordering = 3,2,1,0,4,5,6,7
+set align_board_yaw = 180
+set yaw_motors_reversed = ON
+set crashflip_motor_percent = 100
+set crashflip_rate = 35
+set small_angle = 180
+set deadband = 2
+set yaw_deadband = 2
+set simplified_gyro_filter_multiplier = 200
+set osd_warn_bitmask = 51197
+set osd_rssi_dbm_alarm = -98
+set osd_alt_alarm = 120
+set osd_vbat_pos = 6707
+set osd_link_quality_pos = 7561
+set osd_rssi_dbm_pos = 7498
+set osd_rsnr_pos = 7532
+set osd_flymode_pos = 6214
+set osd_pilot_name_pos = 7244
+set osd_gps_speed_pos = 326
+set osd_gps_sats_pos = 390
+set osd_home_dir_pos = 570
+set osd_home_dist_pos = 572
+set osd_altitude_pos = 23100
+set osd_warnings_pos = 14708
+set osd_disarmed_pos = 6486
+set osd_flip_arrow_pos = 6213
+set osd_camera_frame_pos = 108
+set osd_stat_bitmask = 44219046
+set osd_camera_frame_width = 29
+set osd_camera_frame_height = 14
+set debug_mode = ADRC
+set rpm_filter_weights = 100,15,85
+set rpm_filter_fade_range_hz = 30
+set craft_name = NLDj4wldvf6akwve
+set pilot_name = BOB
+
+profile 0
+
+# profile 0
+# set dterm_lpf1_dyn_min_hz = 90
+# set dterm_lpf1_dyn_max_hz = 180
+# set dterm_lpf1_static_hz = 90
+# set dterm_lpf2_static_hz = 180
+# set vbat_sag_compensation = 90
+# set anti_gravity_gain = 90
+# set iterm_relax_cutoff = 16
+# set pidsum_limit = 1000
+# set pidsum_limit_yaw = 1000
+# set p_pitch = 72
+# set i_pitch = 104
+# set d_pitch = 47
+# set f_pitch = 193
+# set p_roll = 69
+# set i_roll = 99
+# set d_roll = 41
+# set f_roll = 186
+# set p_yaw = 69
+# set i_yaw = 99
+# set f_yaw = 186
+# set d_max_roll = 59
+# set d_max_pitch = 69
+# set d_max_advance = 0
+# set feedforward_jitter_factor = 10
+# set dyn_idle_min_rpm = 30
+# set simplified_master_multiplier = 155
+# set simplified_i_gain = 80
+# set simplified_d_gain = 90
+# set simplified_d_max_gain = 130
+# set simplified_dterm_filter_multiplier = 120
+
+profile 0
+
+# profile 0
+set vbat_sag_compensation = 90
+set feedforward_jitter_factor = 10
+set dyn_idle_min_rpm = 30
+set pid_type = ADRC
+set adrc_hover_throttle = 22
+set adrc_liftoff_throttle = 30
+set adrc_b0_law = SQRT
+
+profile 1
+
+# profile 1
+set vbat_sag_compensation = 90
+set feedforward_jitter_factor = 10
+set dyn_idle_min_rpm = 30
+set pid_type = ADRC
+set adrc_hover_throttle = 22
+set adrc_liftoff_throttle = 30
+set adrc_b0_law = FIXED
+
+profile 2
+
+# profile 2
+set vbat_sag_compensation = 90
+set feedforward_jitter_factor = 10
+set dyn_idle_min_rpm = 30
+set pid_type = ADRC
+set adrc_hover_throttle = 22
+set adrc_liftoff_throttle = 30
+set adrc_b0_law = QUADRATIC
+
+profile 3
+
+# profile 3
+set vbat_sag_compensation = 90
+set feedforward_jitter_factor = 10
+set dyn_idle_min_rpm = 30
+set pid_type = ADRC
+set adrc_hover_throttle = 22
+set adrc_liftoff_throttle = 30
+set adrc_b0_law = LINEAR
+
+# restore original profile selection
+profile 0
+
+rateprofile 0
+
+# rateprofile 0
+set roll_rc_rate = 5
+set pitch_rc_rate = 5
+set yaw_rc_rate = 5
+
+rateprofile 1
+
+rateprofile 2
+
+rateprofile 3
+
+battery_profile 0
+
+battery_profile 1
+
+battery_profile 2
+
+# restore original rateprofile selection
+rateprofile 0
+
+# restore original battery_profile selection
+battery_profile 0
+
+# save configuration
+save
+# 

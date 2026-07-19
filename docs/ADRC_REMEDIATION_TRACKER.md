@@ -150,6 +150,24 @@ with the PR author (the 4-bit PG version budget — this bump wraps 15 → 0;
 the winning law ships upstream alone). Next: the controlled same-craft A/B
 (same day, same packs, same maneuver script, randomized order if possible).
 
+**A/B flown (2026-07-19)**: 12 b5 flights, one craft, all profiles at
+defaults 60/100/2000, only the law differing (SQRT ×3 / QUADRATIC ×4 /
+LINEAR ×4 / FIXED ×1 — the FIXED flight ended in a 12 s grass strike, so
+the control arm has no usable data). Analysis in
+[`docs/flight-test-analysis/pr15400-b5-b0law/`](flight-test-analysis/pr15400-b5-b0law/)
+(data, `b5_ab.py`, `ANALYSIS.md`); the active law is verified from
+telemetry (debug[7] applied-scale vs law prediction, every log). Pooled law
+scoring over 559 windows: **sqrt 0.157 < linear 0.173 < fixed 0.186 <
+quadratic 0.253** (RMS log-error); plant gain hover→40–60 % again grows only
+×1.3. z3~u is flattest under SQRT, steepest under QUADRATIC. **But the law
+choice interacts with ADRC-024**: the 26 Hz hover ring flares under SQRT
+(29–41 % of hover-band windows vs 0–2 % QUADRATIC, 2–7 % LINEAR) — the
+accuracy-optimal law removes the over-scaling that was masking a
+marginally-damped ~26 Hz mode. Production read: LINEAR is the compromise on
+current loop code; SQRT is right once the 26 Hz mode has margin (see
+ADRC-024). Remaining: FIXED control flights, and a margin experiment
+(SQRT + wc ≈ 40–50).
+
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
 Explicit criterion going forward: defaults (`wc/wo/b0`, gate thresholds,
@@ -245,6 +263,23 @@ carries a strong high-frequency line that is a plausible mechanical/
 motor-band candidate for what he hears, though its link to the audible
 oscillation is unproven (no audio sync; aliasing at his 988 Hz log rate).
 
+**Law-controlled measurement (2026-07-19,
+[`pr15400-b5-b0law/`](flight-test-analysis/pr15400-b5-b0law/))**: with
+wc/wo/b0 fixed at defaults and only `adrc_b0_law` varying, ring incidence in
+hover-band windows is **29–41 % under SQRT (all three flights, 25–26 Hz,
+worst 17 deg/s), 2–7 % under LINEAR, 0–2 % under QUADRATIC**; ring windows
+sit at 24–26 % collective, just above hover, where quadratic applies
+×1.2–1.4 b0 (20–40 % less loop gain) vs sqrt's ≈×1.05. A 20–30 % gain
+difference flips the mode — strong evidence the craft carries a
+marginally-damped ~26 Hz mode at hover-band loop gain, and that the
+quadratic's over-scaling (the ADRC-021 defect) was *masking* it.
+Consistent with the wc-85-worsens observation above; the margin story is
+now the established direction, though wc-vs-b0eff attribution still needs a
+SQRT+low-wc flight. Fix space: loop/observer margin at ~26 Hz (wc shaping,
+observer-path filtering — cf. the fork's `adrc-dterm-lpf` z2-LPF
+experiment) rather than retaining the inaccurate law as an implicit gain
+cut.
+
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
 Calm-stick post-chop pitch peaks (deg/s; table produced by
@@ -275,7 +310,11 @@ and the clip is not the ESO's internal clamp, so the true z3 magnitude there
 is unknown. Converted tune shows the same (79–102 deg/s at 45–54 % punches).
 ADRC-021 is now measured — a law fix plus re-measure is the cheapest next
 discriminator; the z3-saturation link remains correlation, not established
-cause.
+cause. **2026-07-19 b5 A/B adds the law dimension**: calm punch→chop
+rebounds — SQRT median 51 / max 114 (n=10), LINEAR 58 / 111 (n=17),
+QUADRATIC 71 / 145 (n=11) deg/s — direction consistent with less
+high-collective over-scaling leaving a smaller stored observer error at the
+chop, not yet conclusive at these n.
 
 ## How to help test
 
