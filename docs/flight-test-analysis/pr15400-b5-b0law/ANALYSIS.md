@@ -18,7 +18,9 @@
 2. **ADRC-024 (the surprise, and the reason not to just ship sqrt)**: the
    26 Hz hover ring is **law-dependent in the opposite direction** —
    ring incidence in hover-band windows is **29–41 % under SQRT** (all three
-   flights, 25–26 Hz, worst 17 deg/s), **2–7 % under LINEAR**, **0–2 % under
+   flights, 25–26 Hz; worst 17 deg/s *within the gated table* — the gate
+   drops motor-floor windows, sustained calm-stick episodes actually reach
+   70 deg/s, see `flight_screen.py`), **2–7 % under LINEAR**, **0–2 % under
    QUADRATIC** (this script's stricter window gate; the committed
    `ring_sensitivity.py` criterion gives 41–58 / 8–15 / 3–12 % with the same
    ranking — see Method). Ring windows sit at 24–26 % collective, right
@@ -42,17 +44,23 @@
    (extreme ring on raising throttle, continued climb and ring after
    dropping it, motors very hot after 12 s). Telemetry corroborates every
    element: two self-sustained **25.5 Hz** episodes (4–6 s and 8–10 s) with
-   tone RMS **58–59 deg/s roll** — ~3× the worst SQRT window — during
+   tone RMS **58–59 deg/s roll** during
    which ~10 % of samples sit at motor saturation 2047 *at zero stick
    throttle*, mean motor ~660 vs ~250 in the quiet segments (the climb and
    the hot motors are the oscillation itself). Same mode as ADRC-024
    (25–26 Hz). So "does scheduling help at all?" is answered qualitatively:
    **yes — with no b0 schedule this craft's hover ring is unflyable**, even
    though the fixed *shape* scores mid-pack on accuracy (0.186). Ring
-   severity is monotone in scheduling strength:
-   FIXED (~59) > SQRT (≤17) > LINEAR (≤11) > QUADRATIC (≤8 deg/s worst
-   window). Quantitative FIXED statistics remain thin (2 identification
-   windows) — but no more FIXED flights should be requested on this craft.
+   *incidence* is monotone in scheduling strength (SQRT > LINEAR >
+   QUADRATIC under both window criteria; FIXED's one flight consistent);
+   episode *amplitudes* overlap between arms once motor-floor windows are
+   counted (`flight_screen.py`: sustained calm-stick tones reach 70 deg/s
+   under SQRT at ~28 % stick, 25–40 under LINEAR/QUADRATIC) — what makes
+   FIXED unique is not amplitude but **uncommanded thrust** (zero-stick
+   mean-motor p90 = 993 vs ≤ 469 in every other flight) and unflyability on
+   raising throttle. Quantitative FIXED statistics remain thin (2
+   identification windows) — but no more FIXED flights should be requested
+   on this craft.
 
 **Practical read**: on current loop code, LINEAR is the best compromise
 (near-best accuracy, lowest ring short of quadratic, mid rebound); SQRT

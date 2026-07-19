@@ -274,8 +274,8 @@ oscillation is unproven (no audio sync; aliasing at his 988 Hz log rate).
 **Law-controlled measurement (2026-07-19,
 [`pr15400-b5-b0law/`](flight-test-analysis/pr15400-b5-b0law/))**: with
 wc/wo/b0 fixed at defaults and only `adrc_b0_law` varying, ring incidence in
-hover-band windows is **29–41 % under SQRT (all three flights, 25–26 Hz,
-worst 17 deg/s), 2–7 % under LINEAR, 0–2 % under QUADRATIC** (b5 script's
+hover-band windows is **29–41 % under SQRT (all three flights, 25–26 Hz),
+2–7 % under LINEAR, 0–2 % under QUADRATIC** (b5 script's
 stricter window gate; 41–58 / 8–15 / 3–12 % under the committed
 `ring_sensitivity.py` criterion — same ranking; method delta documented in
 the b5 ANALYSIS.md); ring windows sit at 24–26 % collective, just above
@@ -292,10 +292,17 @@ SQRT + wc ≈ 40–50 flight. Fix space if it holds: loop/observer margin at
 untested candidate) rather than retaining the inaccurate law as an
 implicit gain cut. **The FIXED arm completes the dose-response**: the
 pilot ditched it at 12 s as unflyable — telemetry shows the same mode at
-25.5 Hz, tone RMS 58–59 deg/s (~3× the worst SQRT window) with ~10 % motor
-saturation at zero stick throttle. Ring severity is monotone in scheduling
-strength: FIXED (~59) > SQRT (≤17) > LINEAR (≤11) > QUADRATIC (≤8 deg/s
-worst window) — strong same-craft support for the gain-sensitivity of the
+25.5 Hz, tone RMS 58–59 deg/s with ~10 % motor saturation at zero stick
+throttle. Ring *incidence* is monotone in scheduling strength
+(SQRT > LINEAR > QUADRATIC under both window criteria; FIXED consistent);
+episode *amplitudes* overlap between arms once motor-floor windows are
+counted (`flight_screen.py` in the b5 dir: sustained calm-stick tones
+reach 70 deg/s under SQRT at ~28 % stick, 25–40 under LINEAR/QUADRATIC;
+b5_ab.py's gated "worst tone" column understates amplitude because the
+all-motors-above-floor gate drops the deepest ring windows — incidence
+comparisons are unaffected). FIXED is unique not by amplitude but by
+**uncommanded thrust**: zero-stick mean-motor p90 = 993 vs ≤ 469 in every
+other flight — strong same-craft support for the gain-sensitivity of the
 mode, still short of proving the margin mechanism.
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
