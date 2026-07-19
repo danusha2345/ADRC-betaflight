@@ -5,7 +5,13 @@
 1. **ADRC-021 (accuracy)**: the b5 A/B corpus re-confirms the July-15 result
    with law-controlled flights — pooled law scoring (559 windows, one craft):
    **sqrt 0.157 < linear 0.173 < fixed 0.186 < quadratic 0.253** (RMS
-   log-error, per-law best-fit hover b0). Measured plant gain grows
+   log-error, per-law best-fit hover b0). Precisely stated, this scores each
+   *candidate schedule shape* against the pooled plant-gain estimates from
+   all arms (the plant is law-independent), **not** per-arm in-flight
+   accuracy — the FIXED row is fit on the same 559 windows even though the
+   FIXED arm contributed only 2 of them. The ordering is robust: SQRT wins
+   all 12 leave-one-flight-out refits and ~98 % of 2000 flight-level
+   bootstrap resamples. Measured plant gain grows
    ~2290 → ~2970 from hover to 40–60 % collective (×1.3), nowhere near the
    quadratic's ×2.3–3. The ESO residual agrees: z3~u slope is most negative
    and steepest-vs-collective under QUADRATIC, flattest under SQRT.
@@ -13,14 +19,19 @@
    26 Hz hover ring is **law-dependent in the opposite direction** —
    ring incidence in hover-band windows is **29–41 % under SQRT** (all three
    flights, 25–26 Hz, worst 17 deg/s), **2–7 % under LINEAR**, **0–2 % under
-   QUADRATIC**. Ring windows sit at 24–26 % collective, right above hover,
-   where quadratic already applies ×1.2–1.4 b0 (i.e. 20–40 % *less* loop
-   gain) and sqrt applies ≈×1.05. A ~20–30 % gain difference flips the mode
-   from quiet to ringing ⇒ the craft carries a marginally-damped ~26 Hz mode
-   at hover gain, and the quadratic law was masking it by over-scaling.
-   **The accuracy-optimal law exposes ADRC-024; the ring is a
-   phase/gain-margin problem to fix in the loop, not by keeping a wrong b0
-   law.**
+   QUADRATIC** (this script's stricter window gate; the committed
+   `ring_sensitivity.py` criterion gives 41–58 / 8–15 / 3–12 % with the same
+   ranking — see Method). Ring windows sit at 24–26 % collective, right
+   above hover, where quadratic already applies ×1.2–1.4 b0 — a ~17–29 %
+   cut of the direct-path gain vs scale 1 (~12–25 % vs sqrt's ≈×1.05;
+   b0 also enters the ESO feedback, so the full-loop change is approximate).
+   That modest gain difference flips the mode from quiet to ringing. The
+   **measured** fact is: the b0 law controls the 26 Hz ring incidence on
+   this craft, and the accuracy-optimal law exposes what the quadratic's
+   over-scaling was suppressing. The **leading interpretation** is a
+   marginally-damped ~26 Hz mode short on loop margin at hover-band gain —
+   a hypothesis, not yet established; the decisive test is a SQRT flight at
+   wc ≈ 40–50 (see below).
 3. **ADRC-025 (rebound)**: calm punch→chop rebounds — SQRT median 51 / max
    114 (n=10), LINEAR 58 / 111 (n=17), QUADRATIC 71 / 145 (n=11) deg/s.
    Direction consistent with less high-collective over-scaling ⇒ smaller
@@ -32,11 +43,13 @@
    control failure** — but the null-hypothesis control arm still has no data.
 
 **Practical read**: on current loop code, LINEAR is the best compromise
-(near-best accuracy, 2–7 % ring, mid rebound); SQRT is the right law once
-the 26 Hz mode is given margin (wc/wo shaping or observer-path filtering —
-cf. the fork's `adrc-dterm-lpf` experiment). QUADRATIC buys its quiet hover
-by over-scaling b0 ~×2 at 35–45 % collective, which the identification and
-the rebound numbers both bill.
+(near-best accuracy, lowest ring short of quadratic, mid rebound); SQRT
+becomes the right law *if* giving the 26 Hz mode margin works — wc/wo
+shaping is the testable path, the fork's `adrc-dterm-lpf` z2-LPF is a
+separate untested candidate (its effect on stability margin is itself
+unverified). QUADRATIC buys its quiet hover by over-scaling b0 ~×2 at
+35–45 % collective, which the identification and the rebound numbers both
+bill.
 
 ## Data & provenance
 
@@ -60,11 +73,18 @@ the arm's law prediction in every log (sanity table in `b5_ab.py` output).
 ## Method
 
 `b5_ab.py`, run from this directory after `blackbox_decode --debug
---unit-frame-time us *.bbl`. Identification, z3 residual, ring signature and
-punch criteria are the committed `pr15400-doublets` methods verbatim
-(`identify_b0.py` is imported, its CSV loader patched only to tolerate the
-truncated tail rows these logs carry); this script merely re-groups results
-by law arm. Caveats carried over: absolute b0 is analysis-band-dependent;
+--unit-frame-time us *.bbl`. Identification and z3-residual estimators are
+the committed `pr15400-doublets` methods (`identify_b0.py` is imported, its
+CSV loader patched only to tolerate the truncated tail rows these logs
+carry); punch criteria match `punches_20260715.py`. **The ring windowing
+deviates from `ring_sensitivity.py` in two ways**: the motor gate is
+stricter (all four motors above floor, `min > 50`, vs mean `> 68` — drops
+windows where any motor rides the floor) and the axis test is
+first-axis-meeting-criteria vs loudest-axis. Under the original criterion
+the incidences are SQRT 58/41/57 %, LINEAR 13/8/8/15 %, QUADRATIC
+3/5/5/12 % — same ranking, higher absolutes; the FIXED flight then yields
+5 hover windows of which 4 ring (consistent in sign with the gain story,
+but n=5 from the aborted flight — not evidence). Caveats carried over: absolute b0 is analysis-band-dependent;
 z3~u is a model-residual cross-check, not an independent estimate; maneuvers
 were pilot-flown, not scripted, so per-arm exposure differs (ring incidence
 is normalized per hover-band window to compensate).
