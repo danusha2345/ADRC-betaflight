@@ -174,7 +174,7 @@ b5 script's stricter gate; 41–58 / 3–12 / 8–15 % under the original
 removes the over-scaling that was suppressing the ring. Production read:
 LINEAR is the compromise on current loop code; SQRT is right *if* the
 margin hypothesis holds (see ADRC-024). Remaining: the decisive margin
-experiment (SQRT + wc ≈ 40–50); FIXED must not be re-flown on this craft.
+experiment (the wc/wo 2×2 on SQRT, see ADRC-024); FIXED must not be re-flown on this craft.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
@@ -286,8 +286,15 @@ difference flips the mode. **Measured**: the b0 law controls the ring
 incidence on this craft, and the quadratic's over-scaling (the ADRC-021
 defect) was suppressing it. **Leading hypothesis** (consistent with the
 wc-85-worsens observation above, not yet established): a marginally-damped
-~26 Hz mode short on loop margin; the decisive discriminator is a
-SQRT + wc ≈ 40–50 flight. Fix space if it holds: loop/observer margin at
+~26 Hz mode short on loop margin; the decisive discriminator is the
+**wc/wo 2×2 on SQRT** agreed with the PR author (2026-07-19): p1 = 60/100
+baseline, p2 = 45/100, p3 = 60/150, p4 = 45/150, one b5 flash, same
+maneuver script per profile. It separates the two margin levers the
+existing evidence conflates (the quiet converted tune is low-wc *and*
+high-wo at once; the lone wo-150 flight was too short): wc-gain story →
+p2/p4 quiet; observer-lag story (mode 26 Hz ≈ 163 rad/s sits *above* the
+wo = 100 observer poles, so the ESO contributes phase lag there) → p3/p4
+quiet; additive → only p4; all-ring → mechanism isn't (just) margin. Fix space if it holds: loop/observer margin at
 ~26 Hz (wc shaping; the fork's `adrc-dterm-lpf` z2-LPF is a separate
 untested candidate) rather than retaining the inaccurate law as an
 implicit gain cut. **The FIXED arm completes the dose-response**: the

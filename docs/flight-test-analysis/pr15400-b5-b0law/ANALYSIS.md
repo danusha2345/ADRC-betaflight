@@ -134,8 +134,11 @@ motor 655 / 673 vs ~250 in quiet segments — at zero stick throttle.
 
 - ~~FIXED needs flights~~ — answered by the pilot report + episode spectra:
   no-schedule is unflyable on this craft; do **not** re-fly FIXED here.
-- **The decisive flight**: SQRT with wc ≈ 40–50 — tests whether margin, not
-  the law, controls the 26 Hz mode (ties into ADRC-024 and jmsweng's
-  "wc ≈ 40 quiets it").
+- **The decisive session** (agreed with the PR author 2026-07-19): a wc/wo
+  2×2 with the law pinned to SQRT — p1 = 60/100 baseline, p2 = 45/100,
+  p3 = 60/150, p4 = 45/150, one b5 flash. Separates the wc-gain lever from
+  the observer-lag lever (the mode at 26 Hz ≈ 163 rad/s sits above the
+  wo = 100 observer poles), which the existing evidence conflates (ties
+  into ADRC-024 and jmsweng's "wc ≈ 40 quiets it").
 - Second craft (jmsweng): even QUADRATIC vs SQRT hover pairs would show
   whether the ring inversion is craft-specific.
