@@ -32,8 +32,8 @@
    this craft, and the accuracy-optimal law exposes what the quadratic's
    over-scaling was suppressing. The **leading interpretation** is a
    marginally-damped ~26 Hz mode short on loop margin at hover-band gain —
-   a hypothesis, not yet established; the decisive test is a SQRT flight at
-   wc ≈ 40–50 (see below).
+   a hypothesis, not yet established; the decisive test is the wc/wo 2×2
+   session on SQRT (see below).
 3. **ADRC-025 (rebound)**: calm punch→chop rebounds — SQRT median 51 / max
    114 (n=10), LINEAR 58 / 111 (n=17), QUADRATIC 71 / 145 (n=11) deg/s.
    Direction consistent with less high-collective over-scaling ⇒ smaller
