@@ -312,6 +312,20 @@ comparisons are unaffected). FIXED is unique not by amplitude but by
 other flight — strong same-craft support for the gain-sensitivity of the
 mode, still short of proving the margin mechanism.
 
+**Second craft (2026-07-20, jmsweng DAKEFPV,
+[`pr15400-jm-b0sweep/`](flight-test-analysis/pr15400-jm-b0sweep/))**: a
+second-craft ADRC-024-like **22 Hz** instability observed at
+wc = 40 / wo = 100 / b0 = 1000 (band RMS ~40 deg/s in the 0.46 s of gate-open
+takeoff transient before a disarm); similarity of mechanism and established
+airborne-hover reproduction remain unconfirmed. At b0 ≥ 2000 the same craft's
+calm-stick 18–32 Hz tone sits at 1–5 deg/s and falls to a flat ~1 deg/s floor
+by b0 ≈ 3000–4000 with no high-b0 rebound in calm windows (1–3 windows per
+arm — point estimates). His four-law hover A/B from the same day is
+**effectively degenerate** (`adrc_hover_throttle = 35` vs actual ~28 % hover
+→ the never-below-1× clamp held three arms at exactly ×1.00 and LINEAR at
+≤×1.03 for 0.27 s), so it neither confirms nor refutes the law/ring
+inversion cross-craft. The wc/wo 2×2 above remains the decisive experiment.
+
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
 Calm-stick post-chop pitch peaks (deg/s; table produced by
