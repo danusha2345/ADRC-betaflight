@@ -5,8 +5,12 @@
 
 Run after: blackbox_decode --debug --unit-frame-time us btfl_lawab2.bbl
 Same corrected methods as jm_b0sweep.py (band RMS sqrt(2*sum|X|^2)/N, gate
-slice masked before windowing). Ring window = 1 s, calm R/P setpoints
-(std < 30 dps), max-axis 18-32 Hz band RMS > 10 dps.
+slice masked before windowing). Ring window = 1 s, hop 0.25 s (overlapping —
+a fixed non-overlapping grid can straddle or miss episodes), calm R/P
+setpoints gated on BOTH std < 30 dps and max |setpoint| < 30 dps (the
+std-only gate admitted windows containing brief commanded transients), the
+reported frequency comes from the same axis that produced the max band RMS.
+Overlapping ring windows are merged into episodes for counting.
 """
 import csv
 import numpy as np
@@ -53,29 +57,45 @@ for n in range(1, 10):
     d7 = d["debug[7]"][s]
     thr = (d["rcCommand[3]"] - 1000) / 10
     W = int(round(fs))
-    ring, tot, worst, wf = 0, 0, 0.0, 0.0
-    events = []
-    for w in range((s.stop - s.start) // W):
-        ws = slice(s.start + w * W, s.start + (w + 1) * W)
-        if (np.std(d["setpoint[0]"][ws]) >= 30 or
-                np.std(d["setpoint[1]"][ws]) >= 30):
+    HOP = W // 4
+    tot, worst, wf = 0, 0.0, 0.0
+    hits = []
+    for start in range(s.start, s.stop - W, HOP):
+        ws = slice(start, start + W)
+        sp0, sp1 = d["setpoint[0]"][ws], d["setpoint[1]"][ws]
+        if (np.std(sp0) >= 30 or np.std(sp1) >= 30 or
+                np.max(np.abs(sp0)) >= 30 or np.max(np.abs(sp1)) >= 30):
             continue
         tot += 1
-        r = max(band_rms(d["gyroUnfilt[0]"][ws], fs, 18, 32),
-                band_rms(d["gyroUnfilt[1]"][ws], fs, 18, 32))
+        rr = [band_rms(d[ax][ws], fs, 18, 32)
+              for ax in ("gyroUnfilt[0]", "gyroUnfilt[1]")]
+        ax_i = int(np.argmax(rr))
+        r = rr[ax_i]
         if r > 10:
-            ring += 1
-            events.append((t[ws.start], np.median(thr[ws]),
-                           np.percentile(thr[ws], 90), r))
+            hits.append((t[ws.start], t[ws.stop - 1], np.median(thr[ws]),
+                         np.percentile(thr[ws], 90), r))
         if r > worst:
-            g = d["gyroUnfilt[0]"][ws] - np.mean(d["gyroUnfilt[0]"][ws])
+            ax = ("gyroUnfilt[0]", "gyroUnfilt[1]")[ax_i]
+            g = d[ax][ws] - np.mean(d[ax][ws])
             spec = np.abs(np.fft.rfft(g * np.hanning(len(g))))
             f = np.fft.rfftfreq(len(g), 1 / fs)
             b = (f >= 10) & (f <= 40)
             worst, wf = r, f[b][np.argmax(spec[b])]
+    # merge overlapping/adjacent ring windows into episodes
+    episodes = []
+    for t0, t1, tm, tp, r in hits:
+        if episodes and t0 <= episodes[-1][1] + 0.3:
+            e = episodes[-1]
+            episodes[-1] = (e[0], max(e[1], t1), e[2] + [(tm, tp)], max(e[3], r))
+        else:
+            episodes.append((t0, t1, [(tm, tp)], r))
     print(f"log{n} {LAW[n]:4s} dur {t[-1]:5.1f}s opens={n_open}  "
           f"d7 med/p90/max {np.median(d7):3.0f}/{np.percentile(d7, 90):3.0f}/"
           f"{d7.max():3.0f}  thr med {np.median(thr[s]):4.1f}%  "
-          f"ring {ring}/{tot} calm windows  worst {worst:4.1f} dps @{wf:4.1f} Hz")
-    for te, tm, tp, r in events:
-        print(f"        ring @{te:5.1f}s thr med {tm:4.1f}% p90 {tp:5.1f}%  {r:4.1f} dps")
+          f"ringWin {len(hits)}/{tot} (hop 0.25 s)  episodes {len(episodes)}  "
+          f"worst {worst:4.1f} dps @{wf:4.1f} Hz")
+    for t0, t1, thrs, r in episodes:
+        tms = [x[0] for x in thrs]
+        tps = [x[1] for x in thrs]
+        print(f"        episode {t0:5.1f}-{t1:5.1f}s  thr med {np.median(tms):4.1f}% "
+              f"p90 {max(tps):5.1f}%  peak {r:4.1f} dps")

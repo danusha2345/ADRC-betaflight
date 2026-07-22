@@ -99,30 +99,40 @@ arms **actually separated**: `debug[7]` max reaches ×2.42–3.00 (QUAD),
 ×1.28–1.64 (SQRT), ×1.93–3.00 (LINEAR), and stays pinned at ×1.00 (FIXED).
 Gate opens exactly once per log. Reproduce with `jm_lawab2.py`.
 
-Calm-stick ring windows (1 s, R/P setpoint std < 30 dps, max-axis 18–32 Hz
-band RMS > 10 dps):
+Calm-stick ring analysis (1 s windows, 0.25 s hop, gated on R/P setpoint
+std < 30 **and** max |setpoint| < 30 dps, max-axis 18–32 Hz band RMS
+> 10 dps, overlapping hits merged into episodes; the reported frequency
+comes from the axis that produced the max RMS). The hardened gate and
+overlapping grid follow a second-review pass: the earlier std-only,
+non-overlapping variant admitted one SQRT window containing a commanded
+transient at a shifted grid offset, and paired pitch RMS with roll
+frequency.
 
-| law | logs | ring windows | worst |
-|---|---|---|---|
-| QUADRATIC | 1, 2 | 1/21 (takeoff, 18 % thr) | 12.2 dps @ 18 Hz |
-| SQRT | 3, 4 | 0/18 | 9.1 dps @ 23 Hz (sub-threshold) |
-| LINEAR | 5, 6, 9 | 0/33 | 7.5 dps @ 22 Hz |
-| FIXED | 7, 8 | **7/24** | **25.6 dps @ 23 Hz** |
+| law | logs | ring windows (0.25 s hop) | episodes | worst |
+|---|---|---|---|---|
+| QUADRATIC | 1, 2 | 1/74 | 1 (takeoff, 18 % thr) | 12.2 dps @ 17 Hz |
+| SQRT | 3, 4 | 0/52 | 0 | 9.1 dps (sub-threshold) |
+| LINEAR | 5, 6, 9 | 0/105 | 0 | 7.5 dps |
+| FIXED | 7, 8 | **21/80** | **6** (3 per log) | **25.6 dps @ 23 Hz** |
 
-FIXED's ring windows sit both in the hover band (23–27 % collective) and
-around throttle transients (windows whose p90 throttle reaches 50–100 %) —
-exactly where the scheduled laws apply > ×1 b0 and FIXED does not.
+FIXED's six episodes span the hover band and the throttle excursions
+(episode p90 throttle 26–100 %). Precision on causality: this is an
+**association of FIXED with the ring, not proof that the schedule is the
+mechanism** — at least one FIXED episode sits entirely below the 28 %
+hover reference (log 8, 2.6–3.6 s, median 22.8 %, p90 25.8 %), where every
+law would have applied ×1.00, and the single QUADRATIC episode is also
+below hover at takeoff.
 
-Reading: on this craft, **any scheduling shape suppresses the ~22–23 Hz
-mode; no scheduling rings**. The SPEEDYBEE's b5 inversion (SQRT ≫ LINEAR >
-QUADRATIC incidence) does **not** reproduce here — the fine ordering among
-scheduled laws is craft-dependent, while both crafts agree on the extreme:
-the unscheduled (highest-gain-above-hover) arm is the worst. That is the
-dose-response the gain-sensitivity story predicts, still short of proving
-the margin mechanism. Caveats: not randomized, short backyard hovers,
-n = 2–3 logs per arm; the pilot reported SQRT and LINEAR "sounded a bit
-weird" — nothing law-dependent shows in the gyro above 40 Hz (motor lines
-1–2 dps; log 9 carries a 378 Hz line, plausibly prop damage from the
-power-line strike he reported), so the audible impression stays unresolved
-(no audio sync). The wc/wo 2×2 on the SPEEDYBEE remains the decisive
-experiment.
+Reading: on this craft, **repeated ~22–23 Hz ring episodes occur only under
+FIXED; the scheduled arms are clean apart from one QUADRATIC takeoff
+episode**. The SPEEDYBEE's b5 inversion (SQRT ≫ LINEAR > QUADRATIC
+incidence) does **not** reproduce here — the fine ordering among scheduled
+laws is craft-dependent, while both crafts agree on the extreme: the
+unscheduled arm is the worst. That is consistent with the gain-sensitivity
+dose-response, still short of proving the margin mechanism. Caveats: not
+randomized, short backyard hovers, n = 2–3 logs per arm; the pilot reported
+SQRT and LINEAR "sounded a bit weird" — nothing law-dependent shows in the
+gyro above 40 Hz (motor lines 1–2 dps; log 9 carries a 378 Hz line,
+plausibly prop damage from the power-line strike he reported), so the
+audible impression stays unresolved (no audio sync). The wc/wo 2×2 on the
+SPEEDYBEE remains the decisive experiment.

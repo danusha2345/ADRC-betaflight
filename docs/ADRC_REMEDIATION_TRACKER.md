@@ -330,16 +330,18 @@ inversion cross-craft.
 re-flown with `adrc_hover_throttle = 28` and deliberate above-hover
 excursions — the arms genuinely separated this time (`debug[7]` max ×2.4–3.0
 QUAD / ×1.3–1.6 SQRT / ×1.9–3.0 LINEAR / ×1.00 FIXED). Calm-stick ring
-windows (18–32 Hz band RMS > 10 dps): **FIXED 7/24 (worst 25.6 dps
-@ 23 Hz, both in the hover band and around throttle transients), QUADRATIC
-1/21 (takeoff window), SQRT 0/18, LINEAR 0/33**. The SPEEDYBEE's
-SQRT ≫ LINEAR > QUADRATIC inversion does **not** reproduce on the DAKEFPV —
-there, any scheduling shape suppresses the ~22–23 Hz mode and the
-unscheduled arm is the worst. Cross-craft agreement is at the extreme only
-(no-scheduling = highest gain above hover = worst on both crafts — the
-dose-response the gain-sensitivity story predicts); the fine ordering among
-scheduled laws is craft-dependent. Caveats: not randomized, 2–3 short
-hovers per arm. The wc/wo 2×2 above remains the decisive experiment.
+episodes (overlapping 1 s windows, strict setpoint gate, 18–32 Hz band RMS
+> 10 dps): **FIXED 6 episodes across both its logs (worst 25.6 dps
+@ 23 Hz), QUADRATIC 1 takeoff episode, SQRT and LINEAR none**. Repeated
+ring occurred only under FIXED — an **association, not proof the schedule
+is the mechanism**: one FIXED episode sits entirely below the 28 % hover
+reference where every law applies ×1.00, and the QUADRATIC episode is also
+below hover. The SPEEDYBEE's SQRT ≫ LINEAR > QUADRATIC inversion does
+**not** reproduce on the DAKEFPV; cross-craft agreement is at the extreme
+only (the unscheduled arm is worst on both — consistent with the
+gain-sensitivity dose-response); the fine ordering among scheduled laws is
+craft-dependent. Caveats: not randomized, 2–3 short hovers per arm. The
+wc/wo 2×2 above remains the decisive experiment.
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
