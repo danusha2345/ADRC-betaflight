@@ -88,3 +88,41 @@ Reading, with scope limits stated:
 Tracker impact: one line under ADRC-024 — *second-craft ADRC-024-like 22 Hz
 instability observed at wc = 40 / wo = 100 / b0 = 1000; similarity of
 mechanism and established airborne-hover reproduction remain unconfirmed.*
+
+## Result 3 — law A/B redo with `adrc_hover_throttle = 28` (2026-07-21, `btfl_lawab2.bbl`)
+
+The pilot re-flew the A/B the next day with the hover reference corrected and
+deliberate throttle excursions (past 70 % at times). 9 sessions, same b5 tag,
+tune 40/100/2000: logs 1,2 = QUADRATIC, 3,4 = SQRT, 5,6,9 = LINEAR,
+7,8 = FIXED (headers confirm `adrc_b0_law` 0,0,1,1,2,2,3,3,2). This time the
+arms **actually separated**: `debug[7]` max reaches ×2.42–3.00 (QUAD),
+×1.28–1.64 (SQRT), ×1.93–3.00 (LINEAR), and stays pinned at ×1.00 (FIXED).
+Gate opens exactly once per log. Reproduce with `jm_lawab2.py`.
+
+Calm-stick ring windows (1 s, R/P setpoint std < 30 dps, max-axis 18–32 Hz
+band RMS > 10 dps):
+
+| law | logs | ring windows | worst |
+|---|---|---|---|
+| QUADRATIC | 1, 2 | 1/21 (takeoff, 18 % thr) | 12.2 dps @ 18 Hz |
+| SQRT | 3, 4 | 0/18 | 9.1 dps @ 23 Hz (sub-threshold) |
+| LINEAR | 5, 6, 9 | 0/33 | 7.5 dps @ 22 Hz |
+| FIXED | 7, 8 | **7/24** | **25.6 dps @ 23 Hz** |
+
+FIXED's ring windows sit both in the hover band (23–27 % collective) and
+around throttle transients (windows whose p90 throttle reaches 50–100 %) —
+exactly where the scheduled laws apply > ×1 b0 and FIXED does not.
+
+Reading: on this craft, **any scheduling shape suppresses the ~22–23 Hz
+mode; no scheduling rings**. The SPEEDYBEE's b5 inversion (SQRT ≫ LINEAR >
+QUADRATIC incidence) does **not** reproduce here — the fine ordering among
+scheduled laws is craft-dependent, while both crafts agree on the extreme:
+the unscheduled (highest-gain-above-hover) arm is the worst. That is the
+dose-response the gain-sensitivity story predicts, still short of proving
+the margin mechanism. Caveats: not randomized, short backyard hovers,
+n = 2–3 logs per arm; the pilot reported SQRT and LINEAR "sounded a bit
+weird" — nothing law-dependent shows in the gyro above 40 Hz (motor lines
+1–2 dps; log 9 carries a 378 Hz line, plausibly prop damage from the
+power-line strike he reported), so the audible impression stays unresolved
+(no audio sync). The wc/wo 2×2 on the SPEEDYBEE remains the decisive
+experiment.

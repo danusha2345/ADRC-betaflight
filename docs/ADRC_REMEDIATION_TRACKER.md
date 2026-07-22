@@ -324,7 +324,22 @@ arm — point estimates). His four-law hover A/B from the same day is
 **effectively degenerate** (`adrc_hover_throttle = 35` vs actual ~28 % hover
 → the never-below-1× clamp held three arms at exactly ×1.00 and LINEAR at
 ≤×1.03 for 0.27 s), so it neither confirms nor refutes the law/ring
-inversion cross-craft. The wc/wo 2×2 above remains the decisive experiment.
+inversion cross-craft.
+
+**Law A/B redo (2026-07-21, same dir, `btfl_lawab2.bbl` + `jm_lawab2.py`)**:
+re-flown with `adrc_hover_throttle = 28` and deliberate above-hover
+excursions — the arms genuinely separated this time (`debug[7]` max ×2.4–3.0
+QUAD / ×1.3–1.6 SQRT / ×1.9–3.0 LINEAR / ×1.00 FIXED). Calm-stick ring
+windows (18–32 Hz band RMS > 10 dps): **FIXED 7/24 (worst 25.6 dps
+@ 23 Hz, both in the hover band and around throttle transients), QUADRATIC
+1/21 (takeoff window), SQRT 0/18, LINEAR 0/33**. The SPEEDYBEE's
+SQRT ≫ LINEAR > QUADRATIC inversion does **not** reproduce on the DAKEFPV —
+there, any scheduling shape suppresses the ~22–23 Hz mode and the
+unscheduled arm is the worst. Cross-craft agreement is at the extreme only
+(no-scheduling = highest gain above hover = worst on both crafts — the
+dose-response the gain-sensitivity story predicts); the fine ordering among
+scheduled laws is craft-dependent. Caveats: not randomized, 2–3 short
+hovers per arm. The wc/wo 2×2 above remains the decisive experiment.
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
