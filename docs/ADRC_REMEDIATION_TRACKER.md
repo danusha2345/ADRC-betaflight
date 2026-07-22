@@ -343,6 +343,49 @@ gain-sensitivity dose-response); the fine ordering among scheduled laws is
 craft-dependent. Caveats: not randomized, 2–3 short hovers per arm. The
 wc/wo 2×2 above remains the decisive experiment.
 
+**wc/wo 2×2 flown (2026-07-22,
+[`pr15400-b5-wcwo2x2/`](flight-test-analysis/pr15400-b5-wcwo2x2/)) — the
+experiment half-failed, informatively.** Both wo = 150 arms never reached
+the air: a ~28.3–28.8 Hz idle oscillation on the ground false-triggered the
+gyro-only liftoff detector within 0.1–0.4 s of arming (gate open at **0 %
+stick throttle**), the ESO wound up against ground contact and the motors
+ran to saturation — the pilot's "almost instant fly-aways" (see ADRC-026;
+**do not re-fly wo = 150** on this craft without a mitigation). So the
+observer-lag lever is untested in the air. The wc lever *was* tested:
+45/100 vs 60/100 leaves ring incidence, episode count, 27 Hz tone and peak
+amplitude essentially unchanged (10/39 windows worst 33.9 dps at wc 60 vs
+14/81 / 13/64 worst 27.8/30.8 dps across two wc 45 flights). Under the
+pre-registered predictions this lands in the **"neither lever" branch**
+(with the wo half untestable): plain wc reduction is de-prioritized as the
+ADRC-024 fix, and the structural observer-path candidates (the fork's
+`adrc-dterm-lpf` z2-LPF branch; observer redesign) move to the front.
+Cross-craft note: jmsweng's ICM42688 crafts hover all laws where this
+BMI270/MPU6000-target craft rings — an IMU/craft-difference hypothesis is
+on the table (his planned same-frame BMI270 A/B addresses it), unproven
+from logs.
+
+### ADRC-026 — Gyro-only liftoff detector false-triggers on ground idle oscillation at high wo (from the 2×2 flights)
+
+At wo = 150 (SQRT, b0 = 2000, wc 45 or 60) the craft oscillates at
+~28.5 Hz on the ground at idle throttle, exceeding
+`adrc_liftoff_gyro_dps = 20` for the 25 ms hold within 0.1–0.4 s of arming.
+The gate then opens **with the craft on the ground at 0 % stick throttle**,
+the ESO integrates ground-contact dynamics it cannot model, z3 winds up and
+the motors run up to saturation (6–24 % of samples at 2047) — an
+uncommanded thrust runaway on the ground. Three of five wo = 150 arms show
+exactly this signature; the other two were disarmed before the detector
+fired. Data: [`pr15400-b5-wcwo2x2/`](flight-test-analysis/pr15400-b5-wcwo2x2/).
+
+Status: OPEN. The defect is the liftoff detector's gyro-only path treating
+a self-induced idle oscillation as liftoff — any sufficiently-unstable tune
+can arm-and-runaway without the pilot ever raising throttle. Candidate
+mitigations (deliberately not implemented while the code is frozen for
+A/B continuity): require a minimum throttle floor alongside the gyro
+condition; band-reject 15–40 Hz content in the liftoff gyro test; or gate
+z3 accumulation until throttle exceeds idle. Safety guidance meanwhile:
+treat "motors audibly oscillating at idle after arming" as an immediate
+disarm, and do not fly high-wo profiles.
+
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
 Calm-stick post-chop pitch peaks (deg/s; table produced by
