@@ -91,9 +91,12 @@ While your tune is unproven you can disable PID at minimum throttle so a wrong t
 | 10" drone (author's video) | 10 | 50 | 20 |
 | 5" drone (jmsweng, 2300 kV) | 40 | 160 | 200 |
 | 5" drone (jmsweng, 1750 kV) | 40 | 160 | 250 |
-| 5" drone (jmsweng, 1750 kV, blackbox-refined) | 30 | 100 | 200 |
+| 5" drone (jmsweng, 1750 kV, airfield re-tune 2026-07-01) | 30 | 100 | 200 |
+| 5" drone (jmsweng, 1750 kV, round-2 ωc sweep 2026-07-05/06) | **60** | 100 | 200 |
 | 65 mm whoop (jmsweng, Air65 clone, 1S, 30000 kV) | 33 | 65 | 160 (with `adrc_b0_scale = 20`) |
 | 5" drone (maintainer, 2207 1300 kV, 6S, 51477 props — short indoor hover only) | 40 | 120 | 200 (with `adrc_b0_scale = 20`) |
+
+> Note on the two 1750 kV rows: they are the same craft before and after the round-2 control-bandwidth sweep, and the later one supersedes the earlier. Prefer **60/100/200** where they disagree — that sweep is what the upstream PR ships as its default tune (`adrc_wc = 60`, `adrc_wo = 100`, `adrc_b0 = 2000`, i.e. D 200 × the default scale 10). Details in [`ADRC_FIXES.md`](ADRC_FIXES.md) ("Round-2 5\" flight logs").
 
 > Note on the maintainer's row: the `adrc_b0_scale = 20` there is **not** a validated 5" recommendation — it was raised from the default 10 chasing a bench limit cycle that later traced to a stick / `pid_at_min_throttle` artefact, not b0. The other 5" rows run the default scale 10. On a 5" start at scale 10; the ×20 headroom is really for authority-limited whoops that hit the D ceiling.
 

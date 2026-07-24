@@ -18,6 +18,8 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 - `IMPLEMENTED` — code closed and host-tested; an *external* acceptance
   criterion remains (flight evidence, official CI, or hardware timing).
 - `OPEN` — tracked, not started or intentionally deferred.
+- `CLOSED` — resolved after this tracker was published; the entry moves to
+  *Closed after publication* below and keeps its reasoning for reference.
 
 ## Findings
 
@@ -44,40 +46,6 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-019 | b0 throttle schedule read the raw post-mixer collective: (1) mixer constrain tracks the loop's own axis activity → gain modulation at the resonance (`debug[7]` swinging 1.0↔2.8 at steady stick); (2) throttle chop collapsed the scale 3→1 in ~80 ms, faster than the ESO re-adapts → punch-chop rebound | IMPLEMENTED | `79f8b6041d` | Release-gradient and modulation-ripple characterization tests fail pre-fix | **b4 flight, split verdict**: (1) modulation FIXED — steady-window `debug[7]` swing p90 0.27–0.29 vs pre-fix 1.0↔2.8; (2) punch rebound NOT improved — post-chop pitch peaks: b4 per-log medians 45–97 deg/s (pooled 76, max 181) vs b3's 80 (max 95); the LPF alone is demonstrably not sufficient (though these flights can't fully exclude the release rate as a factor — no controlled A/B), and the rebound coincides with the z3 transient (consistent mechanism, causation not yet established) — tracked as ADRC-025 | ADRC-025 |
 
 ## Open items
-
-### ADRC-020 — Ground/air re-arm semantics (raised by @bvandevliet)
-
-The opt-in mid-air gate re-arm (`adrc_liftoff_idle_hold_ms`, default 0) still
-cannot strictly distinguish a landing from a calm mid-air float using
-throttle+gyro alone. Accelerometer magnitude is the natural discriminator
-(measured: 0.99 g on ground vs 0.1–0.5 g in the float windows that
-false-triggered the old always-on re-arm), but it is not strict either
-(steady aerodynamic descent approaches 1 g) and adds `USE_ACC`/vibration/craft
-dependence.
-
-Options on the table:
-
-- **(a) Remove the opt-in re-arm from the initial PR entirely.** After
-  ADRC-017 every arm starts a fresh epoch, so ground re-tries are simply
-  disarm→arm; the in-flight heuristic carries risk with no validated use case.
-  Fewer params, less surface for upstream review. *(Preferred.)*
-- **(b) Keep it off-by-default and add a sustained `|acc| ≈ 1 g` condition**,
-  gated on independent flight evidence across the existing logs first.
-
-Status: **CLOSED — implemented upstream by the PR author** right after the b4
-verification flight: `eda3bb16eb` "fix(adrc): remove unreliable mid-air
-liftoff-gate re-arm (ADRC-020)" (2026-07-14, −279 lines incl. the
-`adrc_liftoff_idle_*` params and their tests). The b4 flight logs predate this
-commit (built from `08ad602ce`), which is immaterial — the re-arm was
-off-by-default there.
-
-Removing the `adrc_liftoff_idle_*` fields shifts the `adrcProfile_t` layout,
-so the same commit bumps `PG_PID_PROFILE` 14 → 15: flashing any build from
-`eda3bb16eb` onward (including a future b5 prebuilt) over a b2–b4 install
-**resets PID profiles to defaults** — `diff all` first, and the b5 release
-notes must carry this warning. Build lineage for bisection reference:
-b1 = PG 12, b2–b4 = PG 14, current head = PG 15 (verified against
-`src/main/flight/pid.c` at each release tag).
 
 ### ADRC-021 — b0 throttle-curve identification (raised by @bvandevliet)
 
@@ -422,13 +390,72 @@ QUADRATIC 71 / 145 (n=11) deg/s — direction consistent with less
 high-collective over-scaling leaving a smaller stored observer error at the
 chop, not yet conclusive at these n.
 
+## Closed after publication
+
+Items that were open when this tracker was first published and have since been
+resolved. Kept here (rather than deleted) because the reasoning is referenced
+from the PR thread and the wiki guide.
+
+### ADRC-020 — Ground/air re-arm semantics (raised by @bvandevliet)
+
+The opt-in mid-air gate re-arm (`adrc_liftoff_idle_hold_ms`, default 0) still
+cannot strictly distinguish a landing from a calm mid-air float using
+throttle+gyro alone. Accelerometer magnitude is the natural discriminator
+(measured: 0.99 g on ground vs 0.1–0.5 g in the float windows that
+false-triggered the old always-on re-arm), but it is not strict either
+(steady aerodynamic descent approaches 1 g) and adds `USE_ACC`/vibration/craft
+dependence.
+
+Options on the table:
+
+- **(a) Remove the opt-in re-arm from the initial PR entirely.** After
+  ADRC-017 every arm starts a fresh epoch, so ground re-tries are simply
+  disarm→arm; the in-flight heuristic carries risk with no validated use case.
+  Fewer params, less surface for upstream review. *(Preferred.)*
+- **(b) Keep it off-by-default and add a sustained `|acc| ≈ 1 g` condition**,
+  gated on independent flight evidence across the existing logs first.
+
+Status: **CLOSED — implemented upstream by the PR author** right after the b4
+verification flight: `eda3bb16eb` "fix(adrc): remove unreliable mid-air
+liftoff-gate re-arm (ADRC-020)" (2026-07-14, −279 lines incl. the
+`adrc_liftoff_idle_*` params and their tests). The b4 flight logs predate this
+commit (built from `08ad602ce`), which is immaterial — the re-arm was
+off-by-default there.
+
+Removing the `adrc_liftoff_idle_*` fields shifts the `adrcProfile_t` layout,
+so the same commit bumps `PG_PID_PROFILE` 14 → 15: flashing any build from
+`eda3bb16eb` onward over a b2–b4 install **resets PID profiles to defaults** —
+`diff all` first. Build lineage for bisection reference: b1 = PG 12,
+b2–b4 = PG 14, PR head `eda3bb16eb` = PG 15, and the fork-side **b5 = PG 0**
+(verified against `src/main/flight/pid.c` at each release tag). The b5 wrap
+back to 0 is deliberate, not a typo: the PG version is a 4-bit field, so 15 was
+already the maximum and b5's own `adrc_b0_law` layout change had nowhere to
+count up to — wrapping to 0 still differs from the stored 15 and therefore
+still forces the profile reset. Every b5 flash over b2–b4 or over the PR head
+resets PID profiles too.
+
 ## How to help test
 
 Flight-test reports from experienced pilots are welcome, especially on typical
-5″ freestyle builds. Please use the
+5″ freestyle builds. Use
+[`adrc-pr15400-b5`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b5)
+(PR head `eda3bb16eb` plus the fork-side `adrc_b0_law` A/B selector) for
+anything touching the b0 throttle law, or
 [`adrc-pr15400-b4`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b4)
-pre-release (based on PR head `79f8b6041d`) and keep the tune unchanged for
-comparison runs.
+(PR head `79f8b6041d`) when continuing an earlier comparison series — and keep
+the tune unchanged within any one comparison run. Note both flashes reset the
+PID profiles (see the PG lineage under ADRC-020 above): `diff all` first.
+
+> **Ground-safety warning before you raise `adrc_wo` (ADRC-026).** The liftoff
+> gate's gyro-only path (`adrc_liftoff_gyro_dps = 20` sustained for
+> `adrc_liftoff_hold_ms = 25`) cannot tell a self-induced idle oscillation from
+> a real takeoff. At `wo = 150` the craft oscillated at ~28.5 Hz on the ground
+> at idle and opened the gate **on the ground at 0 % stick throttle** within
+> 0.1–0.4 s of arming, after which z3 wound up and the motors ran to saturation
+> — an uncommanded thrust runaway with the pilot's throttle still down. Treat
+> "motors audibly oscillating at idle right after arming" as an immediate
+> disarm, arm props-off first when trying a higher `wo`, and do not fly
+> high-`wo` profiles until ADRC-026 is fixed.
 
 The b4 regression re-flight happened on 2026-07-14 (verdicts recorded in
 ADRC-018/019/024/025 above). The immediate priority is now the **ADRC-021
