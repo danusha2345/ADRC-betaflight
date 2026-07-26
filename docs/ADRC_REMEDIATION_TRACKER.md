@@ -401,6 +401,33 @@ ADRC-024); LINEAR is clean (0/19 ring windows) despite higher median
 collective. Supports upward-scheduling *direction*; still bracket-level
 (one unbalanced pair, wind, damaged props), does not identify the law shape.
 
+### ADRC-027 — Inverted "sticking" in flips: rate collapse after entry overshoot (two crafts)
+
+A recurring pilot report ("the quad sticks upside-down mid-flip") now has a
+measured signature on two different crafts:
+
+- **Air65 II, 2026-07-25** (video-synced by the pilot; data:
+  [`pr15400-jm-air65/`](flight-test-analysis/pr15400-jm-air65/)): full-
+  collective flip entry **overshoots 2.5×** (gyro −1428 dps vs −582
+  commanded), z3-pitch dives to the −524k debug rail braking it, then the
+  rotation **collapses to −99 dps median against −433 commanded for
+  356 ms** — the visible inverted hang — while z3-pitch swings rail-to-rail
+  (≥1 M range in 0.2 s), motor 1 rides 2047 for 78 % of the stall and the
+  LINEAR b0 multiplier holds ×2.35.
+- **5″ law session, 2026-07-23**: same signature at t≈34.9 s of the linear
+  log — z3-pitch pinned at the debug rail ~96 ms during a reported sticking
+  episode.
+
+Not gravity: gravity acts through the CG and produces no torque about it, so
+a rate loop (and z3) cannot see it directly — which also explains the "never
+on yaw" observation, since yaw is simply not commanded in these events.
+
+Status: OPEN. Three co-occurring candidate mechanisms — z3 observer
+transient (ADRC-025 family), differential-authority saturation at full
+collective, and the b0 schedule's ×2.3+ output cut — none separable from
+these flights. Discriminating test: the same flip at ~60 % throttle
+(scale ≈ 1.7, no saturation), and FIXED vs LINEAR at matched throttle.
+
 ## Closed after publication
 
 Items that were open when this tracker was first published and have since been
