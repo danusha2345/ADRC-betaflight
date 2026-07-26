@@ -390,6 +390,17 @@ QUADRATIC 71 / 145 (n=11) deg/s — direction consistent with less
 high-collective over-scaling leaving a smaller stored observer error at the
 chop, not yet conclusive at these n.
 
+**2026-07-25 FIXED/LINEAR pair (data:
+[`pr15400-jm-fixedlinear/`](flight-test-analysis/pr15400-jm-fixedlinear/))**:
+identical tune (40/100/2000, hover 28 — matching the craft, so this is the
+first dataset with a schedule confirmed live: LINEAR's multiplier ran med
+1.71, hit the ×3.0 cap), only the law differing. FIXED rings at 24 Hz
+(41.4 dps, one episode at ~61 % collective, where LINEAR would command
+scale ≈ 2.2 vs FIXED's 1.00 — a ~2× over-gain, same frequency family as
+ADRC-024); LINEAR is clean (0/19 ring windows) despite higher median
+collective. Supports upward-scheduling *direction*; still bracket-level
+(one unbalanced pair, wind, damaged props), does not identify the law shape.
+
 ## Closed after publication
 
 Items that were open when this tracker was first published and have since been
