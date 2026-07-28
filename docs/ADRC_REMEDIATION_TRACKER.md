@@ -332,6 +332,15 @@ BMI270/MPU6000-target craft rings — an IMU/craft-difference hypothesis is
 on the table (his planned same-frame BMI270 A/B addresses it), unproven
 from logs.
 
+**2026-07-28 (8ksal8 hand tune,
+[`pr15400-8ksal8-hoteltune/`](flight-test-analysis/pr15400-8ksal8-hoteltune/))**:
+with SQRT + matched hover (29) and wo 138–165, calm-stick ring is nearly
+absent across four windy flights — 3 genuine narrow-line windows total
+(11–13 dps @ 20–25 Hz; a fourth flagged window was a wind skirt, peak/floor
+7.6×) out of 571 calm windows, flights 2–4 fully clean including full-
+throttle. Same frequency family as the 24–27 Hz mode; consistent with the
+tune-dependence picture, adds no mechanism discrimination.
+
 ### ADRC-026 — Gyro-only liftoff detector false-triggers on ground idle oscillation at high wo (from the 2×2 flights)
 
 At wo = 150 (SQRT, b0 = 2000, wc 45 or 60) the craft oscillates at
@@ -401,6 +410,16 @@ ADRC-024); LINEAR is clean (0/19 ring windows) despite higher median
 collective. Supports upward-scheduling *direction*; still bracket-level
 (one unbalanced pair, wind, damaged props), does not identify the law shape.
 
+**2026-07-28 first live SQRT data (data:
+[`pr15400-8ksal8-hoteltune/`](flight-test-analysis/pr15400-8ksal8-hoteltune/))**:
+four flights on the second craft with `adrc_hover_throttle = 29` finally
+matching the craft (previous 8ksal8 logs had hover 50 → multiplier pinned
+×1.00). The SQRT multiplier tracked the theoretical bound
+√(collective/hover) to <2 % in every flight (max ×1.83 at full throttle),
+with no ring at high collective (full-throttle flight 0/58 windows) and no
+stalls. The schedule mechanism is now field-confirmed under both SQRT and
+LINEAR; the law-shape question (ADRC-021 doublets) remains open.
+
 ### ADRC-027 — Inverted "sticking" in flips: rate collapse after entry overshoot (two crafts)
 
 A recurring pilot report ("the quad sticks upside-down mid-flip") now has a
@@ -427,6 +446,14 @@ transient (ADRC-025 family), differential-authority saturation at full
 collective, and the b0 schedule's ×2.3+ output cut — none separable from
 these flights. Discriminating test: the same flip at ~60 % throttle
 (scale ≈ 1.7, no saturation), and FIXED vs LINEAR at matched throttle.
+
+Not universal: the 2026-07-28 8ksal8 flights (SQRT, hover matched,
+including intentional inverted holds — data:
+[`pr15400-8ksal8-hoteltune/`](flight-test-analysis/pr15400-8ksal8-hoteltune/))
+show no stall window even under a loose scan (≥150 ms, |setpoint| > 100,
+gyro < 40 % of it) across four flights; a hang read off that pilot's video
+at ~1:46 was an intentional inverted stop per the pilot, and the logs
+agree.
 
 ## Closed after publication
 
@@ -494,6 +521,14 @@ PID profiles (see the PG lineage under ADRC-020 above): `diff all` first.
 > "motors audibly oscillating at idle right after arming" as an immediate
 > disarm, arm props-off first when trying a higher `wo`, and do not fly
 > high-`wo` profiles until ADRC-026 is fixed.
+
+> **Reading your own logs — mode flags are mislabeled by the current
+> Blackbox Explorer release.** Firmware 2026.6.0 added the AUTOPILOT box,
+> shifting every later box bit by one; the viewer's table was fixed in
+> betaflight/blackbox-log-viewer#904 (2026-04-08) but the latest release
+> (2025.12.1) predates it. Until a new viewer release: the flag shown as
+> "AIRMODE" is really your BLACKBOX switch, and "3D" is really AIRMODE.
+> Details in `pr15400-8ksal8-hoteltune/ANALYSIS.md`.
 
 The b4 regression re-flight happened on 2026-07-14 (verdicts recorded in
 ADRC-018/019/024/025 above). The immediate priority is now the **ADRC-021
