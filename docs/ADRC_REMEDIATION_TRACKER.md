@@ -350,6 +350,21 @@ BMI270/MPU6000-target craft rings — an IMU/craft-difference hypothesis is
 on the table (his planned same-frame BMI270 A/B addresses it), unproven
 from logs.
 
+**Independent same-frame IMU swap (2026-07-29, pilot report via Discord,
+no logs yet)**: a new tester (Pavel_M., experienced across 3.5″–13″ on
+multiple ADRC implementations) reports swapping two BetaFPV whoop AIO
+boards — one ICM426xx ("ICM42622P" per his message), one BMI270 — on the
+same craft, and that the gyro difference "seems to impact the ADRC wo
+ceiling". This is exactly the discriminating experiment planned above,
+already flown; direction, wo numbers, filter parity and logs requested.
+Mechanistic prior: at high wo the observer tracks the gyro's noise floor
+and latency, so the IMU and its internal filtering directly set the wall.
+Same tester independently converged on SQRT ("cleanest logs") after
+trying all four laws on b5, on a correctly set hover (35 vs actual
+35–40 %) — and still reports throttle-transition excursions
+(pitch nose-dips, ~45° yaw), consistent with ADRC-025 rather than the
+hover config trap; his logs are pending.
+
 **2026-07-28 (8ksal8 hand tune,
 [`pr15400-8ksal8-hoteltune/`](flight-test-analysis/pr15400-8ksal8-hoteltune/))**:
 with SQRT + matched hover (29) and wo 138–165, calm-stick ring is nearly
@@ -491,6 +506,14 @@ matching the craft (previous 8ksal8 logs had hover 50 → multiplier pinned
 with no ring at high collective (full-throttle flight 0/58 windows) and no
 stalls. The schedule mechanism is now field-confirmed under both SQRT and
 LINEAR; the law-shape question (ADRC-021 doublets) remains open.
+
+**2026-07-29 (pilot report, Discord, logs pending)**: a third independent
+tester (Air65 II whoop, hover correctly set at 35 vs actual 35–40 %,
+settled on SQRT after trying all four laws — "cleanest logs") still
+reports throttle-transition excursions (nose-dips, ~45° yaw swings).
+With the hover trap excluded, this is the cleanest pending ADRC-025
+candidate case yet; see also the z3 carry-across-schedule design note
+under ADRC-025's candidates.
 
 ### ADRC-027 — Inverted "sticking" in flips: rate collapse after entry overshoot (two crafts)
 
