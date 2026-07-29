@@ -382,6 +382,32 @@ full), so this stays a pilot report — but it matches the mechanism
 exactly and strengthens the case for the minimum-throttle-floor
 mitigation over the band-reject one (wind is not band-limited).
 
+**An open latch alone does not produce the runaway (2026-07-29, logged)**:
+8ksal8's Wind flight (`pr15400-8ksal8-hoteltune/`, flight 3) begins with a
+"Logging resume" event (blackbox on a switch, `logIteration = 48640`) and
+the gate **already open at 0 % stick throttle on the ground**, z3 already
+non-zero (yaw +141k, roll −85k in debug units) — yet through ~7 recorded
+seconds of quiet ground idle (worst-axis 15–40 Hz RMS 0.53 dps) the motors
+held near idle with only small differential corrections. The runaway
+requires *ongoing* excitation against the ground constraint (wind rocking,
+self-oscillation) while the gate is open, not merely an open latch. The
+moment and cause of the gate opening fall in the unrecorded interval.
+
+**Threshold is a joint loop-gain property, cross-craft support**: every
+ADRC output term scales as 1/b0 in the b5 code, so at fixed wc/wo,
+b0 = 2000 carries twice the command gain of b0 = 4000. 8ksal8's five
+ground segments at wo 160–165 / b0 3500–4000 are quiet (worst-axis
+15–40 Hz RMS 0.5–1.6 dps across full pre-liftoff intervals) where the 2×2
+craft at wo 150 / b0 2000 self-oscillated at 28.5 Hz into saturation —
+consistent with the ADRC-026 threshold being set by (wo, wc, b0) jointly
+plus craft/ground-contact mechanics. Cross-craft with several variables
+changed at once: support, not proof; no same-craft b0-only A/B exists.
+Tuning-workflow corollary (the thread's "find the wo wall at high b0,
+lower b0 last" procedure): lowering b0 at the end raises loop gain and
+invalidates the wo margin measured earlier — re-check margin after the
+final b0, and don't hunt the absolute wo wall at all until this defect
+has a mitigation.
+
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
 Calm-stick post-chop pitch peaks (deg/s; table produced by

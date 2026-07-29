@@ -75,3 +75,30 @@ these logs confirm: flight 1 = 0x800001 (ARM+BLACKBOX), flight 2 toggles
 0x1800001 (+AIRMODE). Workaround until a viewer release ships: read
 "AIRMODE" as BLACKBOX and "3D" as AIRMODE, or use the viewer built from
 master.
+
+## Addendum (2026-07-29, after a second verification pass)
+
+- **All five of this pilot's logs start mid-armed-session** via the
+  blackbox switch ("Logging resume" events; e.g. flight 1 starts at
+  `loopIteration = 90624`). Ground behavior before the first frame is
+  unrecorded.
+- **Flight 3 (Wind) starts with the liftoff gate already open at 0 %
+  stick throttle on the ground**, z3 already non-zero — and nothing runs
+  away through ~7 s of quiet ground idle. See the ADRC-026 entry in the
+  tracker for what this does and doesn't establish.
+- **The dominant HF spectral family is a motor 1× order, not a frame
+  mode.** These logs carry bidir eRPM: in calm hover the front motor pair
+  (FR/FL) sits at ~295–314 Hz 1× and the rear pair (RR/RL) at
+  ~406–428 Hz; the strongest gyro line family (307–318 Hz) matches the
+  front-pair 1× exactly, and no fixed-frequency peak survives across
+  collective. Any "wo vs frame resonance" ratio computed against these
+  lines is a ratio against a moving motor order.
+- **The rear pair runs ~35 % faster than the front pair in hover** — a
+  substantial rear-CG bias (battery position?) or a pair-wise prop
+  mismatch. This is real physics underneath the pilot's per-axis b0
+  differences and worth fixing mechanically before fine-tuning axis b0s.
+- Correction to the first-pass numbers reported in the PR thread
+  discussion: over *full* pre-liftoff segments (not the truncated quiet
+  windows), worst-axis 15–40 Hz ground RMS is 0.52–1.01 dps for these
+  four flights (1.60 for the wc125 log) — still far below anything
+  self-sustaining.
