@@ -339,7 +339,13 @@ absent across four windy flights — 3 genuine narrow-line windows total
 (11–13 dps @ 20–25 Hz; a fourth flagged window was a wind skirt, peak/floor
 7.6×) out of 571 calm windows, flights 2–4 fully clean including full-
 throttle. Same frequency family as the 24–27 Hz mode; consistent with the
-tune-dependence picture, adds no mechanism discrimination.
+tune-dependence picture, adds no mechanism discrimination. The follow-up
+retune (wc 125 / wo 160 / b0 4000/3000/7000,
+[`pr15400-8ksal8-wc125/`](flight-test-analysis/pr15400-8ksal8-wc125/)) in
+much heavier wind (gusts to 23 mph) shows 4 narrow lines / 264 windows at
+18–23 Hz, ~11 dps — slightly higher incidence, lower frequency, still
+nothing self-sustained; raising wc to 125 did not open a margin problem
+on this craft.
 
 ### ADRC-026 — Gyro-only liftoff detector false-triggers on ground idle oscillation at high wo (from the 2×2 flights)
 
@@ -362,6 +368,19 @@ condition; band-reject 15–40 Hz content in the liftoff gyro test; or gate
 z3 accumulation until throttle exceeds idle. Safety guidance meanwhile:
 treat "motors audibly oscillating at idle after arming" as an immediate
 disarm, and do not fly high-wo profiles.
+
+**Trigger set is broader than self-oscillation (2026-07-28 pilot report,
+unlogged)**: 8ksal8, armed on a table in 15–23 mph gusts (wc 125 / wo 160 /
+SQRT tune), reports "the quad jumped off the table when trying to
+stabilize itself in some turbulent wind" — wind rocking is an external
+gyro source that satisfies the same gyro-only liftoff test (> 20 dps for
+25 ms is indistinguishable from a toss launch by design), so the gate can
+open on the bench with a perfectly stable tune. The airmode activation
+latch does not prevent it: with `pid_at_min_throttle = ON` (default) the
+mixer applies corrections at idle regardless. No blackbox exists (flash
+full), so this stays a pilot report — but it matches the mechanism
+exactly and strengthens the case for the minimum-throttle-floor
+mitigation over the band-reject one (wind is not band-limited).
 
 ### ADRC-025 — Punch→chop rebound persists after the release-LPF fix (from the b4 flight)
 
