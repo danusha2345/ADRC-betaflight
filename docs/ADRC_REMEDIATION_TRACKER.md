@@ -49,6 +49,24 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 
 ### ADRC-021 — b0 throttle-curve identification (raised by @bvandevliet)
 
+**Design note (2026-07-29) — post-flight hover suggestion, not an in-flight
+learner.** `adrc_hover_throttle` is the schedule's anchor and the single most
+common config trap so far (three testers in two weeks flew with hover set to
+22 %, 50 %, and the default 35 against different actual hovers, silently
+pinning or distorting the schedule). The measured hover is already cheap to
+extract from any log: median post-mixer collective over calm-hover windows
+(airborne, gate open, low setpoint/gyro variance, stable collective) — our
+analysis scripts do exactly this. Proposal: surface that number to the pilot
+*after* the flight ("measured hover ≈ 43 %, profile says 35 — update and
+re-verify b0") via log analysis first, later possibly post-flight stats/OSD.
+An **in-flight** hover learner is deliberately rejected for now: a moving
+anchor is a moving loop gain — the same transient family as ADRC-025, only
+self-induced. (Physics footnote for whenever this is revisited: the hover
+*collective* is the constant-RPM point regardless of battery sag, so a
+correctly tracked hover anchor would compensate sag for free — a static
+percentage doesn't. The principled endgame remains measured b0(throttle)
+identification below, which subsumes the hover+law construct entirely.)
+
 The quadratic `(throttle/hover)²` law is capped at ×3 as a *safety bound*, not
 a model. Classic TPA suggests the true plant-gain growth hover→full is more
 like ×2–3 than the ×8+ the quadratic extrapolates to. To be settled as a
@@ -426,7 +444,16 @@ the observer re-learning after adapting under a ×3-inflated gain frame — a
 consistent mechanism, but correlation, not established causation.
 Candidates: the b0 law itself (ADRC-021), and/or an explicit
 throttle-transition feed-forward (the "anti-gravity analog" the PR author
-asked about).
+asked about), and/or **carrying z3 across schedule-multiplier changes**
+(design note 2026-07-29): z3's meaning in the output is `z3 / (b0·scale)`,
+so when the multiplier moves, the stored disturbance estimate is applied
+in a gain frame it wasn't learned in — the re-learning transient *is* the
+rebound. Rescaling z3 by `scale_new / scale_old` at each multiplier update
+would carry the estimate across the frame change instead of forcing a
+re-learn. Cheap to implement and testable offline by replaying logged
+punch→chop episodes; interacts with the z3 anti-windup bound (already
+`pidSumLimit · b0_eff`, so the bound moves with the scale consistently).
+Untested — a candidate, not a fix.
 
 Status: OPEN — blocked on ADRC-021 (the b0 law determines how much of the
 transient is model error vs physics). 2026-07-15 flights re-confirm
