@@ -350,20 +350,32 @@ BMI270/MPU6000-target craft rings — an IMU/craft-difference hypothesis is
 on the table (his planned same-frame BMI270 A/B addresses it), unproven
 from logs.
 
-**Independent same-frame IMU swap (2026-07-29, pilot report via Discord,
-no logs yet)**: a new tester (Pavel_M., experienced across 3.5″–13″ on
+**Independent same-frame IMU swap (2026-07-29, pilot report only)**:
+a new tester (Pavel_M., experienced across 3.5″–13″ on
 multiple ADRC implementations) reports swapping two BetaFPV whoop AIO
 boards — one ICM426xx ("ICM42622P" per his message), one BMI270 — on the
 same craft, and that the gyro difference "seems to impact the ADRC wo
 ceiling". This is exactly the discriminating experiment planned above,
-already flown; direction, wo numbers, filter parity and logs requested.
+reported as already flown; direction, wo numbers, filter parity and the
+corresponding logs were requested.
 Mechanistic prior: at high wo the observer tracks the gyro's noise floor
 and latency, so the IMU and its internal filtering directly set the wall.
 Same tester independently converged on SQRT ("cleanest logs") after
 trying all four laws on b5, on a correctly set hover (35 vs actual
 35–40 %) — and still reports throttle-transition excursions
 (pitch nose-dips, ~45° yaw), consistent with ADRC-025 rather than the
-hover config trap; his logs are pending.
+hover config trap; the requested logs were pending.
+
+**Follow-up (2026-07-30, data:
+[`pr15400-pavel-whoops-20260730/`](flight-test-analysis/pr15400-pavel-whoops-20260730/))**:
+the uploaded Air65/Meteor75 logs do **not** contain the reported same-frame
+IMU swap. They identify different targets (`BETAFPVG473` and
+`BETAFPVG473_V2`), but each target supports multiple IMU drivers and the
+Blackbox header does not record the detected chip. Thus the ICM42622P↔BMI270
+direction and `wo` ceiling remain unmeasured. The logs also show no
+ADRC-024-like calm narrow line: zero strict calm-window 10–100 Hz tones above
+5 dps/tone fraction 0.5. Their dominant unwanted motion is instead a much
+slower 0.5–1.3 Hz pitch/yaw family; see ADRC-025 below.
 
 **2026-07-28 (8ksal8 hand tune,
 [`pr15400-8ksal8-hoteltune/`](flight-test-analysis/pr15400-8ksal8-hoteltune/))**:
@@ -553,13 +565,32 @@ with no ring at high collective (full-throttle flight 0/58 windows) and no
 stalls. The schedule mechanism is now field-confirmed under both SQRT and
 LINEAR; the law-shape question (ADRC-021 doublets) remains open.
 
-**2026-07-29 (pilot report, Discord, logs pending)**: a third independent
+**2026-07-29 (pilot report, Discord)**: a third independent
 tester (Air65 II whoop, hover correctly set at 35 vs actual 35–40 %,
 settled on SQRT after trying all four laws — "cleanest logs") still
 reports throttle-transition excursions (nose-dips, ~45° yaw swings).
-With the hover trap excluded, this is the cleanest pending ADRC-025
-candidate case yet; see also the z3 carry-across-schedule design note
-under ADRC-025's candidates.
+With the hover trap excluded, this is a clean ADRC-025 candidate case;
+see also the z3 carry-across-schedule design note under ADRC-025's
+candidates.
+
+**Logs received 2026-07-30 (data:
+[`pr15400-pavel-whoops-20260730/`](flight-test-analysis/pr15400-pavel-whoops-20260730/))**:
+the transition component is real. Air65 `.02` repeatedly reaches
+62–96 dps pitch with pitch setpoint ≈0 around 16–28-point throttle moves;
+one event integrates to ≈21° in the 15 Hz low-pass trace. Meteor `.02`
+shows pitch/yaw errors to 100/154 dps while scale traverses ×1.00→×1.32.
+Measured hover is close to the configured anchor (Air65 36–39 vs 35,
+Meteor 38–44 vs 40), so this is not the known hover-setting trap.
+
+But multiplier transitions are **not a complete explanation**. Meteor
+also carries long 0.5–1.3 Hz uncommanded pitch/yaw series at nearly constant
+throttle and scale (e.g. `.01` t=47.4–52.4 s, scale ×1.00–1.06; `.02`
+t=112–117.5 s, ×1.24–1.28), with large lagging I/z3 movement. Wind/external
+torque is not separable from a self-excited observer response in these
+uncontrolled flights, so this proves only that the z3 carry-across candidate
+cannot explain every excursion. Also, the Meteor attachment is mislabeled:
+despite `tune_60_100_4000` in its filename and post, raw headers contain
+wc 30 / wo 120, b0 **6400 then 4800**; no b0=4000 session is present.
 
 ### ADRC-027 — Inverted "sticking" in flips: rate collapse after entry overshoot (two crafts)
 
