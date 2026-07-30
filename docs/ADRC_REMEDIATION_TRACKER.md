@@ -355,11 +355,11 @@ a new tester (Pavel_M., experienced across 3.5″–13″ on
 multiple ADRC implementations) reports swapping two BetaFPV whoop AIO
 boards — one ICM426xx ("ICM42622P" per his message), one BMI270 — on the
 same craft, and that the gyro difference "seems to impact the ADRC wo
-ceiling". This is exactly the discriminating experiment planned above,
-reported as already flown; direction, wo numbers, filter parity and the
-corresponding logs were requested.
-Mechanistic prior: at high wo the observer tracks the gyro's noise floor
-and latency, so the IMU and its internal filtering directly set the wall.
+ceiling". This preliminary swap is directly relevant to the discriminating
+experiment planned above, but the report does not establish same-frame
+tune/filter parity, direction, `wo` numbers or paired logs. Mechanistic
+prior: at high wo the observer can track the gyro's noise floor and latency,
+so the IMU and its internal filtering may set the wall.
 Same tester independently converged on SQRT ("cleanest logs") after
 trying all four laws on b5, on a correctly set hover (35 vs actual
 35–40 %) — and still reports throttle-transition excursions
@@ -371,11 +371,13 @@ hover config trap; the requested logs were pending.
 the uploaded Air65/Meteor75 logs do **not** contain the reported same-frame
 IMU swap. They identify different targets (`BETAFPVG473` and
 `BETAFPVG473_V2`), but each target supports multiple IMU drivers and the
-Blackbox header does not record the detected chip. Thus the ICM42622P↔BMI270
-direction and `wo` ceiling remain unmeasured. The logs also show no
-ADRC-024-like calm narrow line: zero strict calm-window 10–100 Hz tones above
-5 dps/tone fraction 0.5. Their dominant unwanted motion is instead a much
-slower 0.5–1.3 Hz pitch/yaw family; see ADRC-025 below.
+Blackbox header does not record the detected chip. Pavel later identified
+the Meteor board as ICM42622P; this remains pilot-reported metadata, and no
+paired BMI270 log is present. Thus the ICM42622P↔BMI270 direction and `wo`
+ceiling remain unmeasured. The logs also show no ADRC-024-like calm narrow
+line: zero strict calm-window 10–100 Hz tones above 5 dps/tone fraction 0.5.
+Their dominant unwanted motion is instead a much slower 0.5–1.3 Hz
+pitch/yaw family; see ADRC-025 below.
 
 **2026-07-28 (8ksal8 hand tune,
 [`pr15400-8ksal8-hoteltune/`](flight-test-analysis/pr15400-8ksal8-hoteltune/))**:
@@ -591,6 +593,8 @@ uncontrolled flights, so this proves only that the z3 carry-across candidate
 cannot explain every excursion. Also, the Meteor attachment is mislabeled:
 despite `tune_60_100_4000` in its filename and post, raw headers contain
 wc 30 / wo 120, b0 **6400 then 4800**; no b0=4000 session is present.
+Pavel later confirmed that the intended dump was uploaded but the older
+30/120-120-100 profile had been selected accidentally.
 
 ### ADRC-027 — Inverted "sticking" in flips: rate collapse after entry overshoot (two crafts)
 
