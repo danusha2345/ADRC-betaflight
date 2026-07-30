@@ -394,7 +394,7 @@ much heavier wind (gusts to 23 mph) shows 4 narrow lines / 264 windows at
 nothing self-sustained; raising wc to 125 did not open a margin problem
 on this craft.
 
-### ADRC-026 — Gyro-only liftoff detector false-triggers on ground idle oscillation at high wo (from the 2×2 flights)
+### ADRC-026 — Ground-constrained excitation can false-open the liftoff gate and drive zero-throttle z3 windup/runaway (from the 2×2 flights)
 
 At wo = 150 (SQRT, b0 = 2000, wc 45 or 60) the craft oscillates at
 ~28.5 Hz on the ground at idle throttle, exceeding
