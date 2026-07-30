@@ -415,6 +415,26 @@ full), so this stays a pilot report — but it matches the mechanism
 exactly and strengthens the case for the minimum-throttle-floor
 mitigation over the band-reject one (wind is not band-limited).
 
+**First logged in-event captures (2026-07-29, indoor, no wind — data:
+[`pr15400-8ksal8-armbounce/`](flight-test-analysis/pr15400-8ksal8-armbounce/))**:
+arming with the ANGLE box + airmode produces a repeated ground bounce
+("like a basketball") — gate open, 0 % stick throttle, collective slamming
+to ~48 %, motor-saturation bursts to 2047, gyro to 1945 dps, and crucially
+a **non-zero setpoint (up to 446 dps) from the ANGLE leveling loop**: tilt
+→ leveling demands rate → idle-throttle motor response → jump → new tilt,
+with the grounded ESO amplifying (z3 ±300k). Stock BF has a milder known
+angle+airmode arm-jump; the ADRC-specific share needs a same-craft classic
+A/B. The airmode-only arm from the same session is the first **logged slow
+windup that self-limits**: gate open on a quiet craft (setpoint 0, gyro
+5–13 dps), z3-yaw ramps to +437k and motors creep to 42 % of range at zero
+throttle, then the `adrc_sigma_decay` leak (0.3/s) bleeds it back over
+~8 s and the eventual takeoff is clean. Both halves of the mechanism story
+are now on tape: an open gate does wind against ground contact, and the
+runaway occurs only when the fight outpaces the leak (joint loop gain —
+this craft's b0 4000/3500/10000 stays under; the 2×2's b0 2000 did not).
+Interim guidance strengthened: **arm in acro (ANGLE box off) on ADRC
+profiles** — the leveling loop is a standing ground-excitation source.
+
 **An open latch alone does not produce the runaway (2026-07-29, logged)**:
 8ksal8's Wind flight (`pr15400-8ksal8-hoteltune/`, flight 3) begins with a
 "Logging resume" event (blackbox on a switch, `logIteration = 48640`) and
