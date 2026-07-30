@@ -67,48 +67,63 @@ the tracker.
   (battery deliberately set back to counter camera weight — "guess it's a
   little too much") and raised yaw b0 to 10000 in this tune.
 
-## Follow-up (2026-07-30) — the classic-PID A/B, and the mechanism found in code
+## Follow-up (2026-07-30) — single-arm classic-PID comparison
 
-The pilot flew the requested A/B the next morning (three more `.bbl`s in
-this directory, `python3 ab_pid.py`; same craft, bottom-mounted battery so
-it always arms tilted and the ANGLE box demands leveling immediately):
+The pilot supplied the requested comparison in
+[PR comment 5130521706](https://github.com/betaflight/betaflight/pull/15400#issuecomment-5130521706):
+one arm in each of three configurations on the same craft, with the
+bottom-mounted battery making it start tilted. The attached ZIP
+(SHA-256 `7f3b71d7470d1e8e4f23fcc0aadec676df963dd13b981700a90823533c2d8654`)
+matches the three `.bbl` originals preserved here byte-for-byte. Decode
+them with the command at the top of this document, then run
+`python3 ab_pid.py`.
 
-| log | pid_type | airmode | outcome | first-5 s gyro peak | motor-sat samples | settle |
+| log | pid_type | airmode | recorded outcome | gyro peak in saved interval | samples with a motor at 2047 | settle from first saved frame |
 |---|---|---|---|---|---|---|
-| `AirMode_sw_on_Angle_onPIDs` | CLASSIC | box on switch (on at arm) | bounces | 928 dps | 8.5 % | never |
+| `AirMode_sw_on_Angle_onPIDs` | CLASSIC | box on switch (pilot reports on at arm) | bounces | 928 dps | 8.3 % | not in saved interval |
 | `Airmode_on_Angle_onPIDs` | CLASSIC | permanent feature | **rights itself, stays** | 149 dps | **0 %** | **0.46 s** |
-| `Airmode_on_Angle_onADRC` | ADRC | permanent feature | bounces | 624 dps | 22 % (61 % of first 0.25 s) | never |
+| `Airmode_on_Angle_onADRC` | ADRC | permanent feature | bounces | 624 dps | 22.0 % overall; 60.9 % in first 0.25 s | not in saved interval |
 
-The initial ANGLE leveling demand is identical in all three
-(sp_rp peak 123–124 dps — same tilt), and the full-header diff between the
-two classic logs is exactly one bit (the AIRMODE feature flag). Per the
-firmware, feature-airmode and box-airmode take the same code path
-(`rc_modes.c`: `airmodeEnabled = feature || box`; the throttle-raise latch
-in `core.c` applies to both), so the classic switch-vs-feature difference
-is not explained by configuration — plausibly marginal-stability
-run-to-run variance; more arms of each would tell.
+All three saved intervals remain at 0 % stick throttle. During their first
+0.25 s they begin with essentially the same roll/pitch ANGLE leveling
+demand (123/124/123 dps respectively). This is an initial-window
+comparison, not a whole-log setpoint peak: the switch-CLASSIC run later
+reaches 205 dps as it bounces.
 
-**The ADRC-vs-classic difference, however, is mechanistic and now
-code-anchored.** At zero throttle with airmode not yet
-throttle-activated, `core.c` sets `pidSetItermReset(true)`; for CLASSIC
-this calls `pidResetIterm()` **every loop** — the integrator simply does
-not exist at arm, and only the bounded P/D response to the leveling
-demand acts (log 2: zero saturation, settled in half a second). For ADRC,
-`adrcZeroThrottleItermReset()` (pid.c:1123) deliberately keeps the ESO
-alive so the estimate survives spool-up, clearing only the cosmetic
-`pidData.I` — its own comment says "Post-landing (gate still open on the
-ground) windup remains possible". With the gate latched open earlier in
-the arm cycle, the live z3 integrator winds against ground contact and
-the craft bounces (log 3: z3 railing ±524k in the debug clip, 61 %
-motor saturation in the first quarter-second — against classic's 0 % at
-the identical leveling demand).
+The two CLASSIC logs have the same recorded persistent settings except for
+`FEATURE_AIRMODE` (`features` XOR = `1 << 22`). Their raw headers also
+differ slightly in per-log `vbatref` and computed RC-smoothing cutoffs, and
+the BOXAIRMODE activation state itself is not logged. Once active, feature
+and box Airmode do feed the same boolean (`rc_modes.c`:
+`featureIsEnabled(FEATURE_AIRMODE) || IS_RC_MODE_ACTIVE(BOXAIRMODE)`), but
+the opposite outcomes from one arm each show that contact/initial-condition
+variability is material. Repeated arms are required before attributing that
+difference.
 
-Mitigation implication: classic's zero-throttle iTerm-reset protection
-has no ADRC analog once the gate is open. A minimal candidate fix —
-while `zeroThrottleItermReset` is active, hold z3 at the gated (fast)
-decay rate or suppress its growth even with the gate open — would extend
-the exact protection classic already has, and composes with the
-minimum-throttle-floor idea already listed under ADRC-026.
+**The b5 code nevertheless exposes a specific ADRC-only path consistent
+with the recorded behavior.** Before throttle has crossed the Airmode
+activation threshold, `core.c` sets `pidSetItermReset(true)`. CLASSIC then
+calls `pidResetIterm()` every loop; its logged I channels remain zero.
+ADRC instead calls `adrcZeroThrottleItermReset()` (`pid.c:1123`), which
+clears only the published `pidData.I` while leaving ESO state, including
+z3, alive. The ADRC recording starts with the liftoff tag already positive
+and roll z3 already at the negative debug clip; the unrecorded opening and
+build-up therefore cannot be reconstructed from this log.
+
+Once the gate is open, `adrc.c` uses the airborne z3 decay configured here
+as 0.3/s instead of the gated 20/s decay. Its own observer equation still
+integrates `-beta3 * errorEso` regardless of gate state. Static code and
+the open-gate/clipped-z3 recording therefore support an ADRC ground-windup
+mechanism, but a single run does not quantify the ADRC share of the bounce
+or prove that no uncontrolled factor selected the outcome.
+
+**Candidate mitigation, not yet a verified fix:** while
+`zeroThrottleItermReset` is active, retain the ground-rate z3 decay or
+explicitly inhibit z3 growth even if the liftoff latch has opened. This is
+analogous in intent to CLASSIC's zero-throttle reset, not mathematically
+identical to resetting I every loop; the fast decay can still be outpaced
+by `-beta3 * errorEso`. The decisive next test is repeated arms of all
+three configurations followed by a patched-versus-unpatched ADRC A/B.
 
 Tracked under **ADRC-026** in the
-[remediation tracker](../ADRC_REMEDIATION_TRACKER.md).
+[remediation tracker](../../ADRC_REMEDIATION_TRACKER.md).

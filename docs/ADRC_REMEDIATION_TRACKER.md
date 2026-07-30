@@ -435,26 +435,31 @@ this craft's b0 4000/3500/10000 stays under; the 2×2's b0 2000 did not).
 Interim guidance strengthened: **arm in acro (ANGLE box off) on ADRC
 profiles** — the leveling loop is a standing ground-excitation source.
 
-**Classic-PID A/B flown (2026-07-30, same dir) — the ADRC share is
-confirmed and the mechanism is code-anchored.** Same craft, same
-bottom-battery tilt, identical initial ANGLE leveling demand (sp peak
-123–124 dps): CLASSIC + feature-airmode rights itself with **zero motor
-saturation, settled in 0.46 s**; ADRC with the identical airmode config
-bounces (61 % motor saturation in the first 0.25 s, z3 railing the debug
-clip). Root asymmetry: at zero throttle before airmode throttle-activates,
-classic runs `pidResetIterm()` every loop — no integrator exists at arm —
-while `adrcZeroThrottleItermReset()` (pid.c:1123, fork fix #4)
-deliberately keeps the ESO alive and clears only the cosmetic
-`pidData.I`; with the gate latched open, z3 is a live integrator winding
-against ground contact. Its own code comment anticipated this
-("post-landing windup remains possible"). **Candidate mitigation refined**:
-while `zeroThrottleItermReset` is active, hold z3 at the gated decay rate
-(or suppress its growth) even with the gate open — the direct ADRC analog
-of the protection classic already has. Side observation from the same
-A/B: classic with airmode on a *switch* (active at arm) also bounced
-(928 dps) where feature-airmode did not, though the firmware treats both
-identically (`rc_modes.c`) and the header diff is one feature bit —
-unexplained, plausibly marginal-stability variance; more arms would tell.
+**Single-arm CLASSIC comparison flown (2026-07-30, same dir) — supports an
+ADRC-specific path, but does not yet quantify its share.** Same craft and
+bottom-battery tilt; the first 0.25 s starts with essentially identical
+ANGLE demand (123/124/123 dps). CLASSIC + permanent feature-airmode has no
+motor at the 2047 rail and settles 0.46 s after the first saved frame;
+ADRC + permanent feature-airmode bounces, with a motor at 2047 in 60.9 %
+of the first 0.25 s and z3 reaching the debug clip. At zero throttle before
+Airmode throttle-activation, CLASSIC runs `pidResetIterm()` every loop,
+whereas `adrcZeroThrottleItermReset()` (pid.c:1123) clears only published
+`pidData.I` and leaves the ESO/z3 state alive. In the ADRC recording the
+gate is already open and roll z3 is already clipped from the first saved
+frame, so the trigger and build-up are not captured. Once open, the gate
+selects the 0.3/s airborne z3 decay rather than the 20/s gated decay while
+`-beta3 * errorEso` continues integrating: a concrete code path consistent
+with the bounce, not single-run causal proof.
+
+The control run is itself discordant: CLASSIC with box-airmode (pilot
+reports it active at arm) also bounces at 928 dps although feature and box
+Airmode collapse to the same runtime boolean. There is one arm per
+condition, BOXAIRMODE state is not logged, and raw headers include minor
+per-log differences beyond the persistent `FEATURE_AIRMODE` bit. **Candidate
+mitigation:** while `zeroThrottleItermReset` is active, retain ground-rate
+z3 decay or inhibit its growth even if the gate opens. This is analogous
+in intent to CLASSIC protection, not equivalent to an every-loop reset,
+and needs repeated-arm plus patched/unpatched ADRC A/B validation.
 
 **An open latch alone does not produce the runaway (2026-07-29, logged)**:
 8ksal8's Wind flight (`pr15400-8ksal8-hoteltune/`, flight 3) begins with a

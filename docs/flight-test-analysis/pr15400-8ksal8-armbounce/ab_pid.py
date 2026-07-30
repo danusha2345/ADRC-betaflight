@@ -7,7 +7,7 @@ Log3 ADRC + airmode permanent feature     -> bounces"""
 import csv
 import numpy as np
 
-MIN_OUT, MAX_OUT = 198, 2047
+MAX_OUT = 2047
 COLS = ["time (us)", "rcCommand[3]",
         "setpoint[0]", "setpoint[1]", "setpoint[2]",
         "gyroUnfilt[0]", "gyroUnfilt[1]", "gyroUnfilt[2]",
@@ -28,24 +28,26 @@ def load(path):
     a = np.array(rows)
     return {c: a[:, j] for j, c in enumerate(COLS)}
 
-FILES = [("PID + airmode SWITCH (on at arm)", "AirMode_sw_on_Angle_onPIDs.01.csv", False),
-         ("PID + airmode FEATURE", "Airmode_on_Angle_onPIDs.01.csv", False),
-         ("ADRC + airmode FEATURE", "Airmode_on_Angle_onADRC.01.csv", True)]
+FILES = [("PID + airmode SWITCH (on at arm)", "AirMode_sw_on_Angle_onPIDs.01.csv", False, 48),
+         ("PID + airmode FEATURE", "Airmode_on_Angle_onPIDs.01.csv", False, 48),
+         ("ADRC + airmode FEATURE", "Airmode_on_Angle_onADRC.01.csv", True, 198)]
 
-for name, path, is_adrc in FILES:
+for name, path, is_adrc, min_out in FILES:
     d = load(path)
     t = d["time (us)"] / 1e6; t -= t[0]
     fs = 1 / np.median(np.diff(t))
     mot = [d[f"motor[{i}]"] for i in range(4)]
-    coll = (np.mean(mot, axis=0) - MIN_OUT) / (MAX_OUT - MIN_OUT) * 100
+    coll = (np.mean(mot, axis=0) - min_out) / (MAX_OUT - min_out) * 100
     thr = (d["rcCommand[3]"] - 1000) / 10
     gy_rp = np.maximum(np.abs(d["gyroUnfilt[0]"]), np.abs(d["gyroUnfilt[1]"]))
     sp_rp = np.maximum(np.abs(d["setpoint[0]"]), np.abs(d["setpoint[1]"]))
-    sat = np.max(mot, axis=0) >= 2040
+    sat = np.max(mot, axis=0) >= MAX_OUT
     print(f"\n=== {name} ===  ({path}, dur {t[-1]:.1f}s, fs {fs:.0f} Hz)")
     print(f"stick throttle: max {thr.max():.1f}% (0% whole log: {(thr < 1).all()})")
     n3 = min(len(t), int(5.0 * fs))
-    print(f"first 5 s: gyro_rp peak {gy_rp[:n3].max():.0f} dps | sp_rp peak {sp_rp[:n3].max():.0f} dps | "
+    summary_s = min(5.0, t[-1])
+    print(f"recorded interval (first {summary_s:.2f} s): gyro_rp peak {gy_rp[:n3].max():.0f} dps | "
+          f"sp_rp peak {sp_rp[:n3].max():.0f} dps | "
           f"collective max {coll[:n3].max():.0f}% | any-motor-sat {sat[:n3].mean()*100:.1f}% of samples")
     # settle: first time after which gyro_rp stays <20 dps for 1 s
     W = int(1.0 * fs)
@@ -53,7 +55,8 @@ for name, path, is_adrc in FILES:
     for st in range(0, len(t) - W):
         if gy_rp[st:st + W].max() < 20:
             settle = t[st]; break
-    print(f"settle (gyro_rp <20 dps sustained 1 s): {settle if settle is None else round(settle, 2)} s")
+    print(f"settle from first saved frame (gyro_rp <20 dps sustained 1 s): "
+          f"{settle if settle is None else round(settle, 2)} s")
     if is_adrc:
         gate = d["debug[7]"] > 0
         print(f"gate open: {gate.mean()*100:.0f}% of log; debug7[0]={d['debug[7]'][0]:.0f}; "
