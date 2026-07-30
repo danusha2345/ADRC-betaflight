@@ -435,6 +435,27 @@ this craft's b0 4000/3500/10000 stays under; the 2×2's b0 2000 did not).
 Interim guidance strengthened: **arm in acro (ANGLE box off) on ADRC
 profiles** — the leveling loop is a standing ground-excitation source.
 
+**Classic-PID A/B flown (2026-07-30, same dir) — the ADRC share is
+confirmed and the mechanism is code-anchored.** Same craft, same
+bottom-battery tilt, identical initial ANGLE leveling demand (sp peak
+123–124 dps): CLASSIC + feature-airmode rights itself with **zero motor
+saturation, settled in 0.46 s**; ADRC with the identical airmode config
+bounces (61 % motor saturation in the first 0.25 s, z3 railing the debug
+clip). Root asymmetry: at zero throttle before airmode throttle-activates,
+classic runs `pidResetIterm()` every loop — no integrator exists at arm —
+while `adrcZeroThrottleItermReset()` (pid.c:1123, fork fix #4)
+deliberately keeps the ESO alive and clears only the cosmetic
+`pidData.I`; with the gate latched open, z3 is a live integrator winding
+against ground contact. Its own code comment anticipated this
+("post-landing windup remains possible"). **Candidate mitigation refined**:
+while `zeroThrottleItermReset` is active, hold z3 at the gated decay rate
+(or suppress its growth) even with the gate open — the direct ADRC analog
+of the protection classic already has. Side observation from the same
+A/B: classic with airmode on a *switch* (active at arm) also bounced
+(928 dps) where feature-airmode did not, though the firmware treats both
+identically (`rc_modes.c`) and the header diff is one feature bit —
+unexplained, plausibly marginal-stability variance; more arms would tell.
+
 **An open latch alone does not produce the runaway (2026-07-29, logged)**:
 8ksal8's Wind flight (`pr15400-8ksal8-hoteltune/`, flight 3) begins with a
 "Logging resume" event (blackbox on a switch, `logIteration = 48640`) and

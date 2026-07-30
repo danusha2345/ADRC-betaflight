@@ -67,5 +67,48 @@ the tracker.
   (battery deliberately set back to counter camera weight — "guess it's a
   little too much") and raised yaw b0 to 10000 in this tune.
 
+## Follow-up (2026-07-30) — the classic-PID A/B, and the mechanism found in code
+
+The pilot flew the requested A/B the next morning (three more `.bbl`s in
+this directory, `python3 ab_pid.py`; same craft, bottom-mounted battery so
+it always arms tilted and the ANGLE box demands leveling immediately):
+
+| log | pid_type | airmode | outcome | first-5 s gyro peak | motor-sat samples | settle |
+|---|---|---|---|---|---|---|
+| `AirMode_sw_on_Angle_onPIDs` | CLASSIC | box on switch (on at arm) | bounces | 928 dps | 8.5 % | never |
+| `Airmode_on_Angle_onPIDs` | CLASSIC | permanent feature | **rights itself, stays** | 149 dps | **0 %** | **0.46 s** |
+| `Airmode_on_Angle_onADRC` | ADRC | permanent feature | bounces | 624 dps | 22 % (61 % of first 0.25 s) | never |
+
+The initial ANGLE leveling demand is identical in all three
+(sp_rp peak 123–124 dps — same tilt), and the full-header diff between the
+two classic logs is exactly one bit (the AIRMODE feature flag). Per the
+firmware, feature-airmode and box-airmode take the same code path
+(`rc_modes.c`: `airmodeEnabled = feature || box`; the throttle-raise latch
+in `core.c` applies to both), so the classic switch-vs-feature difference
+is not explained by configuration — plausibly marginal-stability
+run-to-run variance; more arms of each would tell.
+
+**The ADRC-vs-classic difference, however, is mechanistic and now
+code-anchored.** At zero throttle with airmode not yet
+throttle-activated, `core.c` sets `pidSetItermReset(true)`; for CLASSIC
+this calls `pidResetIterm()` **every loop** — the integrator simply does
+not exist at arm, and only the bounded P/D response to the leveling
+demand acts (log 2: zero saturation, settled in half a second). For ADRC,
+`adrcZeroThrottleItermReset()` (pid.c:1123) deliberately keeps the ESO
+alive so the estimate survives spool-up, clearing only the cosmetic
+`pidData.I` — its own comment says "Post-landing (gate still open on the
+ground) windup remains possible". With the gate latched open earlier in
+the arm cycle, the live z3 integrator winds against ground contact and
+the craft bounces (log 3: z3 railing ±524k in the debug clip, 61 %
+motor saturation in the first quarter-second — against classic's 0 % at
+the identical leveling demand).
+
+Mitigation implication: classic's zero-throttle iTerm-reset protection
+has no ADRC analog once the gate is open. A minimal candidate fix —
+while `zeroThrottleItermReset` is active, hold z3 at the gated (fast)
+decay rate or suppress its growth even with the gate open — would extend
+the exact protection classic already has, and composes with the
+minimum-throttle-floor idea already listed under ADRC-026.
+
 Tracked under **ADRC-026** in the
 [remediation tracker](../ADRC_REMEDIATION_TRACKER.md).
