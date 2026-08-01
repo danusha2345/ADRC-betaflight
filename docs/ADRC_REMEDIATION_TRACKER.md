@@ -67,6 +67,31 @@ correctly tracked hover anchor would compensate sag for free — a static
 percentage doesn't. The principled endgame remains measured b0(throttle)
 identification below, which subsumes the hover+law construct entirely.)
 
+**Field data (2026-07-30/31) — free flight cannot identify b0, and the sweep
+shows why the protocol is needed.** Pavel_M. flew a two-craft b0 sweep
+(3200 / 4800 / 6400 at wc 60, wo 100, two packs each, 13 sessions; data:
+[`pr15400-pavel-part2/`](flight-test-analysis/pr15400-pavel-part2/)). Three
+results bear directly on this item:
+
+1. **Both crafts move the same way on instruments** — raising b0 monotonically
+   lowers 20–80 Hz content (what the pilot hears) and monotonically worsens
+   tracking error and the standing `|I|`. The opposite *subjective* rankings
+   come from which half of that trade-off dominated on each craft.
+2. **b0 is several-fold craft-specific**: at identical settings (b0 3200,
+   fresh pack) the Air65 II shows 10.0 dps of 20–80 Hz roll content against
+   the Meteor75's 1.8 dps.
+3. **No numeric b0 can be extracted from these logs.** Regressing gyro_dot on
+   pidSum inside the loop returns the controller's own b0 (proportional to
+   the setting, coherence 0.9+) and is meaningless as a measurement; the
+   unbiased setpoint-as-instrument route fails for lack of excitation
+   (command-to-u coherence 0.29–0.46 in 1.5–12 Hz). Planned doublets, not
+   free flying, are what make this estimator usable.
+
+Also measured there: on a 1S whoop the hover collective runs ~36 % on a fresh
+pack and ~50 % at the end of it, so the fixed-percentage anchor drifts out of
+match within a single flight (the schedule was already adding ~20 % effective
+b0 late in the pack) — empirical support for the physics footnote above.
+
 The quadratic `(throttle/hover)²` law is capped at ×3 as a *safety bound*, not
 a model. Classic TPA suggests the true plant-gain growth hover→full is more
 like ×2–3 than the ×8+ the quadratic extrapolates to. To be settled as a
@@ -622,6 +647,32 @@ transient (ADRC-025 family), differential-authority saturation at full
 collective, and the b0 schedule's ×2.3+ output cut — none separable from
 these flights. Discriminating test: the same flip at ~60 % throttle
 (scale ≈ 1.7, no saturation), and FIXED vs LINEAR at matched throttle.
+
+**A concrete, testable mechanism proposal (2026-07-30, @jmsweng)**: setting
+`adrc_hover_throttle` **above** the craft's real hover collective reproduces
+the sticking, and clearing it removes it. He replicated the effect on his
+rebuilt Air65 by raising the anchor a few points above the measured hover,
+and his earlier sticking logs had the anchor left at the default 35. The
+mechanism is available in code: the anchor is the b0 schedule's reference,
+so an anchor above the true hover keeps the multiplier clamped at ×1.00
+through most of the usable throttle band, i.e. the loop runs at un-scaled
+gain exactly where the schedule was meant to raise it. It also predicts the
+side effect he reports — take-off much faster than PID and a hover that is
+hard to hold.
+
+@8ksal8's 2026-07-31 control run does **not** contradict it. He set the
+anchor to 35 (his usual value is 29) and saw no sticking, but the measured
+hover collective in that flight was 34.6 % on a sagging pack (10.56 V in the
+calm windows versus 11.78 V in his `btfl_041`), i.e. the anchor was matched
+to within +0.4 points rather than sitting above the hover. Data and the
+per-log offsets: [`pr15400-8ksal8-yawb0/`](flight-test-analysis/pr15400-8ksal8-yawb0/).
+The discriminating run on that craft is a **fresh** pack (measured hover
+28–30 %) with `adrc_hover_throttle = 40–42`.
+
+Related, from [`pr15400-pavel-part2/`](flight-test-analysis/pr15400-pavel-part2/):
+on a 1S whoop the measured hover collective climbs from ~36 % on a fresh pack
+to ~50 % at the end of it, so a fixed anchor is matched for only part of a
+flight and the offset that this finding turns on is not a constant.
 
 Not universal: the 2026-07-28 8ksal8 flights (SQRT, hover matched,
 including intentional inverted holds — data:
