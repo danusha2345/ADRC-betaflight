@@ -509,6 +509,25 @@ z3 decay or inhibit its growth even if the gate opens. This is analogous
 in intent to CLASSIC protection, not equivalent to an every-loop reset,
 and needs repeated-arm plus patched/unpatched ADRC A/B validation.
 
+**Fourth logged capture (2026-08-01, 8ksal8's ground b0_yaw sweep — data:
+[`pr15400-8ksal8-yawb0/`](flight-test-analysis/pr15400-8ksal8-yawb0/),
+follow-up section): the trigger crossed by *lowering b0*, at wo 160.** During
+a deliberate armed-on-the-ground yaw-b0 sweep (ANGLE on, 0 % stick throttle,
+`wc 125/130/300`, `wo 160/160/160`), the b0_yaw = 20000 arm false-opened the
+gate 0.775 s in and kept it open for 69.2 % of the record: |gyro| to 128 dps,
+a motor driven to 1122 of the 198–2047 range (≈ 50 % of span), yaw z3 at the
+debug clip 26.2 % of the post-open record, disarm 1.74 s after the open. Not a
+full rail runaway, but a clean false-liftoff + ground windup capture — at the
+lowest wo recorded for this failure (160, vs 150 in the 2×2 and 160 with wind
+in the bench report). The same sweep brackets the trigger: 24k and 32k arms
+briefly touch 21 dps without satisfying the 25 ms hold, and all nine
+ascending-b0 arms (36k → 65535) stay ≤ 17 dps with the gate closed — i.e. the
+output's 1/b0 scaling means *lowering* b0 raises the grounded loop gain until
+idle excitation crosses the gyro test. This is the most direct evidence yet
+for the joint-loop-gain threshold reading above (wo, wc, b0 jointly — there is
+no safe "wo below X" line), and it strengthens the minimum-throttle-floor
+mitigation over the band-reject one for the same reason as the wind report.
+
 **An open latch alone does not produce the runaway (2026-07-29, logged)**:
 8ksal8's Wind flight (`pr15400-8ksal8-hoteltune/`, flight 3) begins with a
 "Logging resume" event (blackbox on a switch, `logIteration = 48640`) and
