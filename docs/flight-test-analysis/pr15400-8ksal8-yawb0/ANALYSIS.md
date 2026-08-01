@@ -144,6 +144,54 @@ flights probed the `adrc_b0_scale_max = 3` ceiling. The gate was open ≥ 95 % o
 each log; no ADRC-026 signature (no zero-throttle motor runaway) appears in any
 of them.
 
+## Follow-up (2026-08-01): the ground b0_yaw sweep and the first 48k log
+
+Source: `Yaw300wc_b0_36k_Max_sweep.zip` and `Yaw300wc_48kb0.zip` (PR comment
+5151289371), same craft (pilot confirms it hovers at ~28–29 %, matching §3's
+measured 28.6–32.4 %). The pilot's stated procedure: ground, 0 % throttle,
+ANGLE on, sweeping yaw b0 to "flatten the saw teeth" PID Toolbox shows in the
+yaw response curve, believing wo was maxed out.
+
+**What the headers actually changed** — nine sessions, all
+`wc 125/130/300`, `wo 160/160/160`, `b0 4000/3000/<yaw>` with yaw b0 36k → 40k
+→ 44k → 48k → 52k → 56k → 60k → 64k → 65535:
+
+- `adrc_wo_yaw` never moved: 160 in every session (CLI ceiling is 600 — there
+  is headroom). What hit its ceiling is `adrc_wc_yaw` = 300 (the CLI max) and,
+  in the last session, `adrc_b0_yaw` = 65535 (the uint16 field max).
+
+**Ground safety: no ADRC-026 event.** Across all nine sessions the liftoff
+gate never opened (0.0 %), stick throttle stayed at 0 %, collective at 1–3 %
+median, peak |gyro| ≤ 17 dps — below the 20 dps / 25 ms gyro trigger — no
+motor at the rail, published yaw |I| = 0 throughout. The procedure sits in the
+ADRC-026 hazard class (armed, ANGLE, grounded), but this craft on this floor
+stayed under the trigger.
+
+**Why the ground sweep cannot tune the airborne yaw loop.** With the gate
+closed the ESO deliberately runs without the `b0·u` term, and the control law
+divides everything by b0 (`P = wc²·err/b0`, `D = 2wc·z2/b0`, `I = −z3/b0`).
+On the ground, raising b0_yaw therefore mostly *attenuates* the yaw output per
+unit error — a progressively flatter, cleaner-looking idle response is the
+expected result of turning the loop gain down, regardless of the airframe.
+The "saw teeth going away" measures that attenuation, not the flight loop; a
+PID-Toolbox step response taken on the ground with the gate closed is a
+different plant from the one that flies.
+
+**First log at the swept-in tune (`btfl_045`, wc_yaw 300 / b0_yaw 48k,
+118 s at hover collective, fresh pack, anchor offset +0.8):** on instruments
+the yaw axis is the worst of the three calm-flight configurations so far —
+tracking errRMS 39.3 dps = 27 % of the command sd, closed-loop gain 1.18,
+lag 9 ms, against 18 % / 1.12 for `btfl_041` (wc 220 / 18k) and 12 % / 1.04
+for the 13k wind flight. Yaw HF is very low (0.3 dps), i.e. the tune is
+quiet but loose. One consistent reading: the yaw P authority per unit error
+is `wc²/b0` — 1.20 for 125/13k, 2.69 for 220/18k, **1.88 for 300/48k** — so
+the final config carries *less* yaw stiffness than the 220/18k one despite
+both knobs being higher. (Descriptive: flights differ; but `btfl_041` and
+`btfl_045` are both calm indoor hover-collective logs and compare cleanly.)
+The yaw "z3 dbg-rail 43.6 %" in this log is the §-intro logging-scale
+artefact: at b0 48k the debug clip corresponds to |I| ≥ 10.9, and actual
+|I| p95 is 81 with the bound at 400.
+
 ## Claim ledger
 
 | claim | verdict | basis | confidence |
@@ -154,3 +202,6 @@ of them.
 | that asymmetry is CG rather than tune (or sensor path) | UNTESTED | candidates only, no discriminating run yet | — |
 | the hover-35 run refutes @jmsweng | NEGATIVE | offset most likely ≈0; 34.6 % from 24 wide-spread windows | medium-high |
 | any ADRC-026 event in these logs | NEGATIVE | gate open ≥95 %, no zero-throttle runaway | high |
+| any ADRC-026 event in the ground b0_yaw sweep | NEGATIVE | gate never opened; gyro ≤ 17 dps, under the 20 dps trigger | high |
+| the ground sweep measured the airborne yaw loop | NEGATIVE | gate closed → no b0·u in the ESO; output ∝ 1/b0 | high |
+| wc_yaw 300 / b0_yaw 48k improved flight yaw | NEGATIVE (so far) | btfl_045: 27 % err / gain 1.18 vs 18 % / 1.12 (btfl_041), 12 % / 1.04 (13k) | medium |
