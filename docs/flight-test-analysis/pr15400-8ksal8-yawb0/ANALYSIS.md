@@ -24,18 +24,25 @@ Metric notes, because two of them are easy to misread:
   z3 absorbs the `b0·u` model error, so its magnitude scales with the configured
   b0 — a larger b0 reaches the debug rail on its own, with no change in what the
   controller is doing. `pidData.I = −z3/b0` divides that back out, and the
-  anti-windup bound is `|I| ≤ pidSumLimit`. Below, `|I|` is quoted, and in every
-  log it stays far from its limit (≤ 0.24 % of samples at the rail).
+  anti-windup bound is `|I| ≤ pidSumLimit`. Below, `|I|` is quoted; in every
+  log it stays far from that limit (≤ 0.24 % of samples). Two things this does
+  **not** say: the debug-field rail (`|z3| ≥ 524k`) is not the internal
+  anti-windup rail (`pidSumLimit·b0` = 1.5–7.2 M for these tunes), and motor
+  saturation is a separate matter — the two wind flights do rail a motor for
+  4.30 % / 0.68 % of samples, and the hover-35 flight for 9.19 %.
 - **Collective comes from the motor mean, not the throttle stick**, so it tracks
   what the craft actually needed.
 
-## 1. yaw b0 7k → 13k: a clean A/B, and it moved every metric the right way
+## 1. yaw b0 7k → 13k: an encouraging association — every yaw metric moved the right way, but the flights differ
 
-These two logs differ only in `adrc_b0_yaw`; same wc, same filters, same anchor,
-both flown in wind on the same day. The two flights are not identical in
-aggression (the 7k flight has 4.30 % of samples with a motor at the rail versus
-0.68 %, and a higher p90 collective), so the yaw-only comparison is the one to
-trust — roll/pitch numbers move with the flying, not with the change.
+These two logs differ only in `adrc_b0_yaw` in configuration; same wc, same
+filters, same anchor, both flown in wind on the same day. But the flights
+themselves are not matched: the 7k flight is much more aggressive (4.30 % of
+samples with a motor at the output rail versus 0.68 %, p90 collective 64.7 %
+versus 42.9 %), and aggression alone moves every metric below. So this is an
+association from two uncontrolled flights, not a controlled A/B — the yaw-only
+comparison is the most meaningful part, and even it inherits the aggression
+difference.
 
 | metric (airborne, active) | yaw b0 7000 | yaw b0 13000 |
 |---|---:|---:|
@@ -45,12 +52,13 @@ trust — roll/pitch numbers move with the flying, not with the change.
 | yaw tracking error RMS (15 Hz LP, commanded segments) | 9.9 dps (13 % of cmd sd) | **8.5 dps (12 %)** |
 | yaw z3 at debug rail | 4.02 % | 4.77 % |
 
-Reading: at 7k the yaw observer was carrying a systematically larger standing
-correction (`|I|` p95 58 → 36) and more 20–80 Hz activity. Raising b0 lowered the
-loop gain toward what the airframe actually is, and the tracking error went down
-rather than up — the usual sign that the old value was on the too-low side, not
-that the new one is too high. This supports the pilot's subjective "raising yaw
-b0 helped, and it still feels controllable".
+Reading: at 7k the yaw axis carried a larger standing correction (`|I|` p95
+58 → 36) and more 20–80 Hz activity, and the tracking error did not get worse
+when b0 went up (13 % → 12 % — within noise for two different flights). That
+direction is *consistent with* 7000 having been low, and it matches the pilot's
+"raising yaw b0 helped, and it still feels controllable" — but with the
+aggression mismatch above it is support, not proof. A same-pack, similar-flying
+repeat would settle it.
 
 `btfl_041` (yaw b0 18000) is **not** a continuation of this A/B: `adrc_wc_yaw`
 changed 125 → 220 in the same step, and it is a much calmer flight (p90
@@ -60,7 +68,7 @@ the wc step, or the different flight; with two variables moved at once the log
 cannot separate them. If the goal is to find the yaw b0 ceiling, the next run
 should hold `adrc_wc_yaw = 125` and only change b0.
 
-## 2. Why roll is solid and pitch is twitchy: it is pitch, and it is not filtering
+## 2. The roll-solid / pitch-twitchy asymmetry is real, low-frequency, and physical-looking
 
 The asymmetry the pilot sees in the debug traces is real and reproducible across
 all four logs, but it is a **low-frequency** asymmetry, not chatter:
@@ -72,11 +80,14 @@ all four logs, but it is a **low-frequency** asymmetry, not chatter:
 | btfl_041 | 31 | 49 | 106 | 33.0 dps | 28.2 dps |
 | hover-35 test | 67 | **148** | 59 | 17.9 dps | 23.5 dps |
 
-Pitch carries two to three times roll's standing disturbance estimate in every
-log, and its tracking error is 1.5–3× roll's in the two wind flights — while its
-20–80 Hz content is *lower* than roll's (3.4 vs 4.5, 2.1 vs 3.2 dps). A filtering
-or noise problem would show up in the HF band; this shows up in the standing
-correction, which is what a persistent physical asymmetry looks like.
+Pitch carries a consistently larger standing disturbance estimate than roll —
+1.6–2.4× across the four logs (125/64, 105/43, 49/31, 148/67) — and its tracking
+error is 1.5–3× roll's in the two wind flights, while its 20–80 Hz content is
+*lower* than roll's (3.4 vs 4.5, 2.1 vs 3.2 dps). Chatter-type noise would show
+in the HF band; this shows in the standing correction, which is what a
+persistent asymmetry (mechanical or tune) looks like. Low HF does not by itself
+rule out every sensor or filtering cause, so the candidates below stay
+candidates until a discriminating test is flown.
 
 Two candidates, both consistent with the same signature and both testable:
 
@@ -93,7 +104,7 @@ Cheapest discriminator: move the battery forward until the pitch `|I|` p95 drops
 toward roll's without touching the tune. If it does, it was CG. If it does not,
 set `adrc_b0_pitch = 4000` (matching roll) and re-fly the same conditions.
 
-## 3. The `adrc_hover_throttle = 35` run did not test @jmsweng's hypothesis
+## 3. The `adrc_hover_throttle = 35` run is a weak control, not a refutation of @jmsweng
 
 @jmsweng reported that setting `adrc_hover_throttle` **above** the craft's real
 hover collective produces the inverted "sticking". @8ksal8 set 35 (his usual
@@ -109,18 +120,21 @@ the offset the hypothesis needs:
 
 The hover-35 flight was flown on a sagging pack (10.02 V median, 10.56 V in the
 calm windows, versus 11.78 V in `btfl_041`), and a sagging pack needs more
-collective for the same hover. The anchor of 35 therefore landed within half a
-point of where the craft was actually hovering: the run tested an
-*anchor-matched* configuration, not an anchor-above-hover one. It is a valid
-control, and it is consistent with @jmsweng rather than contradicting him.
+collective for the same hover. Taken at face value, the anchor of 35 landed
+within half a point of the actual hover — i.e. the run most likely tested an
+*approximately anchor-matched* configuration rather than the anchor-above-hover
+regime the hypothesis needs. But the estimate itself is weak: only 24
+heavily-overlapping calm windows survive this aggressive flight (9.19 % of
+samples with a motor at the rail; hover spread p10 28.1 %, p90 40.0 %), so
+"matched to +0.4" cannot be asserted with confidence. The honest statement:
+this run is not a convincing refutation — and not a strong confirmation of
+anything either.
 
-Caveat on that row: only 24 calm windows survived (the flight is aggressive,
-9.19 % of samples with a motor at the rail) and their spread is wide
-(p10 28.1 %, p90 40.0 %), so treat the 34.6 % as approximate.
-
-To actually test the hypothesis on this craft: fly a **fresh** pack, where the
-measured hover is 28–30 %, with `adrc_hover_throttle = 40–42`. That is the
-+10-point offset regime; 35 on a fresh pack would only be about +6.
+To actually discriminate on this craft, make the offset the only variable: two
+flights on equally-charged **fresh** packs (measured hover 28–30 %), anchor
+**29** in one and **34–35** in the other, everything else unchanged. That
+reproduces the same few-points-above offset @jmsweng reported the effect at,
+without pack sag re-matching the anchor mid-experiment.
 
 ## 4. Ranges the schedule actually visited
 
@@ -134,9 +148,9 @@ of them.
 
 | claim | verdict | basis | confidence |
 |---|---|---|---|
-| yaw b0 7k → 13k improved yaw `|I|`, HF and tracking | POSITIVE | table in §1, same-tune pair | high |
+| yaw b0 7k → 13k: yaw `|I|`, HF and tracking all moved favourably | POSITIVE (association) | table in §1; flights differ in aggression, not a controlled A/B | medium |
 | yaw b0 18k is better still | UNPROVEN | wc_yaw and flight conditions changed with it | high |
-| pitch carries a standing asymmetry vs roll | POSITIVE | `|I|` p95 and errRMS across four logs | high |
-| that asymmetry is CG rather than tune | UNTESTED | two candidates, no discriminating run yet | — |
-| the hover-35 run refutes @jmsweng | NEGATIVE | measured offset was +0.4, not above hover | high |
+| pitch carries a standing asymmetry vs roll (1.6–2.4× `|I|`) | POSITIVE | `|I|` p95 and errRMS across four logs | high |
+| that asymmetry is CG rather than tune (or sensor path) | UNTESTED | candidates only, no discriminating run yet | — |
+| the hover-35 run refutes @jmsweng | NEGATIVE | offset most likely ≈0; 34.6 % from 24 wide-spread windows | medium-high |
 | any ADRC-026 event in these logs | NEGATIVE | gate open ≥95 %, no zero-throttle runaway | high |

@@ -67,30 +67,39 @@ correctly tracked hover anchor would compensate sag for free — a static
 percentage doesn't. The principled endgame remains measured b0(throttle)
 identification below, which subsumes the hover+law construct entirely.)
 
-**Field data (2026-07-30/31) — free flight cannot identify b0, and the sweep
-shows why the protocol is needed.** Pavel_M. flew a two-craft b0 sweep
-(3200 / 4800 / 6400 at wc 60, wo 100, two packs each, 13 sessions; data:
+**Field data (2026-07-30/31) — this estimator gets nothing from free flight,
+and the sweep shows why the doublet protocol is needed.** Pavel_M. flew a
+two-craft b0 sweep (3200 / 4800 / 6400 at wc 60, wo 100, two packs each,
+13 sessions; data:
 [`pr15400-pavel-part2/`](flight-test-analysis/pr15400-pavel-part2/)). Three
-results bear directly on this item:
+results bear on this item — all descriptive (free flights; manoeuvres and pack
+state differ between sessions):
 
-1. **Both crafts move the same way on instruments** — raising b0 monotonically
-   lowers 20–80 Hz content (what the pilot hears) and monotonically worsens
-   tracking error and the standing `|I|`. The opposite *subjective* rankings
-   come from which half of that trade-off dominated on each craft.
-2. **b0 is several-fold craft-specific**: at identical settings (b0 3200,
-   fresh pack) the Air65 II shows 10.0 dps of 20–80 Hz roll content against
-   the Meteor75's 1.8 dps.
-3. **No numeric b0 can be extracted from these logs.** Regressing gyro_dot on
-   pidSum inside the loop returns the controller's own b0 (proportional to
-   the setting, coherence 0.9+) and is meaningless as a measurement; the
-   unbiased setpoint-as-instrument route fails for lack of excitation
-   (command-to-u coherence 0.29–0.46 in 1.5–12 Hz). Planned doublets, not
-   free flying, are what make this estimator usable.
+1. **Group medians move the same way on both crafts** — 20–80 Hz content falls
+   with b0 throughout, and tracking error is clearly worse by 6400 on both
+   (the Air65's 3200→4800 step is not worse). Sound follows the HF column and
+   feel follows the tracking column, which reproduces the pilot's own reports
+   ("6400 cleanest sound-wise, lower b0 flew better") with no contradiction
+   between the crafts.
+2. **Identical settings behave several-fold differently across crafts**: at
+   b0 3200 on fresh packs the Air65 II shows 5.6× the Meteor75's 20–80 Hz
+   gyro content while the motor-mean HF differs only ~1.3× — strong craft
+   dependence, though one flight per craft with different IMUs cannot
+   attribute the ratio between plant gain, mechanics and sensor path.
+3. **No numeric b0 came out of these logs.** Regressing gyro_dot on pidSum
+   inside the loop returns the controller's own b0 (proportional to the
+   setting, coherence 0.9+) — an identity, not a measurement; the
+   setpoint-as-instrument route got command-to-u coherence of only 0.29–0.46,
+   and the few yaw bins passing 0.6 gave unphysical values (17–37). Doublets
+   should supply the missing excitation; whether the estimator then returns a
+   credible b0 has to be shown on the first doublet dataset.
 
-Also measured there: on a 1S whoop the hover collective runs ~36 % on a fresh
-pack and ~50 % at the end of it, so the fixed-percentage anchor drifts out of
-match within a single flight (the schedule was already adding ~20 % effective
-b0 late in the pack) — empirical support for the physics footnote above.
+Also observed there: the measured hover proxy correlates with pack voltage
+across sessions (36–39 % at 3.71–3.90 V vs 45–50 % at 3.47–3.62 V, with the
+schedule's applied multiplier moving 1.05 → 1.22 alongside) — consistent with
+the physics footnote above, but confounded with b0 across those sessions and
+not yet a within-pack measurement. The clean check is a start-of-pack vs
+end-of-pack hover on one battery, tune unchanged.
 
 The quadratic `(throttle/hover)²` law is capped at ×3 as a *safety bound*, not
 a model. Classic TPA suggests the true plant-gain growth hover→full is more
@@ -660,19 +669,24 @@ gain exactly where the schedule was meant to raise it. It also predicts the
 side effect he reports — take-off much faster than PID and a hover that is
 hard to hold.
 
-@8ksal8's 2026-07-31 control run does **not** contradict it. He set the
-anchor to 35 (his usual value is 29) and saw no sticking, but the measured
-hover collective in that flight was 34.6 % on a sagging pack (10.56 V in the
-calm windows versus 11.78 V in his `btfl_041`), i.e. the anchor was matched
-to within +0.4 points rather than sitting above the hover. Data and the
-per-log offsets: [`pr15400-8ksal8-yawb0/`](flight-test-analysis/pr15400-8ksal8-yawb0/).
-The discriminating run on that craft is a **fresh** pack (measured hover
-28–30 %) with `adrc_hover_throttle = 40–42`.
+@8ksal8's 2026-07-31 control run (`adrc_hover_throttle = 35`, no sticking) is
+a **weak control, not a refutation**. The measured hover collective in that
+flight reads 34.6 % — but from only 24 heavily-overlapping calm windows in an
+aggressive flight (p10–p90 spread 28.1–40.0 %), on a sagging pack (10.56 V in
+the calm windows versus 11.78 V in his `btfl_041`). Taken at face value the
+anchor was matched to within +0.4 points rather than sitting above the hover,
+i.e. the run most likely never created the offset the hypothesis needs — but
+that offset estimate is too noisy to assert. Data and per-log offsets:
+[`pr15400-8ksal8-yawb0/`](flight-test-analysis/pr15400-8ksal8-yawb0/). The
+discriminating run on that craft: two equally-charged **fresh** packs
+(measured hover 28–30 %), anchor 29 versus 34–35, everything else unchanged —
+the same few-points offset the original report described.
 
 Related, from [`pr15400-pavel-part2/`](flight-test-analysis/pr15400-pavel-part2/):
-on a 1S whoop the measured hover collective climbs from ~36 % on a fresh pack
-to ~50 % at the end of it, so a fixed anchor is matched for only part of a
-flight and the offset that this finding turns on is not a constant.
+across that sweep's sessions the measured hover proxy correlates with pack
+voltage (36–39 % fresh vs 45–50 % sagged; confounded with b0 and not yet a
+within-pack measurement). If a start-vs-end-of-pack check confirms it, the
+offset this finding turns on is not a constant over a pack.
 
 Not universal: the 2026-07-28 8ksal8 flights (SQRT, hover matched,
 including intentional inverted holds — data:
