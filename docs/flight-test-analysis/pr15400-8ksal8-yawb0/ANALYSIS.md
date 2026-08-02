@@ -213,6 +213,102 @@ debug clip corresponds to |I| ≥ 10.9 while actual |I| p95 is 81 (bound 400) �
 the channel is clipped telemetry above that level, not evidence of
 anti-windup saturation.
 
+## Follow-up 2 (2026-08-02): the "Getting close" set — an in-flight b0_yaw sweep, the remount, and the pilot's report of the 20k arm
+
+Source: PR comment 5157640545 — `Getting_close.zip` (SHA-256
+`c23c63454d7e21296fe59f8ec82f7cb55c054033238a2e8bf46ec1c446891e5c`, four
+sessions `btfl_052…055`) plus a re-post of `Yaw300wc_48kb0.zip` (SHA-256
+`e2650300bf00b776aa08435e4f06bb145bca16d7b152d94819c3fa1e418ef322`), whose
+`btfl_045.bbl` is byte-identical to the file analysed above — the re-post adds
+the subjective report ("yaw overshooting a little and bouncing side to side a
+bit", plus "about an extra minute of flight time"), not new data. The pilot
+also reports remounting the frame/prop-guard assembly between the previous
+batch and this set, and attaches a PIDtoolbox step-response screenshot over
+these same four logs.
+
+**The pilot's report of the 20k arm confirms — and completes — the ADRC-026
+record.** His description: "At arm the quad just popped to a hover about an
+inch or two … off the ground and stayed there till disarm." The log agrees
+with the outcome: after the false open, motors transiently reach 820–1122
+with motor-mean collective p90 15 % / max 24 %, and the record ends at the
+disarm 1.74 s after the open — for a guarded whoop in strong ground effect,
+a real uncommanded lift-off, observed to be **self-limited** (a low hover,
+not an escalation to the rail). A plausible mechanism for the self-limiting:
+z3 winds up while the grounded plant does not respond, and once the craft
+actually lifts the ESO regains a responding plant and the windup stops. That
+is a hypothesis — the log records no altitude and the z3 inflection point is
+not resolvable from the clipped debug trace — the established part is the
+uncommanded lift-off itself. Nor is the self-limited outcome reassurance:
+entry into uncommanded flight at 0 % throttle with props on is the hazard,
+and the earlier high-wo captures show oscillatory (non-parking) versions of
+the same entry.
+
+**The four new sessions are the controlled-direction comparison the ground
+sweep could not be: b0_yaw swept in flight at fixed wc_yaw = 300.**
+
+| log | wc R/P/Y | b0 R/P/Y | dur | vbat med | yaw err % / gain | roll / pitch err % | yaw HF 20–80 | `wc²/b0` (yaw) |
+|---|---|---|---:|---:|---|---|---:|---:|
+| btfl_052 | 125/130/300 | 4000/3000/**32000** | 56 s | 11.20 V | 26 % / 1.16 | 18 % / 17 % | 0.4 | 2.81 |
+| btfl_053 | 125/130/300 | 4000/3000/**28000** | 61 s | 11.99 V | 22 % / 1.14 | 16 % / 15 % | 0.4 | 3.21 |
+| btfl_054 | 125/130/300 | 4000/3000/**26000** | 81 s | 11.61 V | 20 % / 1.13 | 16 % / 16 % | 0.4 | 3.46 |
+| btfl_055 | **120**/130/300 | 4000/3000/**24000** | 97 s | 11.27 V | 19 % / 1.12 | 17 % / 16 % | 0.4 | 3.75 |
+
+(The screening script also emits a cross-correlation lag; it is omitted here
+deliberately — it concatenates non-contiguous commanded segments before
+correlating, which is not a valid latency estimate on these logs.)
+
+Gate open 89–100 %, saturation 0.00 % in all four; hover collective 27.7–30.2 %
+against anchor 29 (matched, multiplier 1.00–1.02). Yaw tracking error falls
+monotonically as b0_yaw comes down — err 26 → 19 %, σ-ratio 1.16 → 1.12 —
+while the 20–80 Hz band stays flat at 0.4 dps: no chatter cost so far in this
+range. This is the direction `wc²/b0` points (2.81 → 3.75; direct P-path
+coefficient only — D scales as `2wc/b0` and the ESO participates too). The
+pilot's PIDtoolbox screenshot over the same logs agrees at the endpoints
+(yaw peak 1.33 at 32k → 1.24 at 24k) but is not strictly monotone in between
+(≈1.33/1.28/1.29/1.24), and its yaw latencies are flat (≈19–20.5 ms), so it
+adds endpoint support, not an independent monotone confirmation. Verdict:
+a consistent one-knob descriptive trend — the cleanest yaw series in this
+thread so far — with the usual free-flight caveats (packs differ 11.2–12.0 V
+per session; the σ-ratio is not a gain measurement).
+
+**After the remount, roll/pitch tracking is symmetric; attribution is
+plausible but not isolated.** The previous batch carried a 1.6–2.4×
+pitch-vs-roll tracking asymmetry (errRMS 125/64, 105/43, 49/31, 148/67 dps).
+In all four new sessions roll and pitch track symmetrically (15–18 % each,
+pitch slightly the better axis) with roll/pitch b0 unchanged at 4000/3000
+and wc almost unchanged (125/130, except btfl_055's wc_roll = 120) — which
+supports a mechanical contribution from the remount, though nothing here
+isolates it causally. Two counterpoints keep it open: pitch |I| p95 is still
+1.3–1.7× roll's (49/29, 36/28, 44/31, 40/29) — the integral effort asymmetry
+survives even though tracking equalised — and the yaw before/after
+comparison is confounded by b0_yaw changing alongside (27 % at 48k before vs
+26 % at 32k after), so whether the remount helped yaw cannot be said either
+way. The battery-forward CG discriminator is now much less urgent (the
+tracking asymmetry it targeted is gone) but the residual |I| asymmetry means
+it is not entirely moot.
+
+**Grounded gate margin at the new flying tune (safety note).** In the armed
+grounded segments before takeoff (5–7 s each in 053/054/055), the peak
+grounded yaw |gyro| was 35 / 38 / 43 dps at b0_yaw 28k / 26k / 24k — one arm
+per setting, so a small (and, in these three arms, shrinking) amplitude
+margin rather than an established monotone law — with 29–83 separate
+>20 dps crossings per arm, every one shorter than 7.6 ms: only the 25 ms
+hold kept the gate closed; the 20 dps amplitude threshold is being crossed
+routinely. And in btfl_052 the arm transient itself (a 26.4 ms **roll** run
+to 56 dps, at b0_yaw 32k) **did** open the gate at 0 % throttle 0.12 s into
+the log. It did not develop into a recorded ground incident before the
+commanded lift-off ~1.5 s later; the zero-throttle false-open itself was
+still unsafe. It is a fifth logged gyro-path open at zero throttle, and a
+roll-transient one, so the exposure is not purely a b0_yaw property. Practical consequence: at
+these settings the ground margin is hold-limited, not amplitude-limited;
+keep the armed-on-ground time short, treat lower b0_yaw as increasing the
+false-open risk, and do not resume props-on ANGLE ground sweeps.
+
+The yaw "z3 dbg-rail" column reads 28–39 % across these four sessions — as
+before this is the logging clip (at b0_yaw 24–32k the clip corresponds to
+|I| ≥ 16–22 while actual |I| p95 is 80–89 against the 400 bound), not
+anti-windup saturation.
+
 ## Claim ledger
 
 | claim | verdict | basis | confidence |
@@ -222,8 +318,15 @@ anti-windup saturation.
 | pitch carries a standing asymmetry vs roll (1.6–2.4× `|I|`) | POSITIVE | `|I|` p95 and errRMS across four logs | high |
 | that asymmetry is CG rather than tune (or sensor path) | UNTESTED | candidates only, no discriminating run yet | — |
 | the hover-35 run refutes @jmsweng | NEGATIVE | offset most likely ≈0; 34.6 % from 24 wide-spread windows | medium-high |
-| any ADRC-026 event in the four flight logs | NEGATIVE | gate open ≥95 %, no zero-throttle runaway | high |
+| any ADRC-026 event in the original yaw-7k / yaw-13k / btfl_041 / hover-35 flight set | NEGATIVE | gate open ≥95 %, no zero-throttle runaway | high |
 | ADRC-026 false-open in the ground b0_yaw sweeps | **POSITIVE** | `…20k_sweep.05`: gate opens at 0.775 s at 0 % throttle, motor to 1122, z3 clipped 26.2 % after open | high |
 | the trigger is bracketed by b0_yaw in that sweep | POSITIVE | 20k opens; 24k/32k touch 21 dps without opening; ascending nine ≤ 17 dps closed | high |
 | the closed-gate sessions measured the airborne yaw loop | NEGATIVE | gate closed → no b0·u in the ESO; output ∝ 1/b0 | high |
 | wc_yaw 300 / b0_yaw 48k improved flight yaw | NEGATIVE (descriptive, so far) | btfl_045: 27 % err / σ-ratio 1.18 vs 18 % / 1.12 (btfl_041), 12 % / 1.04 (13k); different flights | medium |
+| lowering b0_yaw 32k → 24k at wc_yaw 300 improves flight yaw | POSITIVE (descriptive one-knob trend) | Follow-up 2 table: err 26→19 %, σ-ratio 1.16→1.12, HF flat; PIDtoolbox agrees at endpoints (1.33→1.24, non-monotone inside, latency flat); packs differ; lag estimate excluded as invalid | medium |
+| the 20k arm reached uncommanded flight (not just windup) | POSITIVE | pilot report ("popped to a hover … stayed till disarm") + collective p90 15 %/max 24 % in ground effect | high |
+| the self-limiting was an ESO-regains-the-plant equilibrium | HYPOTHESIS | no altitude channel; z3 inflection not resolvable from clipped trace | — |
+| the previous pitch-vs-roll *tracking* asymmetry had a mechanical component | POSITIVE (supported, not isolated) | symmetric 15–18 % post-remount with roll/pitch b0 unchanged (btfl_055 wc_roll 120 the one tune delta); pitch \|I\| still 1.3–1.7× roll | medium |
+| the remount's effect on yaw | UNRESOLVED | before/after confounded by b0_yaw 48k → 32k; within the new set yaw moves with b0_yaw | — |
+| grounded amplitude margin is small at 24k–28k; the 25 ms hold was the active guard | POSITIVE | grounded yaw peaks 35/38/43 dps (one arm per setting), 29–83 >20 dps crossings per arm, all ≤ 7.6 ms | high |
+| a fifth gyro-path open at 0 % throttle (arm transient, btfl_052) | POSITIVE (no recorded incident before lift-off; the false-open itself unsafe; roll-driven, at b0_yaw 32k) | 26.4 ms roll run to 56 dps opens gate at t = 0.12 s; commanded lift-off ~1.5 s later | high |

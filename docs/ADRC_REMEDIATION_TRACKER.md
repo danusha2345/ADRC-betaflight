@@ -101,6 +101,42 @@ the physics footnote above, but confounded with b0 across those sessions and
 not yet a within-pack measurement. The clean check is a start-of-pack vs
 end-of-pack hover on one battery, tune unchanged.
 
+**Field data (2026-08-01, part 3) — the complementary wc sweep; the
+wc/wo-ratio folklore did not bind.** The same pilot then held b0
+(6400 Air65 / 3200 Meteor) and wo (100) and swept wc 20/40/60 on both crafts
+(13 sessions; data:
+[`pr15400-pavel-part3/`](flight-test-analysis/pr15400-pavel-part3/)). wc
+dominates the rankable measurements (roll/yaw tracking and event counts;
+short-window pitch cells are too noisy to rank): at wc 20 flyability
+collapses — roll/yaw tracking ≥ 100 % of the command sd in commanded windows
+(the extreme 1298 % cell is a departure-dominated small-command-sd artifact,
+not a standalone measurement), and 16 merged uncommanded high-rate events in
+the clean wc-20 logs (12 Air65 + 4 Meteor, peaks to 735 dps, integrated
+body-axis angles to 242° — matching the pilot's "90°+ rotations"; 2 more sit
+in a crash record, counted separately) — while at wc 60 both crafts fly at
+14–29 % (clean-log roll/yaw) with zero detector events outside the one
+excluded crash tail. Three Meteor wc-40 events persist (peaks > 1000 dps);
+the two biggest wc-40 departures begin after ≥ 100 ms of continuous
+upper-rail saturation — at least one motor at the configured high rail in
+every sample — and remain continuously saturated during the detected event,
+with |I| railing during rather
+than before (causal direction open), and 15 of the 16 clean-log wc-20 events
+start unsaturated with the schedule multiplier locally steady (the one
+exception chains off the biggest departure's recovery; mechanism open — an
+earlier "schedule-transient" framing was withdrawn on re-inspection). The textbook
+"wc = 20–30 % of wo" cap did not bind in these data (best-of-set at
+wc/wo = 0.6 on both whoops; the Pavo20 flying at ≈ 0.8 with yaw at 1.9 as an
+existence point) — which is not a universal refutation and does not
+establish wc 80 as safe; the observed practical limits are saturation duty
+and gyro-path noise. Same-tune day-to-day spread (Meteor wc 60 / 3200: roll
+24–29 % here vs ~10 % in part 2) again says σ-ratio comparisons resolve only
+large effects — the doublet protocol remains the instrument for the rest. In
+flight-time terms: 8ksal8's in-flight b0_yaw sweep (32k → 24k at wc_yaw 300,
+`pr15400-8ksal8-yawb0/` follow-up 2) is the cleanest one-knob field series
+in this corpus so far — tracking error and σ-ratio fell together with flat
+20–80 Hz content, in the `wc²/b0` direction (descriptive; PIDtoolbox agrees
+at the endpoints).
+
 The quadratic `(throttle/hover)²` law is capped at ×3 as a *safety bound*, not
 a model. Classic TPA suggests the true plant-gain growth hover→full is more
 like ×2–3 than the ×8+ the quadratic extrapolates to. To be settled as a
@@ -527,6 +563,38 @@ idle excitation crosses the gyro test. This is the most direct evidence yet
 for the joint-loop-gain threshold reading above (wo, wc, b0 jointly — there is
 no safe "wo below X" line), and it strengthens the minimum-throttle-floor
 mitigation over the band-reject one for the same reason as the wind report.
+
+*Pilot confirmation and outcome (2026-08-02, PR comment 5157640545):* the
+pilot reports the 20k arm "just popped to a hover about an inch or two …
+off the ground and stayed there till disarm" — i.e. the capture reached
+**uncommanded flight**, not just windup: motors transiently at 820–1122 with
+motor-mean collective p90 15 % / max 24 %, enough for a guarded whoop in
+strong ground effect, and the outcome was self-limited (a low hover, not an
+escalation to the rail). A plausible mechanism for the self-limiting — z3
+winds while the grounded plant does not respond, lift-off restores a
+responding plant and the windup stops — remains a hypothesis: the log has no
+altitude channel and the z3 inflection is not resolvable from the clipped
+trace. The self-limited outcome in ANGLE does not blunt the hazard (entry
+into uncommanded flight at 0 % throttle); the high-wo captures show
+oscillatory, non-parking versions of the same entry.
+
+**Fifth logged gyro-path open at 0 % throttle, plus small grounded margin at
+the flying tune (2026-08-02, same source, `Getting_close.zip` follow-up-2
+section):** in `btfl_052` the *arm transient itself* (a 26.4 ms **roll** run
+to 56 dps, exceeding the 25 ms hold, at b0_yaw 32k) opened the gate at 0 %
+stick throttle 0.12 s into the log. It did not develop into a recorded
+ground incident before the commanded lift-off ~1.5 s later; the
+zero-throttle false-open itself was still unsafe. Notable because it was
+roll-driven: the exposure is not purely a b0_yaw property. In the armed grounded segments of the other three
+sessions the peak grounded yaw |gyro| was 35 / 38 / 43 dps at b0_yaw
+28k / 26k / 24k (one arm per setting — a small and, in these arms, shrinking
+amplitude margin, not an established monotone law), with 29–83 separate
+>20 dps crossings per arm, each under 7.6 ms. At the pilot's current flying
+tune the 20 dps amplitude threshold is crossed routinely and **only the
+25 ms hold keeps the gate closed** — the margin is hold-limited, not
+amplitude-limited, and lower b0 raises the grounded loop gain (1/b0), i.e.
+the false-open risk. Any mitigation that touches `adrc_liftoff_hold_ms`
+must treat it as the active guard in this regime, not a formality.
 
 **An open latch alone does not produce the runaway (2026-07-29, logged)**:
 8ksal8's Wind flight (`pr15400-8ksal8-hoteltune/`, flight 3) begins with a
