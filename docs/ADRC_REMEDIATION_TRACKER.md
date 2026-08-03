@@ -232,6 +232,25 @@ LINEAR is the compromise on current loop code; SQRT is right *if* the
 margin hypothesis holds (see ADRC-024). Remaining: the decisive margin
 experiment (the wc/wo 2×2 on SQRT, see ADRC-024); FIXED must not be re-flown on this craft.
 
+**Bench cross-check (2026-08-03)**: @jmsweng measured static thrust vs
+throttle on an Air65 over a kitchen scale (PR comment 5161126252). Analysis in
+[`docs/flight-test-analysis/pr15400-jm-thrust-bench/`](flight-test-analysis/pr15400-jm-thrust-bench/).
+The reading he drew from it inverts a transform: the mixer is additive in
+command, so the static torque per unit control follows `dT/dcmd`, and a
+*linear* thrust curve therefore argues for FIXED, not LINEAR. Differentiating
+his own manufacturer sheet (Gemfan 1219s-3 / 0702-27000 kV) gives a slope
+ratio above hover of ≈0.8–1.35 across every plausible hover normalisation
+(25–35 %) — near FIXED, below SQRT, far below the quadratic — which points the
+same way as the doublet identification here without being a second
+identification of it. Scope limits that must travel with the number:
+`dT/dcmd` is a *static roll/pitch proxy for schedule shape*, while this
+implementation's `b0` is defined on `ω̈` (deg/s³ per PID output) and absorbs
+actuator dynamics; yaw needs the reaction-torque slope `dQ/dcmd`, which a
+scale cannot see; and the vendor grid's own slope scatters 1.44× over
+30–100 %. The bench does not select a production exponent, and the b5 FIXED
+result remains one craft at one parameter set — a demonstrated hazard there,
+not a general verdict on exposing a selector.
+
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
 Explicit criterion going forward: defaults (`wc/wo/b0`, gate thresholds,

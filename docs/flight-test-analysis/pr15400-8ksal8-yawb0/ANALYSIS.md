@@ -309,6 +309,127 @@ before this is the logging clip (at b0_yaw 24–32k the clip corresponds to
 |I| ≥ 16–22 while actual |I| p95 is 80–89 against the 400 bound), not
 anti-windup saturation.
 
+## Follow-up 3 (2026-08-03): the `wo` pair — a confounded A/B, a tune-identical repeat of `btfl_055`, and a rail/HF association
+
+Source: PR comment 5160697334 — `Yaw300wc_24kb0_160wo.zip` (SHA-256
+`f1bcb3ec45cb609f73859f6bdba4db1218750570f2175c8bd1e1818204551088`), two
+sessions of ~184 s each, plus the pilot's flight video
+(<https://youtu.be/qVvsaoeI-gE>) and his reported tune R 120/150/4000,
+P 130/150/3000, Y 300/150/24000. Headers confirm one ADRC change between the
+two logs: `adrcWO` 160,160,160 → 150,150,150, i.e. **all three axes at once**.
+Everything else is identical (wc 120/130/300, b0 4000/3000/24000,
+`adrc_hover_throttle` 29, `adrc_b0_law` 1 = SQRT, `adrc_gyro_lpf_hz` 150,
+`vbat_sag_compensation` 0, firmware `543f1a5ff`).
+
+| log | wo | dur | sat | collective med / p90 | b0 scale med / p90 / max | roll / pitch / yaw err % | yaw HF 20–80 | motor HF 20–80 |
+|---|---:|---:|---:|---|---|---|---:|---:|
+| `…_160wo` | 160 | 184 s | 2.00 % | 32.4 / 54.6 % | 1.06 / 1.36 / 1.81 | 10 / 5 / 6 % | 0.9 | 9.2 |
+| `…_150wo` | 150 | 183 s | 2.67 % | 34.1 / 62.6 % | 1.10 / 1.44 / 1.79 | 7 / 9 / 13 % | 1.2 | 12.1 |
+
+**The wo A/B is confounded by how hard each flight was flown.** The second
+session carries more collective (p90 62.6 vs 54.6 %), more saturation
+(2.67 vs 2.00 %) and markedly more axis activity (roll gyro RMS 89.1 vs
+67.2 dps). Every metric that got worse at wo 150 is also a metric that moves
+with aggression, so these two logs do not measure `wo`.
+
+**The wo-160 session is a tune-identical repeat of `btfl_055` — in a
+completely different envelope.** Same wc, wo, b0, hover anchor and law as the
+last log of the Follow-up 2 sweep, yet: collective p90 54.6 % vs 30.6 %,
+saturation 2.00 % vs 0.00 %, b0-schedule multiplier reaching 1.81 vs 1.05,
+yaw tracking 6 % vs 19 %. Two consequences. (1) These logs **cannot extend
+the b0_yaw series** — nothing in them is comparable to it. (2) Checking back,
+all four sweep sessions were flown in a tight, matched envelope (collective
+p90 30.5 / 28.3 / 29.5 / 30.6 %, zero saturation, multiplier ≤ 1.12), which
+*strengthens* the internal validity of that sweep rather than weakening it —
+what it measured was small-signal yaw behaviour near hover, and only that.
+
+**Rail contact is strongly associated with the 20–80 Hz motor-command band.**
+The pilot's "trilling at high throttle" has no instrumented counterpart — there
+is no audio channel — so the nearest measurable quantity is 20–80 Hz content on
+the motor mean. Splitting both logs into 0.5 s windows by measured collective
+and by whether any motor sat at the configured high rail (2047) inside the
+window (`rail_hf_probe.py`, medians, wo-160 / wo-150):
+
+| collective band | HF 20–80, rail < 0.5 % of window | HF 20–80, rail ≥ 2 % of window |
+|---|---|---|
+| 40–55 % | 1.6 (n=93) / 2.0 (n=108) | 15.7 (n=4) / 10.7 (n=14) |
+| 55–70 % | 2.4 (n=18) / 2.3 (n=27) | 9.1 (n=5) / 18.9 (n=20) |
+| 70–85 % | 2.9 (n=6) / — | 38.1 (n=6) / 27.0 (n=22) |
+
+At comparable collective, rail-touching windows carry 5–10× the band activity
+of non-touching ones; window rail duty correlates with the band at +0.82 /
++0.86 over the collective > 50 % windows. **The causal direction is
+unresolved, and so is the relationship to the audible trill.** Both the rail
+flag and the HF measure come from the same motor-command signal; matched
+collective does not match maneuver, setpoint or cross-axis load; and `b0`
+itself sets command gain and therefore rail probability, so it cannot be
+excluded as a common cause. The within-flight decline the pilot describes
+appears in one log of the two: in wo-160 the high-collective windows go from
+rail duty 9.3 % / HF 20.1 in the first half to 0.0 % / 3.0 in the second, while
+in wo-150 they are flat (1.1 % / 4.4 → 0.1 % / 4.0). What can be said: nothing
+here supports lowering `wo` as the reason for any change, and headroom is the
+variable most worth testing next.
+
+**Yaw tracking-error intervals: three descriptive contexts.** Intervals where
+`|gyro_yaw − setpoint_yaw|` (both LP 15 Hz) exceeds 40 dps for ≥ 30 ms
+(`washout_probe.py`): 5 in the wo-160 log, 12 in the wo-150 log. The detector
+groups them by context; it does not identify mechanisms.
+
+1. *With saturation* (wo-160 at 156.1–156.4 s): during a −533 dps roll the
+   yaw axis swings −140 → +222 dps against a ±11 dps request, and yaw `|I|`
+   touches its 400 bound for 5 ms. **The ordering here is the opposite of
+   Pavel's Meteor wc-40 departures**: the error interval starts at 156.0936 s
+   and the first rail contact — which then runs continuously for 154 ms — is at
+   156.1416 s, i.e. 48 ms *later* (the raw yaw gyro passes 60 dps at a quiet
+   stick at 156.1111 s, still 30 ms before the rail). Departure and saturation
+   overlap; their causal ordering is unresolved, and it is not the
+   saturation-first pattern seen on the Meteor. This is the largest
+   uncommanded yaw excursion in the pair, and it does **not** meet the part-3
+   event criterion (`excursions.py` reports 0 events in both logs: the 200 dps
+   threshold is crossed, the ≥100 ms duration is not).
+2. *Large held commands, no saturation* (wo-150 at 103 s and the 118 s
+   cluster): requests of +299…+449 dps answered with peaks of +478…+564,
+   `|I|` well below bound.
+3. *Concurrent with another axis* (44 s, 170 s cluster): yaw errors of
+   43–55 dps while pitch runs at 522–622 dps.
+
+The yaw z3 debug field is clipped in 36–100 % of the samples inside every
+interval, so the observer state is off-scale exactly where it would be most
+interesting — the logging clip, not anti-windup.
+
+**No b0-dependent change in held-command yaw overshoot was resolved.** Peak
+`|gyro_yaw|` over a held command (`|setpoint_yaw|` > 150 dps for ≥ 150 ms,
+sd/mean < 0.15, peak taken over the hold + 100 ms tail; `yaw_overshoot.py`
+defaults):
+
+| log | b0_yaw | holds | overshoot median |
+|---|---:|---:|---:|
+| btfl_052 | 32000 | 2 | 1.34 |
+| btfl_053 | 28000 | 3 | 1.35 |
+| btfl_054 | 26000 | 11 | 1.31 |
+| btfl_055 | 24000 | 12 | 1.30 |
+
+This is a sparse post-hoc detector on free flight, not a step-response test:
+the qualifying-hold count depends on how the pilot happened to fly, and on the
+thresholds. `yaw_overshoot.py --sweep` over six threshold/duration settings
+returns medians between 1.27 and 1.37 for all four logs with hold counts from
+1 to 33 and no b0 ordering — so the honest reading is that **this detector
+resolves no b0-dependent change in held-command overshoot**, not that the
+quantity is constant. What it does show is that the sweep's improvement lives
+in the small-signal tracking metric (26 → 19 %), and that nothing in this
+corpus argues that going below b0_yaw 24k would move the large-signal
+behaviour the pilot is describing.
+
+**ADRC-026 check: clean in both logs.** The gate opens once per log, at
+4.47 s / 4.77 s, on commanded throttle. Grounded `|gyro|` peaks r/p/y are
+19/19/27 and 22/13/36 dps; >20 dps runs number 2 and 12 with the longest at
+2.5 ms and 6.6 ms against the 25 ms hold. No zero-throttle open — but the
+margin is again hold-limited, not amplitude-limited.
+
+Reproduce: `washout_probe.py`, `yaw_overshoot.py` (add `--sweep` for the
+threshold sensitivity) and `rail_hf_probe.py` in this directory, plus
+`analyze_round.py`, `gate_probe.py` and part-3's `excursions.py`.
+
 ## Claim ledger
 
 | claim | verdict | basis | confidence |
@@ -330,3 +451,9 @@ anti-windup saturation.
 | the remount's effect on yaw | UNRESOLVED | before/after confounded by b0_yaw 48k → 32k; within the new set yaw moves with b0_yaw | — |
 | grounded amplitude margin is small at 24k–28k; the 25 ms hold was the active guard | POSITIVE | grounded yaw peaks 35/38/43 dps (one arm per setting), 29–83 >20 dps crossings per arm, all ≤ 7.6 ms | high |
 | a fifth gyro-path open at 0 % throttle (arm transient, btfl_052) | POSITIVE (no recorded incident before lift-off; the false-open itself unsafe; roll-driven, at b0_yaw 32k) | 26.4 ms roll run to 56 dps opens gate at t = 0.12 s; commanded lift-off ~1.5 s later | high |
+| lowering wo 160 → 150 improved the craft | UNPROVEN | Follow-up 3: single pair, both flights differ in aggression (collective p90 54.6 vs 62.6 %, roll gyro RMS 67 vs 89 dps); wo changed on all three axes at once | high |
+| the wo-160 log extends the b0_yaw sweep (same tune as btfl_055) | NEGATIVE | same tune, incomparable envelope: collective p90 54.6 vs 30.6 %, saturation 2.00 vs 0.00 %, multiplier to 1.81 vs 1.05 | high |
+| rail-touching windows carry more 20–80 Hz motor-command activity | POSITIVE (association) | at comparable collective 5–10× higher; rail-duty↔HF correlation +0.82/+0.86 | medium-high |
+| that association explains the audible trill | HYPOTHESIS | no audio channel; rail flag and HF share one signal; collective does not match maneuver; `b0` sets both command gain and rail probability | — |
+| held-command yaw overshoot responded to b0_yaw 32k → 24k | UNRESOLVED | 1.34/1.35/1.31/1.30 at defaults, but 1–33 holds per log and medians 1.27–1.37 across six threshold settings with no b0 ordering — the detector resolves no change either way | — |
+| any ADRC-026 event in the wo pair | NEGATIVE | one commanded gate open per log at 4.47/4.77 s; longest grounded >20 dps run 2.5/6.6 ms vs the 25 ms hold | high |
