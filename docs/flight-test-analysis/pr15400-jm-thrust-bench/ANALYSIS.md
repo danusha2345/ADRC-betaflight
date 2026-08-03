@@ -129,6 +129,49 @@ quadratic 0.253`, SQRT winning all 12 leave-one-flight-out refits; LINEAR is
 the *leading compromise candidate in the current corpus* because SQRT flares
 the ADRC-024 hover ring. The production exponent is not chosen.
 
+## 6. The raw data (2026-08-03, comment 5168882363): the bench does discriminate
+
+`Air65 Throttle vs thrust.csv` (SHA-256
+`a970aa4e8cf762b5bc11f56488fac291873441941c538ec91c41f3974c45e9ad`), 25 points,
+command 1026–2000, thrust 0–97 g, no voltage column. Fitted properly —
+information criterion and residual structure, not band overlap
+(`fit_bench.py`):
+
+| model | RSS | resid sd | AICc | runs test |
+|---|---:|---:|---:|---|
+| affine `T = a·x + b` | 383.1 | 3.91 g | 143.7 | 9 vs 13.0 (z = −1.71) |
+| quadratic | 323.2 | 3.60 g | 142.1 | 8 vs 13.3 (z = −2.21) |
+| power law `n = 1.04`, dead offset `x₀ = +0.115` | 288.5 | 3.40 g | 139.2 | 12 vs 12.7 (z = −0.29) |
+
+The best model is a power law with exponent 1.04 through a dead command — an
+affine curve with an offset, i.e. **a constant slope**, and the only one of the
+three whose residual signs show no structure. Its implied slope ratio is
+1.02 → 1.06 over 40 → 100 % collective (hover 29 %), which is FIXED.
+
+The data are not sharp enough to stop there. Bootstrapping the most permissive
+shape (the quadratic, whose slope is free to grow; 4000 resamples) gives, at
+hover 29 %, a slope ratio of **1.15 [0.97, 1.32]** at 60 % collective and
+**1.35 [0.94, 1.72]** at 100 %. So this bench:
+
+- is consistent with FIXED (1.00 sits inside both intervals);
+- brackets the in-flight doublet estimate (×1.3 at 40–60 % collective) —
+  the two methods do not conflict;
+- puts SQRT (1.44 at 60 %, 1.86 at 100 %) at or just outside the upper bound;
+- **excludes LINEAR (2.07 / 3.45) and QUADRATIC (capped 3.00)** in this
+  command range, on this craft, statically.
+
+That is a direct answer to the "the variance is too large to pick a law"
+reading: the scatter is large enough that FIXED and SQRT cannot be separated
+here, and small enough that the two aggressive laws can be. It is also
+consistent with the pilot's own report that fixed and sqrt feel alike on this
+whoop — over the collective he actually flies, the two schedules differ by
+about 1.0 vs 1.2–1.3 while the measured static slope barely moves.
+
+One gap the data now make visible: the static best fit is flat (≈1.03) while
+the in-flight identification measured ×1.3. Whatever separates them —
+actuator and prop dynamics, inflow, the fact that this `b0` is defined on
+`ω̈` — is exactly the part a scale cannot reach.
+
 ## What would make the bench decisive
 
 Raw CSV with `motor command, thrust, pack voltage under load, eRPM (or
@@ -149,5 +192,7 @@ in-flight doublet protocol, not a scale.
 | this prop's slope ratio above hover is ≈0.8–1.35 | POSITIVE (vendor data) | `thrust_slope.py`, hover swept 25–35 %; slope itself scatters 1.44× on a 10-point grid | medium |
 | bench proxy and flight identification point the same way | POSITIVE (agreement, not joint identification) | slope ratio ~1.1–1.35 (static, whoop) vs plant-gain growth ×1.3 (in flight, two 5″) | medium |
 | the 97 g result attributes to pack sag | PLAUSIBLE, UNMEASURED | 22.8 A on 1S predicts 86–97 g at 30–40 mΩ; loaded V/I not recorded | medium |
-| the three fits are statistically indistinguishable | UNPROVEN | prediction-interval overlap is not a model-selection test; the sqrt panel is non-monotone and invalid | high |
+| the three fits are statistically indistinguishable | PARTLY NEGATIVE | on the raw 25 points, AICc and the runs test prefer a constant slope, and the bootstrap excludes LINEAR/QUADRATIC while leaving FIXED vs SQRT open | medium-high |
+| the raw bench data are consistent with FIXED | POSITIVE | best fit `n = 1.04` through a dead offset; slope ratio 1.02–1.06; 1.00 inside the bootstrap interval at 60 % and 100 % | medium |
+| the raw bench data contradict the in-flight ×1.3 | NEGATIVE | ×1.3 sits inside the bootstrap interval 1.15 [0.97, 1.32] at 60 % | medium |
 | FIXED is universally unsafe to expose | NEGATIVE (overreach) | one craft, one parameter set, one aborted flight — a demonstrated hazard, not a general result | high |
