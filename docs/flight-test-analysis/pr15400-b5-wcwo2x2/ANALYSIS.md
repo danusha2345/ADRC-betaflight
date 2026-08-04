@@ -1,5 +1,20 @@
 # bvandevliet SPEEDYBEE, 2026-07-22 — the wc/wo 2×2 on SQRT (b5)
 
+> **Correction (2026-08-05): the gate-attribution below is superseded.** This
+> report blamed the gyro-only (toss-launch) liftoff path for the ground
+> opens. Re-decoding all five arms for the b6 fix shows that path did not
+> fire in any of them — its hold is 81 consecutive PID iterations at this
+> 312 µs looptime, blackbox saved every second one (626 µs apart, `gyroADC[]`
+> being the detector's own filtered signal), and the longest run of saved
+> samples above `adrc_liftoff_gyro_dps` before any open is 6, i.e. at most 13
+> iterations even crediting every unsaved neighbour — while the collective proxy is at or
+> above these logs' `adrc_liftoff_throttle = 30` on every opening sample
+> (27.6→32.1 %, 26.2→30.3 %, 30.6→32.2 %) with the stick at its minimum. The
+> opening branch is the direct throttle test reading a collective that
+> includes airmode headroom. Run `python3 gate_open_cause.py <decoded>.csv`
+> to reproduce. Everything else here — the oscillation itself, the
+> saturation numbers, the ring analysis — stands.
+
 Source: PR [betaflight#15400] comment of 2026-07-22 (STACK share — expires,
 so the 8 `.bbl` originals are preserved here verbatim). Reproduce: decode all
 with the pinned `blackbox_decode` (`--debug --unit-frame-time us`), then
@@ -23,14 +38,17 @@ baseline), log2 & log8 = 45/100 (p2), log3 = 60/150 (p3), logs 4–7 = 45/150
 
 The failure signature is consistent across all three gate-opening attempts:
 a **~28.3–28.8 Hz oscillation at idle on the ground** (gyro p2p 190–390
-deg/s), which exceeds the `adrc_liftoff_gyro_dps = 20` / 25 ms liftoff
-detector within 0.1–0.4 s of arming → **the gate opens with the craft on
-the ground at zero stick throttle** → the ESO integrates ground-contact
+deg/s) → **the gate opens with the craft on the ground at zero stick
+throttle** within 0.1–0.4 s of arming (via the throttle test, see the
+correction at the top — this paragraph originally credited the
+`adrc_liftoff_gyro_dps = 20` / 25 ms detector) → the ESO integrates ground-contact
 dynamics it cannot model, z3 winds up, motors run up to saturation —
 the "almost instant fly-away" the pilot reported. This is a **gate
 robustness defect interacting with high wo** (tracked as ADRC-026), not an
-in-air instability: the gyro-only liftoff path treats a self-induced idle
-oscillation as liftoff. Logs 5/6 are disarms before the detector fired.
+in-air instability: under airmode the mixer raises collective to fit the axis
+mix that the oscillation demands, and the gate's throttle test reads that
+applied value, so `adrc_liftoff_throttle = 30` is met with the stick down.
+Logs 5/6 are disarms before it fired.
 Consequence: the observer-lag lever was **never tested in the air** — the
 2×2's high-wo column is empty of flight data, and wo = 150 must not be
 re-flown on this craft without a firmware-side mitigation.
@@ -61,4 +79,4 @@ jmsweng raised an IMU-difference hypothesis (his ICM42688 crafts hover all
 laws; this craft's target carries BMI270/MPU6000) — plausible as a
 craft-difference factor, unproven from logs, and orthogonal to the
 ground-gate defect above, which is fully explained by the liftoff detector's
-gyro-only path.
+throttle test reading the airmode-raised applied collective.

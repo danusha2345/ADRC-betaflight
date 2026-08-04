@@ -421,9 +421,9 @@ wc/wo 2×2 above remains the decisive experiment.
 **wc/wo 2×2 flown (2026-07-22,
 [`pr15400-b5-wcwo2x2/`](flight-test-analysis/pr15400-b5-wcwo2x2/)) — the
 experiment half-failed, informatively.** Both wo = 150 arms never reached
-the air: a ~28.3–28.8 Hz idle oscillation on the ground false-triggered the
-gyro-only liftoff detector within 0.1–0.4 s of arming (gate open at **0 %
-stick throttle**), the ESO wound up against ground contact and the motors
+the air: a ~28.3–28.8 Hz idle oscillation on the ground false-opened the
+liftoff gate within 0.1–0.4 s of arming (gate open at **0 % stick
+throttle**), the ESO wound up against ground contact and the motors
 ran to saturation — the pilot's "almost instant fly-aways" (see ADRC-026;
 **do not re-fly wo = 150** on this craft without a mitigation). So the
 observer-lag lever is untested in the air. The wc lever *was* tested:
@@ -486,24 +486,156 @@ on this craft.
 ### ADRC-026 — Ground-constrained excitation can false-open the liftoff gate and drive zero-throttle z3 windup/runaway (from the 2×2 flights)
 
 At wo = 150 (SQRT, b0 = 2000, wc 45 or 60) the craft oscillates at
-~28.5 Hz on the ground at idle throttle, exceeding
-`adrc_liftoff_gyro_dps = 20` for the 25 ms hold within 0.1–0.4 s of arming.
-The gate then opens **with the craft on the ground at 0 % stick throttle**,
-the ESO integrates ground-contact dynamics it cannot model, z3 winds up and
-the motors run up to saturation (6–24 % of samples at 2047) — an
-uncommanded thrust runaway on the ground. Three of five wo = 150 arms show
-exactly this signature; the other two were disarmed before the detector
-fired. Data: [`pr15400-b5-wcwo2x2/`](flight-test-analysis/pr15400-b5-wcwo2x2/).
+~28.5 Hz on the ground at idle throttle. The gate opens **with the craft on
+the ground at 0 % stick throttle** within 0.1–0.4 s of arming, the ESO
+integrates ground-contact dynamics it cannot model, z3 winds up and the
+motors run up to saturation (6–24 % of samples at 2047) — an uncommanded
+thrust runaway on the ground. Three of five wo = 150 arms show exactly this
+signature; the other two were disarmed before it fired. Data:
+[`pr15400-b5-wcwo2x2/`](flight-test-analysis/pr15400-b5-wcwo2x2/).
 
-Status: OPEN. The defect is the liftoff detector's gyro-only path treating
-a self-induced idle oscillation as liftoff — any sufficiently-unstable tune
-can arm-and-runaway without the pilot ever raising throttle. Candidate
-mitigations (deliberately not implemented while the code is frozen for
-A/B continuity): require a minimum throttle floor alongside the gyro
-condition; band-reject 15–40 Hz content in the liftoff gyro test; or gate
-z3 accumulation until throttle exceeds idle. Safety guidance meanwhile:
-treat "motors audibly oscillating at idle after arming" as an immediate
-disarm, and do not fly high-wo profiles.
+**Which branch opens the gate — corrected 2026-08-04.** This entry
+originally attributed the opening to the gyro-only (toss-launch) path.
+Re-decoding all five arms for the b6 fix shows that path **could not have
+fired in any of them**, and that the direct throttle branch explains every
+open:
+
+| log | collective proxy, sample before → at open | longest run of peak \|gyro\| > 20 dps before the open |
+|---|---|---|
+| btfl_003 | 27.6 % → **32.1 %** | 0 saved samples (≤ 1 iteration) |
+| btfl_004 | 26.2 % → **30.3 %** | 4 (2.5 ms, ≤ 9 iterations) |
+| btfl_007 | 30.6 % → **32.2 %** | 6 (3.8 ms, ≤ 13 iterations) |
+| btfl_005, 006 | gate never opens | 0 (≤ 1) |
+
+These logs flew `adrc_liftoff_throttle = 30`, so the collective at the
+opening sample is at or above the direct threshold in all three, while
+`rcCommand[THROTTLE]` sits at its minimum throughout. The gyro hold runs on
+PID iterations, not log samples: at these logs' 312 µs looptime,
+`adrc_liftoff_hold_ms = 25` needs 81 consecutive iterations, and blackbox saved
+every second one (626 µs apart), logging the detector's own signal
+(`gyroADC[]` = the filtered `gyro.gyroADCf`; `gyroUnfilt[]` is a different,
+pre-filter series). The longest run of saved samples above the threshold is
+6 — at most 13 consecutive iterations even crediting every unsaved neighbour,
+against the 81 needed. That is consistent with the excitation — a ~28.5 Hz
+oscillation crosses zero every ~17.5 ms, so a symmetric one has to dip under
+the threshold well inside a 25 ms hold — but it is a reading of *these* logs,
+not a general theorem: the detector samples the max over three axes at the
+loop rate, so a biased, multi-axis or lower-frequency excitation could still
+hold it. The collective proxy is
+mean(motor) normalised over the logged output range — the symmetric mix
+cancels in the mean — and the transition itself falls between two saved
+samples, so the exact crossing value is bracketed rather than observed.
+Script: `gate_open_cause.py` alongside the logs.
+
+The mechanism is therefore **airmode headroom, not the toss-launch path**:
+the mixer raises collective to fit the axis mix, that rise is thrust nobody
+commanded, and the gate was reading it. Credit: the mis-attribution was
+caught in adversarial review of the first b6 draft, whose tests had sidestepped
+the direct branch by raising the threshold out of its way.
+
+Status: MITIGATION WRITTEN, UNFLOWN (b6). The defect is that the liftoff
+detector's throttle test reads a collective that includes thrust nobody
+commanded, so any tune whose ground behaviour makes the mixer add headroom
+can arm-and-runaway without the pilot ever raising throttle. The b5 code
+freeze was lifted for this one fix (bvandevliet, 2026-08-04): once a second
+tester hit the same failure independently on ground arms, it stopped being a
+controlled A/B variable and became a safety bug that also blocks the whole
+high-`wo` column. b6 carries this mitigation and nothing else, so every other
+comparison in the corpus stays valid.
+
+Implemented as:
+
+1. **The gate reads the commanded collective, not the applied one.**
+   `mixer.c` now publishes both: `mixerGetAdrcThrottle()` as before (after the
+   mixer adjustment, feeding the b0 plant-gain schedule, which needs the thrust
+   that *exists*) and `mixerGetAdrcCommandedThrottle()`, sampled between the
+   automatic-mode overrides and `applyMixerAdjustment()`. The two differ by
+   exactly the airmode headroom — the ~32 % of range that opened the gate at a
+   stick that never moved. Because the sample sits *after* the ALT_HOLD and
+   GPS_RESCUE overrides, an autonomous climb still opens the gate with the
+   stick at zero, with no flight-mode knowledge in `adrc.c`. **This value is
+   the commanded collective, not the stick**: throttle-angle correction,
+   `throttle_limit`, `throttle_boost`, the `USE_DYN_IDLE` 1 % floor and
+   `USE_RPM_LIMIT` scaling are all upstream of the sample and remain in it.
+   The guarantee is against *mixer-added* thrust, not against firmware-added
+   throttle generally — and the dyn-idle floor is the one automatic
+   contribution present at a zero stick, so an `adrc_liftoff_throttle`
+   configured near the CLI's 1 % minimum is not protected by this fix. The
+   semantics are pinned by
+   `CommandedCollectiveCarriesUpstreamAutomaticContributions`.
+2. **Throttle floor on the gyro path** — the gyro-only branch additionally
+   requires commanded throttle ≥ `adrc_liftoff_throttle` × 0.5 (a fixed
+   fraction, `ADRC_LIFTOFF_GYRO_THROTTLE_FRACTION`, not a new setting — see the
+   PG note below), and the hold timer resets whenever throttle drops below it,
+   so idle rotation cannot be banked and completed by a later blip. On the
+   corrected evidence this is defence in depth rather than the fix: it closes
+   the toss-launch path against a slower (< ~20 Hz) or one-sided ground
+   excitation that could hold the test, which no log here shows.
+3. **z3 growth inhibit while ungated AND idle** — the ESO's observer-error
+   term is admitted only when it moves |z3| toward zero; the decay half of the
+   update still runs. The existing `gatedZ3DecayRate` bounds where z3 settles
+   but not how fast it charges (at `wo` = 150 its ~50 ms time constant is
+   three orders under the per-loop `beta3` = `wo`³ term), so this bounds the
+   charge carried into any false open that still happens. The scope is
+   **ungated AND idle, never idle alone**: idle alone would suppress the
+   estimate during a genuine zero-throttle mid-air float, which is the
+   ADRC-020 failure class.
+
+Two constraints shaped the implementation rather than being free choices.
+`PG_PID_PROFILE`'s version nibble is 4 bits and already at its 15 ceiling, so
+a new `adrc_liftoff_gyro_min_throttle` field cannot be added without wrapping
+the version to 0 — a real historical value (the b5 tag registers at 0) —
+hence the derived fraction; a dedicated setting can follow once the version is
+restored to upstream `master`+1 at undraft. And the fraction must stay
+meaningfully below 1, because the gyro branch is an `else if` after the direct
+throttle check: a floor equal to `adrc_liftoff_throttle` would make the gyro
+path dead code.
+
+Rejected alternatives. The band-reject (15–40 Hz) candidate was **dropped**,
+not deferred: 8ksal8's table-arming report in 15–23 mph gusts is an external,
+non-band-limited gyro source satisfying the same test, and the corrected
+analysis shows the gyro path was not the opening branch anyway. Gating on
+"stick raised" via `mixerGetThrottle()` was also rejected: that value is
+post-throttle-angle-correction, post-`throttle_limit` and post-`throttle_boost`,
+so it is not the stick, and any stick-based test would have to special-case the
+automatic modes to avoid holding the gate shut during an autonomous climb.
+
+Known trade-off: a toss launch at literally zero throttle no longer opens the
+gate on rotation alone — it opens once the throttle comes up, through either
+branch. Unflown and unmeasured.
+
+Validation status: unit + e2e tests only.
+`adrc_mixer_unittest.cc` drives the **real `mixTable()`** and asserts the two
+collectives diverge exactly as the logs show (applied past 30 % on airmode
+headroom, commanded at zero), agree when there is no headroom to add, both
+zero in crashflip and under motor-stop, that GPS_RESCUE reaches the commanded
+value, that thrust linearization converts both to the same physical domain,
+and that upstream automatic contributions (throttle-angle correction) stay in
+the commanded value — the semantics stated above. `USE_DYN_IDLE` and
+`USE_RPM_LIMIT` are not compiled into that suite, so their presence in the
+commanded value is argued from the source order, not asserted.
+`adrc_unittest.cc` (`AirmodeHeadroomAloneDoesNotOpenGate`,
+`GyroHoldTimerCannotBeBankedBelowTheThrottleFloor`,
+`Z3GrowthIsInhibitedWhileUngatedAtIdleThrottle`, plus ADRC-020 and
+automatic-mode guards) and `adrc_gate_e2e_unittest.cc`
+(`GroundOscillationUnderAirmodeCollectiveKeepsGateClosedAndZ3Bounded`, run at
+the logs' own `adrc_liftoff_throttle = 30` with the direct branch deliberately
+left in play) cover the controller path; the mixer is stubbed in that target,
+which is why the mixer-backed assertions live in the suite above. The
+characterization tests were confirmed to fail with the gate pointed back at the
+applied collective and to pass with the fix; all 63 unit suites pass and
+SPEEDYBEEF7MINI builds: text +192…+196 B and bss +8 B against the same target
+built from the unpatched tree, the spread being two independent setups whose
+absolute sizes also differ by ~70 B, so treat ~+200 B as the figure and the
+exact count as environment-dependent. That is the limit of what replay can
+establish — once the fix changes controller output the recorded gyro trajectory
+is no longer a valid input, so closed-loop physical stability is **not**
+covered. Still required before this is called closed: a bench that reproduces
+the ground oscillation, then a limited props-on arm on the 2×2's oscillation
+profile, then the patched/unpatched A/B.
+
+Safety guidance until then is unchanged: treat "motors audibly oscillating at
+idle after arming" as an immediate disarm, and do not fly high-wo profiles.
 
 **Trigger set is broader than self-oscillation (2026-07-28 pilot report,
 unlogged)**: 8ksal8, armed on a table in 15–23 mph gusts (wc 125 / wo 160 /
@@ -858,13 +990,17 @@ anything touching the b0 throttle law, or
 the tune unchanged within any one comparison run. Note both flashes reset the
 PID profiles (see the PG lineage under ADRC-020 above): `diff all` first.
 
-> **Ground-safety warning before you raise `adrc_wo` (ADRC-026).** The liftoff
-> gate's gyro-only path (`adrc_liftoff_gyro_dps = 20` sustained for
-> `adrc_liftoff_hold_ms = 25`) cannot tell a self-induced idle oscillation from
-> a real takeoff. At `wo = 150` the craft oscillated at ~28.5 Hz on the ground
-> at idle and opened the gate **on the ground at 0 % stick throttle** within
-> 0.1–0.4 s of arming, after which z3 wound up and the motors ran to saturation
-> — an uncommanded thrust runaway with the pilot's throttle still down. Treat
+> **Ground-safety warning before you raise `adrc_wo` (ADRC-026).** Under
+> airmode the mixer raises collective to fit the axis mix, and on b5 and
+> earlier the liftoff gate reads that raised value — so a craft that
+> oscillates on the ground can meet `adrc_liftoff_throttle` without the pilot
+> touching the stick. At `wo = 150` the craft oscillated at ~28.5 Hz on the
+> ground at idle and opened the gate **on the ground at 0 % stick throttle**
+> within 0.1–0.4 s of arming, after which z3 wound up and the motors ran to
+> saturation — an uncommanded thrust runaway with the pilot's throttle still
+> down. (Re-decoding in 2026-08 attributes those opens to that throttle test,
+> not to the gyro-only path this warning first blamed; b6 changes which
+> collective the gate reads, but is unflown.) Treat
 > "motors audibly oscillating at idle right after arming" as an immediate
 > disarm, arm props-off first when trying a higher `wo`, and do not fly
 > high-`wo` profiles until ADRC-026 is fixed.
