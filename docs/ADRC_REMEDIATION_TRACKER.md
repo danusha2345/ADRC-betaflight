@@ -512,7 +512,7 @@ opening sample is at or above the direct threshold in all three, while
 `rcCommand[THROTTLE]` sits at its minimum throughout. The gyro hold runs on
 PID iterations, not log samples: at these logs' 312 µs looptime,
 `adrc_liftoff_hold_ms = 25` needs 81 consecutive iterations, and blackbox saved
-every second one (626 µs apart), logging the detector's own signal
+every second one (~626 µs apart; measured median 628 µs), logging the detector's own signal
 (`gyroADC[]` = the filtered `gyro.gyroADCf`; `gyroUnfilt[]` is a different,
 pre-filter series). The longest run of saved samples above the threshold is
 6 — at most 13 consecutive iterations even crediting every unsaved neighbour,
@@ -525,6 +525,15 @@ hold it. The collective proxy is
 mean(motor) normalised over the logged output range — the symmetric mix
 cancels in the mean — and the transition itself falls between two saved
 samples, so the exact crossing value is bracketed rather than observed.
+One bias mechanism is known and unquantified: the mean cancellation holds
+only while no motor rides a clamp, and with `dyn_idle_min_rpm = 30` the
+lowest motor clamps at `motorRangeMin` during deep oscillation, biasing the
+proxy upward — roughly up to ~1–1.5 % on the mean, enough that log 004's
+30.3 % opening sample could sit just under the 30 % threshold, with the true
+crossing on the unsaved iteration before the next sample (31.3 %). None of
+this moves the verdict, which rests on elimination rather than the proxy:
+the gate demonstrably opened (debug[7]) and the gyro branch demonstrably
+could not have fired, and those two facts leave only the throttle branch.
 Script: `gate_open_cause.py` alongside the logs.
 
 The mechanism is therefore **airmode headroom, not the toss-launch path**:
@@ -602,7 +611,15 @@ automatic modes to avoid holding the gate shut during an autonomous climb.
 
 Known trade-off: a toss launch at literally zero throttle no longer opens the
 gate on rotation alone — it opens once the throttle comes up, through either
-branch. Unflown and unmeasured.
+branch. A second, quieter residual of the same scenario: during the ballistic
+phase (ungated AND commanded-idle AND genuinely airborne) the z3 growth
+inhibit is active, so the disturbance estimate cannot charge until throttle
+comes up. This is not the ADRC-020 failure — that was an *open* gate closing
+mid-air and dumping a live z3, while here the gate has not yet opened and z3
+is near zero from the arm-epoch reset anyway, and b0·u was already held at
+zero while gated on b5 too — but it is new suppression in an airborne regime
+and should be watched in the first toss-launch logs on b6. Unflown and
+unmeasured.
 
 Validation status: unit + e2e tests only.
 `adrc_mixer_unittest.cc` drives the **real `mixTable()`** and asserts the two
