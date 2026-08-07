@@ -8,7 +8,7 @@ selector, i.e. exactly what ships as the b8 prebuilt.
 `thrust_linear = 20`.
 **Loop:** `looptime 125`, `pid_process_denom 2` (4 kHz), `blackbox_sample_rate 1/2`.
 
-Four logs, indoors:
+Seven logs, indoors:
 
 | file | what it is | duration |
 |---|---|---|
@@ -16,6 +16,8 @@ Four logs, indoors:
 | `tethered_btfl_001.bbl.gz` | props on, tethered to a weight plate | 36.8 s |
 | `freeflight_btfl_002.bbl.gz` | props on, free hover indoors | 89.4 s |
 | `loaded_1kg_btfl_003.bbl.gz` | props on, 1 kg payload, hovering just off the floor | 32.5 s |
+| `threshold60_btfl_004.bbl.gz` | same, with `adrc_liftoff_throttle = 60` (workaround attempt) | 25.4 s |
+| `z3fix_btfl_005/006.bbl.gz` | same, on the fixed firmware `3c85c4b5a` | 21.9 / 31.5 s |
 
 ## Tooling note, and a warning about MSP dataflash dumps
 
@@ -124,9 +126,54 @@ seconds. Whatever it accumulates is carried into the first airborne loop. The in
 precisely to prevent this; it is defeated because it keys on throttle rather than on the
 gate itself.
 
-Suggested fix: gate the z3 inhibit on `!liftoff` alone, so it releases when `b0*u` is
-admitted rather than when the stick passes an unrelated threshold. Not applied yet — this
-node has already been through three review iterations, and the change deserves its own.
+## 6. The configuration workaround does not work — measured, then retracted
 
-Workaround for testers meanwhile: set `adrc_liftoff_throttle` so its half sits closer to
-real liftoff, and prefer a brisk takeoff over a long spool-up at part throttle.
+Before touching code we tried the obvious thing: raise `adrc_liftoff_throttle` from 40 to
+60, so the idle floor moves from 20 % to 30 % and the blind window shrinks.
+`threshold60_btfl_004.bbl.gz`, same craft, same payload, same flying:
+
+| | threshold 40 | threshold 60 |
+|---|---|---|
+| inhibit released at stick | 20.0 % | 30.0 % |
+| blind window | 5.58 s | **0.86 s** |
+| peak \|z3\| inside the window | 1312 | **1491** |
+| \|z3\| at gate open | 411 | **1054** |
+| \|z3\| 0.5 s after gate open | 3063 | **7277** |
+| tracking error, median | 6 °/s | 8 °/s |
+
+The window shrank 6.5×, exactly as predicted — and it made no difference, because the
+estimate plateaus fast: within the first **0.25 s** after the inhibit releases, `|z3|`
+already reaches 887 at threshold 60, against 997 accumulated over the whole 5.58 s at
+threshold 40. Worse, the higher threshold opens the gate later, so the craft meets liftoff
+with more windup, not less (1054 vs 411). The pilot reported no perceptible difference,
+which matches.
+
+So the duration of the window is not the variable that matters. Only the code fix is.
+
+## 7. Fix verified in flight
+
+`inhibitZ3Growth` now keys on the gate alone (`!liftoff`), dropping the `throttleAtIdle`
+term that created the blind spot. Dropping it does not reintroduce ADRC-020: the gate
+latches for the rest of the arm cycle, so airborne `liftoff` is true and the inhibit cannot
+engage whatever the stick does.
+
+Two short flights on the fixed firmware (`3c85c4b5a`), same craft, same 1 kg payload —
+`z3fix_btfl_005.bbl.gz` and `z3fix_btfl_006.bbl.gz`:
+
+| | flight 1 | flight 2 |
+|---|---|---|
+| gate opened | 9.12 s, stick 32.7 % | 5.75 s, stick 33.1 % |
+| max stick before the gate | 32.7 % | 33.2 % |
+| **max \|z3\| before the gate** | **0** | **0** |
+| \|z3\| 0.5 s after the gate | 3678 | 5019 |
+| tracking error, median / p90 | 6 / 14 °/s | 6 / 15 °/s |
+| frames with a motor on a rail | 0.2 % | 0.0 % |
+| gate closures after opening | 0 | 0 |
+
+`z3` is **exactly zero** until the gate opens in both flights, with the stick well past the
+old idle floor of 20 %. The observer then charges normally once airborne, so the ADRC-020
+behaviour is intact. Tracking is unchanged from before the fix (6 °/s median), and rail
+contact dropped from 2.8 % to 0.2 % and 0.0 %.
+
+This is the first change in this series verified by flight before publication rather than
+after.
