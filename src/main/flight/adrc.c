@@ -601,11 +601,21 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // the original single update.
     const float z3Decayed = adrcRuntime->z3[axis] - finiteDt * z3DecayRate * adrcRuntime->z3[axis];
     const float z3Updated = z3Decayed - finiteDt * c->beta3 * errorEso;
-    // ADRC-026: while ungated AND at idle stick, admit the observer-error term only when it moves
-    // z3 toward zero. Ground excitation then decays away instead of charging the integrator that
-    // drives the runaway if the gate does open. Both conditions are required - see the comment on
-    // ADRC_LIFTOFF_GYRO_THROTTLE_FRACTION for why idle alone would reintroduce ADRC-020.
-    const bool inhibitZ3Growth = !adrcRuntime->liftoff && adrcRuntime->throttleAtIdle;
+    // ADRC-026: while the gate is shut, admit the observer-error term only when it moves z3 toward
+    // zero. Ground excitation then decays away instead of charging the integrator that drives the
+    // runaway if the gate does open.
+    //
+    // This keys on the gate alone. It used to also require an idle stick, which left a blind spot:
+    // throttleAtIdle clears at half the liftoff threshold, so any craft still on the ground with
+    // the stick past that point charged z3 freely until the gate opened. Measured on a 5" (docs/
+    // flight-test-analysis/pr15400-b8-mamba): 0.6 s of that window unloaded and 5.6 s with a 1 kg
+    // payload, and raising adrc_liftoff_throttle does not help - the estimate reaches its plateau
+    // within about 0.25 s, so shortening the window leaves the accumulated value unchanged.
+    //
+    // Dropping the idle condition does not reintroduce ADRC-020 (a mid-air float at zero throttle
+    // freezing the observer), because the gate latches for the rest of the arm cycle: airborne,
+    // liftoff is true and the inhibit cannot engage regardless of stick position.
+    const bool inhibitZ3Growth = !adrcRuntime->liftoff;
     adrcRuntime->z3[axis] = (inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed)) ? z3Decayed : z3Updated;
 
     if (!adrcIsFinite(adrcRuntime->z1[axis]) || !adrcIsFinite(adrcRuntime->z2[axis])

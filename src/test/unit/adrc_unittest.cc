@@ -390,16 +390,20 @@ TEST_F(AdrcUnittest, Z3GrowthIsInhibitedWhileUngatedAtIdleThrottle)
     EXPECT_LT(peakZ3, 1000.0f);
 }
 
-TEST_F(AdrcUnittest, Z3GrowsWhileUngatedOnceThrottleLeavesIdle)
+TEST_F(AdrcUnittest, Z3GrowthStaysInhibitedWhileUngatedAboveIdleThrottle)
 {
-    // The inhibit is scoped to idle: a spool-up below liftoffThrottlePercent is still a real command
-    // the observer must be free to estimate against.
+    // The window this closes: throttleAtIdle clears at half the liftoff threshold, so a craft still
+    // on the ground with the stick past that point used to charge z3 freely until the gate opened.
+    // Measured on a 5" (docs/flight-test-analysis/pr15400-b8-mamba) that window ran 0.6 s unloaded
+    // and 5.6 s with a payload, and the estimate plateaus within ~0.25 s of it - so what matters is
+    // that the inhibit holds at all, not how long the window is.
     simulatedCommandedThrottle = 0.30f; // above the floor (20%), below liftoffThrottlePercent (40%)
     adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
     ASSERT_FALSE(runtime.liftoff);
-    ASSERT_FALSE(runtime.throttleAtIdle);
+    ASSERT_FALSE(runtime.throttleAtIdle); // stick is up; the gate, not the stick, must decide
 
-    EXPECT_GT(drivePeakZ3UnderGroundOscillation(), 100000.0f);
+    // Same excitation that charges z3 four orders higher once the gate is open.
+    EXPECT_LT(drivePeakZ3UnderGroundOscillation(), 1000.0f);
 }
 
 TEST_F(AdrcUnittest, Z3StaysLiveThroughAirborneZeroThrottleFloat)
