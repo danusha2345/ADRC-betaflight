@@ -477,10 +477,13 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
         // thrust is what makes the duration test meaningful. On the ten 2026-08-06 logs this
         // interlock keeps the timer at exactly zero for every pre-takeoff phase.
         //
-        // Below the threshold the timer leaks instead of resetting: a hover that straddles the
-        // threshold would otherwise never accumulate the hold, which is the very case this path
-        // exists for. Leaking at the same rate it fills means sustained sub-threshold flight still
-        // drains it completely within the hold time.
+        // Below the threshold the timer resets outright rather than leaking. A leak at the fill
+        // rate turns the hold into an integrator of duty cycle - any pattern above 50% duty latches
+        // eventually (55% in 1.8 s, 60% in 0.9 s), which is exactly the bursty signal the ground
+        // produces, and it would void the margin the measured burst lengths are supposed to give.
+        // A craft hovering right at the threshold therefore does not latch through this path; it
+        // opens through the commanded test or the gyro test instead, and the fix for that case is
+        // to set liftoffThrottlePercent below the actual hover, not to soften this timer.
         //
         // The hold is the constant or the configured liftoffHoldMs, whichever is longer: a pilot who
         // raises adrc_liftoff_hold_ms to harden the gate after a false open must not find that this
@@ -494,7 +497,7 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
                     adrcRuntime->liftoff = true;
                 }
             } else {
-                adrcRuntime->appliedActiveS = fmaxf(0.0f, adrcRuntime->appliedActiveS - finiteDt);
+                adrcRuntime->appliedActiveS = 0.0f;
             }
         }
     }

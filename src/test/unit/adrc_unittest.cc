@@ -278,11 +278,50 @@ TEST_F(AdrcUnittest, AppliedCollectiveHoldOutlastsTheMeasuredGroundBursts)
     simulatedCommandedThrottle = 0.20f;     // above the idle floor, below the 30% threshold
     gyro.gyroADCf[FD_ROLL] = 5.0f;          // well under the 20 dps gyro path
 
-    for (int i = 0; i < 200; i++) { // 1.6 s
+    // 1250 loops = 10 s, forty times the hold. Duration matters here: a timer that leaked instead
+    // of resetting would integrate any duty cycle above 50% and latch eventually, so a short run
+    // would pass while the guarantee was gone.
+    for (int i = 0; i < 1250; i++) {
         simulatedThrottle = ((i % 25) < 13) ? 0.32f : 0.10f; // ~104 ms above, ~96 ms below
         adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
         EXPECT_FALSE(runtime.liftoff);
     }
+}
+
+TEST_F(AdrcUnittest, AppliedCollectiveHoldIsNotAnIntegratorOfDutyCycle)
+{
+    // The hold must mean "continuously above the threshold", not "above it more often than not".
+    // A timer that drained at its fill rate would latch on any duty cycle over 50% - 1.8 s at 55%,
+    // 0.9 s at 60% - and ground oscillation is exactly that kind of signal, so the margin the
+    // measured burst lengths provide would be void.
+    profile.liftoffThrottlePercent = 30;
+    simulatedCommandedThrottle = 0.20f;
+    gyro.gyroADCf[FD_ROLL] = 5.0f;
+
+    for (int i = 0; i < 2500; i++) { // 20 s at 60% duty (24 loops above, 16 below)
+        simulatedThrottle = ((i % 40) < 24) ? 0.32f : 0.10f;
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+        EXPECT_FALSE(runtime.liftoff);
+    }
+}
+
+TEST_F(AdrcUnittest, AppliedCollectiveHoldHonoursLiftoffHoldMs)
+{
+    // A pilot who hardens the gate after a false open must not find that this path still latches at
+    // the built-in 250 ms; the blackbox header would report a hold that was not in force either.
+    profile.liftoffThrottlePercent = 30;
+    profile.liftoffHoldMs = 500;            // longer than ADRC_LIFTOFF_APPLIED_HOLD_S
+    simulatedThrottle = 0.32f;
+    simulatedCommandedThrottle = 0.20f;
+
+    for (int i = 0; i < 50; i++) { // 400 ms - past the built-in hold, short of the configured one
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+        EXPECT_FALSE(runtime.liftoff);
+    }
+    for (int i = 0; i < 20; i++) { // past 500 ms
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    }
+    EXPECT_TRUE(runtime.liftoff);
 }
 
 TEST_F(AdrcUnittest, SustainedAppliedCollectiveOpensGateBelowTheCommandedThreshold)
