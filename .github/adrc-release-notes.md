@@ -2,7 +2,21 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
-## What's new in b7
+## b8 — b7 is withdrawn, use this instead
+
+**If you downloaded b7, replace it.** b7 carried a defect in the very gate path it was
+built to fix: the hold timer drained at the same rate it filled, which turned "250 ms
+continuously above the threshold" into "above it more than half the time". Any duty cycle
+over 50 % latched eventually — 1.8 s at 55 %, 0.9 s at 60 % — and ground oscillation is
+exactly that kind of signal, so the ground false-open could come back. Raising
+`adrc_liftoff_hold_ms` did not help either (22.5 s at 55 % duty for a 1000 ms setting).
+
+b8 resets the timer outright below the threshold, so the hold means what it says. Nothing
+else changed; everything described under b7 below still applies. Three tests were added
+that the b7 suite let through: ten seconds of bursts, twenty seconds at 60 % duty, and one
+that checks `adrc_liftoff_hold_ms` is honoured by this path.
+
+## What's new in b7 (carried into b8)
 
 **This build exists because of one defect: the liftoff gate opened on the ground, by
 itself, on every single arm.** Across ten logs from @8ksal8 on 2026-08-06 the gate opened
