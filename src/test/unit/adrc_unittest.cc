@@ -250,33 +250,50 @@ TEST_F(AdrcUnittest, AirmodeHeadroomAloneDoesNotOpenGate)
     // APPLIED collective past liftoffThrottlePercent while nothing was commanded. Re-decoding the
     // wo = 150 arms put the applied proxy at 30.3-32.2% against their adrc_liftoff_throttle = 30 at
     // a throttle stick that never moved, so this - not the gyro path - is what opened the gate.
-    // The applied collective is bursty in that failure, and that is what separates it from flight:
-    // the mixer only pushes past the threshold while the oscillation demands more authority than it
-    // has. Across the ten 2026-08-06 logs the longest unbroken run above the threshold before the
-    // pilot first touched the stick was 43.5 ms; once airborne the same signal holds for seconds.
-    // So the gate must ignore bursts and accept sustained thrust - see ADRC_LIFTOFF_APPLIED_HOLD_S.
+    // Sustained, not bursty: this is the hard case for the applied-collective path, and it is what
+    // a wedged craft and launch control both produce. With the throttle stick down the idle
+    // interlock must reject it however long it lasts - duration alone cannot tell this apart from
+    // flight.
     profile.liftoffThrottlePercent = 30;    // as flown in those logs
+    simulatedThrottle = 0.32f;              // applied: airmode headroom, past the 30% threshold
     simulatedCommandedThrottle = 0.0f;      // commanded: nothing asked for it
 
-    for (int i = 0; i < 200; i++) { // 1.6 s of oscillation, two orders past the 25 ms gyro hold
-        // 40 ms above the threshold, then back below it - the measured ground pattern.
-        simulatedThrottle = ((i % 10) < 5) ? 0.32f : 0.10f;
+    for (int i = 0; i < 400; i++) { // 3.2 s, an order past both holds
         gyro.gyroADCf[FD_ROLL] = (i & 1) ? 120.0f : -120.0f;
         adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
         EXPECT_FALSE(runtime.liftoff);
     }
     EXPECT_FLOAT_EQ(0.0f, runtime.gyroActiveS);
+    EXPECT_FLOAT_EQ(0.0f, runtime.appliedActiveS);
 }
 
-TEST_F(AdrcUnittest, SustainedAppliedCollectiveOpensGateWithNothingCommanded)
+TEST_F(AdrcUnittest, AppliedCollectiveHoldOutlastsTheMeasuredGroundBursts)
+{
+    // Pins ADRC_LIFTOFF_APPLIED_HOLD_S from below. Across the ten 2026-08-06 logs the longest
+    // unbroken run above the threshold before the pilot first moved the stick was 43.5 ms at a 40%
+    // threshold and 68.2 ms at 25%; the bursts here are ~104 ms, longer than that worst case with
+    // margin, so shortening the hold to anything near those measurements fails this test. The gyro
+    // path is kept out of the way (rate below liftoffGyroDps) so only the duration test is exercised.
+    profile.liftoffThrottlePercent = 30;
+    simulatedCommandedThrottle = 0.20f;     // above the idle floor, below the 30% threshold
+    gyro.gyroADCf[FD_ROLL] = 5.0f;          // well under the 20 dps gyro path
+
+    for (int i = 0; i < 200; i++) { // 1.6 s
+        simulatedThrottle = ((i % 25) < 13) ? 0.32f : 0.10f; // ~104 ms above, ~96 ms below
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+        EXPECT_FALSE(runtime.liftoff);
+    }
+}
+
+TEST_F(AdrcUnittest, SustainedAppliedCollectiveOpensGateBelowTheCommandedThreshold)
 {
     // The other half of ADRC-026, and the reason the commanded collective cannot be the only input:
-    // thrust the mixer applied without the pilot commanding it still lifts the craft. Reading only
+    // thrust the mixer applied beyond what the pilot commanded still lifts the craft. Reading only
     // the commanded value would leave the gate shut for the rest of the arm cycle, flying the
-    // observer with b0*u held at zero - worse than the false open this pair of tests brackets.
+    // observer with b0*u held at zero - worse than the false open the test above brackets.
     profile.liftoffThrottlePercent = 30;
-    simulatedThrottle = 0.32f;              // applied: sustained, as in flight
-    simulatedCommandedThrottle = 0.0f;      // commanded: still nothing
+    simulatedThrottle = 0.32f;              // applied: sustained past the threshold, as in flight
+    simulatedCommandedThrottle = 0.20f;     // commanded: real thrust asked for, but under threshold
 
     // Short of the hold the gate stays shut...
     for (int i = 0; i < 20; i++) { // 160 ms

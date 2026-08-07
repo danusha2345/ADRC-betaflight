@@ -464,14 +464,34 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
         // Applied-collective path - see ADRC_LIFTOFF_APPLIED_HOLD_S. Deliberately not an "else if"
         // of the commanded test above: this path must keep accumulating while the commanded value
         // sits below the threshold, which is exactly the case it exists for.
+        //
+        // It carries the same idle interlock as the gyro path, and for a stronger reason. Duration
+        // alone does not separate ground from flight: a held stick, a wedged or tilted craft, and
+        // launch control (which forces the commanded collective to zero while forcing airmode on)
+        // all produce a one-sided axis demand, and the mixer then holds the applied collective above
+        // the threshold indefinitely with the craft on the ground. Requiring the pilot - or an
+        // automatic mode, whose throttle is in the commanded value too - to have asked for some
+        // thrust is what makes the duration test meaningful. On the ten 2026-08-06 logs this
+        // interlock keeps the timer at exactly zero for every pre-takeoff phase.
+        //
+        // Below the threshold the timer leaks instead of resetting: a hover that straddles the
+        // threshold would otherwise never accumulate the hold, which is the very case this path
+        // exists for. Leaking at the same rate it fills means sustained sub-threshold flight still
+        // drains it completely within the hold time.
+        //
+        // The hold is the constant or the configured liftoffHoldMs, whichever is longer: a pilot who
+        // raises adrc_liftoff_hold_ms to harden the gate after a false open must not find that this
+        // path still latches at 250 ms, and the blackbox header would then report a hold that was
+        // not in force on the path that opened.
+        const float appliedHoldS = fmaxf(ADRC_LIFTOFF_APPLIED_HOLD_S, liftoffHoldS);
         if (!adrcRuntime->liftoff) {
-            if (throttle >= liftoffThrottle) {
+            if (!throttleAtIdle && throttle >= liftoffThrottle) {
                 adrcRuntime->appliedActiveS += finiteDt;
-                if (adrcRuntime->appliedActiveS >= ADRC_LIFTOFF_APPLIED_HOLD_S) {
+                if (adrcRuntime->appliedActiveS >= appliedHoldS) {
                     adrcRuntime->liftoff = true;
                 }
             } else {
-                adrcRuntime->appliedActiveS = 0.0f;
+                adrcRuntime->appliedActiveS = fmaxf(0.0f, adrcRuntime->appliedActiveS - finiteDt);
             }
         }
     }

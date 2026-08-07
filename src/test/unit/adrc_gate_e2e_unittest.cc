@@ -141,11 +141,11 @@ TEST(AdrcGateE2eTest, GroundOscillationUnderAirmodeCollectiveKeepsGateClosedAndZ
 
     float peakZ3 = 0.0f;
     for (int i = 0; i < 400; ++i) { // 400 loops at the harness looptime, far past liftoffHoldMs
-        // Applied collective in bursts, the way the mixer actually produces it on the ground: it
-        // only exceeds the threshold while the oscillation demands more authority than the mixer
-        // has. Sustained applied thrust means flight and legitimately opens the gate through the
-        // second path (ADRC_LIFTOFF_APPLIED_HOLD_S) - that case is covered in adrc_unittest.cc.
-        simulatedThrottle = ((i % 10) < 5) ? 0.32f : 0.10f;
+        // Applied collective held above the threshold for the whole run - the hard case for the
+        // second gate path (ADRC_LIFTOFF_APPLIED_HOLD_S), and what launch control produces. With
+        // the commanded collective at zero the idle interlock must reject it however long it lasts;
+        // the legitimate open, where thrust really was commanded, is covered in adrc_unittest.cc.
+        simulatedThrottle = 0.32f;
         const float groundRate = ((i % 4) < 2) ? 120.0f : -120.0f;
         for (int axis = FD_ROLL; axis <= FD_YAW; ++axis) {
             gyro.gyroADCf[axis] = (axis == FD_ROLL) ? groundRate : 0.0f;
