@@ -250,16 +250,44 @@ TEST_F(AdrcUnittest, AirmodeHeadroomAloneDoesNotOpenGate)
     // APPLIED collective past liftoffThrottlePercent while nothing was commanded. Re-decoding the
     // wo = 150 arms put the applied proxy at 30.3-32.2% against their adrc_liftoff_throttle = 30 at
     // a throttle stick that never moved, so this - not the gyro path - is what opened the gate.
+    // The applied collective is bursty in that failure, and that is what separates it from flight:
+    // the mixer only pushes past the threshold while the oscillation demands more authority than it
+    // has. Across the ten 2026-08-06 logs the longest unbroken run above the threshold before the
+    // pilot first touched the stick was 43.5 ms; once airborne the same signal holds for seconds.
+    // So the gate must ignore bursts and accept sustained thrust - see ADRC_LIFTOFF_APPLIED_HOLD_S.
     profile.liftoffThrottlePercent = 30;    // as flown in those logs
-    simulatedThrottle = 0.32f;              // applied: airmode headroom, past the 30% threshold
     simulatedCommandedThrottle = 0.0f;      // commanded: nothing asked for it
 
-    for (int i = 0; i < 200; i++) { // 1.6 s, two orders past the 25 ms hold
+    for (int i = 0; i < 200; i++) { // 1.6 s of oscillation, two orders past the 25 ms gyro hold
+        // 40 ms above the threshold, then back below it - the measured ground pattern.
+        simulatedThrottle = ((i % 10) < 5) ? 0.32f : 0.10f;
         gyro.gyroADCf[FD_ROLL] = (i & 1) ? 120.0f : -120.0f;
         adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
         EXPECT_FALSE(runtime.liftoff);
     }
     EXPECT_FLOAT_EQ(0.0f, runtime.gyroActiveS);
+}
+
+TEST_F(AdrcUnittest, SustainedAppliedCollectiveOpensGateWithNothingCommanded)
+{
+    // The other half of ADRC-026, and the reason the commanded collective cannot be the only input:
+    // thrust the mixer applied without the pilot commanding it still lifts the craft. Reading only
+    // the commanded value would leave the gate shut for the rest of the arm cycle, flying the
+    // observer with b0*u held at zero - worse than the false open this pair of tests brackets.
+    profile.liftoffThrottlePercent = 30;
+    simulatedThrottle = 0.32f;              // applied: sustained, as in flight
+    simulatedCommandedThrottle = 0.0f;      // commanded: still nothing
+
+    // Short of the hold the gate stays shut...
+    for (int i = 0; i < 20; i++) { // 160 ms
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+        EXPECT_FALSE(runtime.liftoff);
+    }
+    // ...and opens once the applied collective has held long enough to mean flight.
+    for (int i = 0; i < 20; i++) {
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    }
+    EXPECT_TRUE(runtime.liftoff);
 }
 
 TEST_F(AdrcUnittest, GyroHoldTimerCannotBeBankedBelowTheThrottleFloor)

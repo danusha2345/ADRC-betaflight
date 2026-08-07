@@ -120,6 +120,8 @@ typedef struct adrcRuntime_s {
     bool liftoff;           // latched once per arm cycle: craft has left the ground (shared, not
                              // per-axis - gyro activity is checked across all three axes at once)
     float gyroActiveS;      // seconds of sustained gyro activity (liftoff detector)
+    float appliedActiveS;   // seconds the applied collective has held above the liftoff threshold
+                             // - the gate's second path, see ADRC_LIFTOFF_APPLIED_HOLD_S
     bool throttleAtIdle;    // commanded collective is below the gyro path's throttle floor
                              // - shared cache updated once per loop by adrcUpdatePerLoopState(),
                              // read per-axis by adrcApplyControl()'s z3 growth inhibit (ADRC-026)

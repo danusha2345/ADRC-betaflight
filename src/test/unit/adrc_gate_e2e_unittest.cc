@@ -137,11 +137,15 @@ TEST(AdrcGateE2eTest, GroundOscillationUnderAirmodeCollectiveKeepsGateClosedAndZ
     pidProfile->adrc.liftoffThrottlePercent = 30;
     pidInitConfig(pidProfile);
 
-    simulatedThrottle = 0.32f;         // applied: airmode headroom, past the 30% threshold
     simulatedCommandedThrottle = 0.0f; // commanded: nothing asked for it
 
     float peakZ3 = 0.0f;
     for (int i = 0; i < 400; ++i) { // 400 loops at the harness looptime, far past liftoffHoldMs
+        // Applied collective in bursts, the way the mixer actually produces it on the ground: it
+        // only exceeds the threshold while the oscillation demands more authority than the mixer
+        // has. Sustained applied thrust means flight and legitimately opens the gate through the
+        // second path (ADRC_LIFTOFF_APPLIED_HOLD_S) - that case is covered in adrc_unittest.cc.
+        simulatedThrottle = ((i % 10) < 5) ? 0.32f : 0.10f;
         const float groundRate = ((i % 4) < 2) ? 120.0f : -120.0f;
         for (int axis = FD_ROLL; axis <= FD_YAW; ++axis) {
             gyro.gyroADCf[axis] = (axis == FD_ROLL) ? groundRate : 0.0f;

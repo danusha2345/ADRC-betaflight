@@ -116,6 +116,18 @@
 // rotation alone; it opens as soon as the throttle comes up, through either branch.
 #define ADRC_LIFTOFF_GYRO_THROTTLE_FRACTION 0.5f
 
+// Reading the commanded collective alone (above) closes the ADRC-026 false-open, but it opens the
+// opposite failure: thrust the mixer applied without the pilot commanding it can still lift the
+// craft, and then nothing opens the gate at all - the observer would fly without its b0*u feedback
+// for the rest of the arm cycle. So the applied collective keeps a path of its own, gated on
+// duration instead of magnitude: ground oscillation drives the mixer past the threshold only in
+// bursts, while a craft that is actually airborne holds it. Measured on the ten 2026-08-06 logs
+// (danusha2345/ADRC-betaflight docs/flight-test-analysis): the longest unbroken run above the
+// threshold before the pilot first moved the stick was 43.5 ms at a 40% threshold and 68.2 ms at
+// 25%, both in the log where the craft never left the ground - against 0.37-16.3 s once flying.
+// 250 ms sits an order of magnitude above the ground worst case and still well inside a takeoff.
+#define ADRC_LIFTOFF_APPLIED_HOLD_S 0.25f
+
 // The liftoff gate above only zeroes the b0*u term in z2's update - it does nothing to stop z3
 // itself from winding up while grounded. z3 is a leaky integrator of errorEso regardless of gate
 // state, and its steady-state gain (beta3/decayRate) is enormous (beta3 = wo^3, decayRate is a
@@ -355,6 +367,7 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime)
 {
     adrcRuntime->liftoff = false;
     adrcRuntime->gyroActiveS = 0.0f;
+    adrcRuntime->appliedActiveS = 0.0f;
     // adrcUpdatePerLoopState() recomputes this before any control step reads it; seed it to the
     // grounded-and-idle assumption anyway so a closed gate never pairs with a stale "stick raised".
     adrcRuntime->throttleAtIdle = true;
@@ -446,6 +459,20 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
             // Also clears the hold timer whenever throttle drops back below the floor, so time
             // spent rotating at idle cannot be banked and then completed by a later throttle blip.
             adrcRuntime->gyroActiveS = 0.0f;
+        }
+
+        // Applied-collective path - see ADRC_LIFTOFF_APPLIED_HOLD_S. Deliberately not an "else if"
+        // of the commanded test above: this path must keep accumulating while the commanded value
+        // sits below the threshold, which is exactly the case it exists for.
+        if (!adrcRuntime->liftoff) {
+            if (throttle >= liftoffThrottle) {
+                adrcRuntime->appliedActiveS += finiteDt;
+                if (adrcRuntime->appliedActiveS >= ADRC_LIFTOFF_APPLIED_HOLD_S) {
+                    adrcRuntime->liftoff = true;
+                }
+            } else {
+                adrcRuntime->appliedActiveS = 0.0f;
+            }
         }
     }
 
