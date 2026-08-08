@@ -1,6 +1,7 @@
-# @dedlike's arm-and-go-wild report: a self-excited limit cycle on the default tune
+# @dedlike's arm-and-go-wild report: a divergent yaw instability on the shipped defaults
 
-**Reporter:** @dedlike, PR #15400 comments of 2026-08-06.
+**Reporter:** @dedlike, PR #15400 comments of 2026-08-06; **props were on**, confirmed by him
+2026-08-08.
 **Craft:** MAMBAF722 (DIAT), STM32F7X2; `vbat` ≈ 15.4 V, consistent with 4S (`vbat_scale` 110).
 **Firmware:** `6317fe2aa`, built 2026-08-06 14:22:59 — the head of the PR branch
 (`bvandevliet:adrc-toggle`). Gate-wise this is **b6-level code**: the only commits between it and
@@ -17,7 +18,7 @@ Three logs, all armed, all at **zero throttle stick**:
 |---|---|---|---|
 | `btfl_001.bbl.gz` | 0 (PID) | 0.078 s | collective 0.0–0.6 %, spread ≤1.2 pp — **motors at idle** |
 | `btfl_002.bbl.gz` | 0 (PID) | 2.809 s | collective 0–17.5 %, spread to 34.8 pp |
-| `btfl_003.bbl.gz` | **1 (ADRC)** | **0.211 s** | collective 0.7–**67.1 %**, spread to **100 pp** |
+| `btfl_003.bbl.gz` | **1 (ADRC)** | **0.211 s** | collective 0.7 → **67.1 %**, spread to **100 pp** |
 
 `btfl_001` is too quiet to serve as a control and is not used for comparison below; `btfl_002` is
 the real PID reference.
@@ -39,55 +40,77 @@ designed.
 His firmware also predates the b7 applied-collective path and the b8 hold-timer fix, so neither
 of those could have contributed. Nothing in the recent gate work is implicated.
 
-## 2. What actually happens: a self-excited limit cycle at zero throttle
+## 2. It diverges from the moment of arming
 
-Decomposing the four logged motor outputs onto the QUAD X mixer axes (`Y = Σ yᵢ·mᵢ / 4`; the
-coefficient table is `mixer_init.c:84–89`, and the decomposition is validated in §4):
+The controlling observation is the **time course**, not any window average. In 30 ms windows from
+the first logged frame:
 
-| axis | gyro RMS | gyro range | command RMS | command range | at the pidsum limit |
+| window, ms | collective | yaw gyro RMS | roll gyro RMS | yaw command RMS | motor on the rail |
+|---|---|---|---|---|---|
+| 0–30 | 7.7 % | 20.3 °/s | 1.1 °/s | 0.082 | 0 % |
+| 30–60 | 13.5 % | 29.2 °/s | 1.3 °/s | 0.142 | 0 % |
+| 60–90 | 23.5 % | 48.9 °/s | 2.7 °/s | 0.236 | 0 % |
+| 90–120 | 36.4 % | **78.3 °/s** | 7.7 °/s | **0.334** | 0 % |
+| 120–150 | 40.9 % | 78.4 °/s | 23.5 °/s | 0.315 | 53 % |
+| 150–180 | 45.1 % | 73.4 °/s | 37.1 °/s | 0.274 | 60 % |
+| 180–210 | 49.6 % | 39.4 °/s | **51.1 °/s** | 0.170 | 78 % |
+
+Three things follow.
+
+**It is a divergent instability, not a limit cycle.** Yaw amplitude grows ×3.9 in the first 90 ms
+(e-folding ≈66 ms) while the frequency stays put — 31–41 Hz by zero-crossing count in every
+50 ms window, consistent with the 34 Hz spectral peak. Fixed frequency with exponentially growing
+amplitude is a pole crossing into the right half-plane. Nothing in the loop stops it; the only
+thing that bounds it is **actuator saturation**, which arrives at ~120 ms. After that yaw *loses*
+amplitude (78 → 39 °/s) precisely because saturation costs it authority.
+
+**Roll ignites second, after saturation.** Roll gyro RMS grows ×46 (1.1 → 51.1 °/s) and is still
+climbing when the log ends, but it only takes off once the motors are railing. Its 23 Hz tone
+therefore belongs to the saturated state, not to the initial instability.
+
+**The collective is dragged up at zero throttle stick.** 7.7 % → 49.6 %, because the mixer's
+lower clamp (`throttle = constrainf(throttle, -normalizedMotorMixMin, …)`) raises the collective
+to fit axis demands the stick never asked for. With props on, that is real and increasing thrust
+— which is presumably why the log is only 0.21 s long.
+
+Whole-window figures, for reference only, since averaging a diverging transient understates its
+end state:
+
+| axis | gyro RMS | gyro range | command RMS | command range | frames at the pidsum limit |
 |---|---|---|---|---|---|
 | roll | 34.3 °/s | 209 °/s | 0.138 | 0.747 | 0 % |
 | pitch | 15.6 °/s | 100 °/s | 0.068 | 0.377 | 0 % |
-| **yaw** | **57.8 °/s** | **263 °/s** | **0.241** | **0.800** | **13 %** |
+| yaw | 57.8 °/s | 263 °/s | 0.241 | 0.800 | 13 % |
 
-Yaw is pinned at `pidsum_limit_yaw` (±0.400) in one frame out of eight. A motor sits at the 2047
-rail in **25 %** of frames and the mean collective reaches **67 %** — at a throttle stick of zero.
+That 13 % is itself a window average: 0 % for the first 120 ms, then 53 / 60 / 78 % in the last
+three windows.
 
-Spectral peaks (Hann-windowed DFT):
-
-| axis | peak |
-|---|---|
-| roll | 23 Hz |
-| pitch | 24 Hz |
-| **yaw** | **34 Hz** |
-
-**Frequency resolution is 4.7 Hz** on this 0.21 s window, so read those as ±3 Hz. Peak
-*amplitudes* are not quoted: they move by up to 1.8× between a rectangular and a Hann window on
-a record this short, so only the window-independent time-domain statistics above are used for
-magnitudes.
-
-The oscillation is small in *angle*: 57.8 °/s RMS at 34 Hz is well under a degree of travel. The
-craft is not rotating, it is buzzing, and the loop answers the buzz with full authority.
+**Frequency resolution is 4.7 Hz** on this 0.21 s record, so spectral peaks are ±3 Hz. Peak
+*amplitudes* are not quoted anywhere: they move by up to 1.8× between a rectangular and a Hann
+window on a record this short, so all magnitudes above are window-independent time-domain
+statistics.
 
 ## 3. It is the loop, not the airframe
 
-Same craft, same session, same zero throttle, `gyroUnfilt` RMS:
+Same craft, same session, same zero throttle, `gyroUnfilt` RMS over the whole log:
 
 | axis | `btfl_002` (PID) | `btfl_003` (ADRC) | ratio |
 |---|---|---|---|
 | roll | 1.89 °/s | 34.3 °/s | **18×** |
 | yaw | 1.68 °/s | 57.8 °/s | **34×** |
-| pitch | 18.12 °/s | 15.6 °/s | — |
 
 Roll and yaw are quiet under PID and violent under ADRC. Pitch is excluded: in the PID log he was
-moving the pitch stick (RP stick input up to 194 counts, command RMS 0.026), so that 18 °/s is
+moving the pitch stick (RP stick input up to 194 counts, command RMS 0.026), so its 18 °/s is
 commanded motion, not a comparable baseline.
 
-The claim this supports is narrow and worth stating precisely: **the craft does not enter this
-state under PID at the same throttle.** It is not that an external vibration exists and only ADRC
-reveals it — under PID nothing is there to reveal. It is also not independent of ADRC's own motor
-output, and that is the point: a self-excited limit cycle is exactly a loop sustaining its own
-excitation.
+**Props were on.** That was the one open question and it is now answered, and it matters in the
+direction that makes this worse: full aerodynamic damping was present and the loop diverged
+anyway. The alternative reading — that a propless bench removes the damping and manufactures a
+yaw instability that would not appear in flight — is ruled out.
+
+The claim this supports is narrow: **the craft does not enter this state under PID at the same
+throttle.** It is not that an external vibration exists and only ADRC reveals it; under PID
+nothing is there to reveal.
 
 ## 4. The D-equivalent path carries it
 
@@ -107,8 +130,8 @@ the bound is applied downstream as `constrainf(Sum, ±pidsum_limit)` in the mixe
 the clipping in 6 % of roll frames happens.
 
 On yaw, `axisP` reaches only 203 and contributes 69.5 at 34 Hz, while the mixer command is pinned
-at 400 — so the yaw D-term supplies the balance there too, on the one axis that actually
-saturates. **Blackbox does not record `axisD[2]`**, so the dominant term on the failing axis is
+at 400 — so the yaw D-term supplies the balance there too, on the axis that actually goes
+unstable. **Blackbox does not record `axisD[2]`**, so the dominant term on the failing axis is
 invisible in the log; that is worth fixing for ADRC work.
 
 Reconstructing the law independently from the logged observer states —
@@ -142,33 +165,36 @@ stand; the closed-form mechanism does not, and is not claimed.
 
 ## 5. Relation to ADRC-024
 
-The roll/pitch tone at **23–24 Hz** coincides, within the ±3 Hz resolution, with ADRC-024's
-24–27 Hz ring, on a craft running the same base tune (`wc 60`, `wo 100`, `b0 2000`) on which that
-entry's hypotheses were formed. Two things here are new:
+Weaker than it first looks, and the time course is why.
 
-- it happens at **zero throttle on the ground**, not only in disturbance-rich low-collective
-  flight, so it reproduces without flying;
-- there is a **separate, stronger yaw tone at 34 Hz** that saturates its axis — ADRC-024 as
-  written concerns roll/pitch.
+The **yaw** instability at 34 Hz is not ADRC-024: that entry is about a 24–27 Hz roll/pitch ring
+in disturbance-rich low-collective *flight*, and this is a different axis, a different frequency,
+and divergent from arm rather than episodic.
 
-Fourth craft to show the family (after @jmsweng's Air65, @8ksal8's, and the b4 craft) and the
-first to show it as a ground-reproducible arm-time event. Consistent with ADRC-024's
-phase-margin and b0-calibration hypotheses; it does not discriminate between them.
+The **roll** tone at 23 Hz does coincide with ADRC-024's band within the ±3 Hz resolution, and the
+craft runs the same base tune (`wc 60`, `wo 100`, `b0 2000`) on which that entry's hypotheses were
+formed — but here roll only ignites *after* yaw saturates the motors, so it may be a consequence
+of the saturated state rather than the same mechanism. Treating this log as a fourth sighting of
+the ADRC-024 ring would be over-reading it.
 
-## 6. Open questions for the reporter
+What is solid and new: on the shipped defaults, on a stock 5" with props on, **yaw is unstable at
+arm time on the ground** — reproducible without flying, in 0.2 s, at zero throttle stick.
 
-1. **Props on or off?** Not determinable from the log, and it changes the plant completely. With
-   props off the yaw loop still closes through rotor reaction torque with almost no aerodynamic
-   damping, which would make a yaw limit cycle far easier to excite than in flight.
-2. **A longer log.** 0.21 s gives 4.7 Hz resolution, no view of throttle dependence, and forces
-   the amplitude caveats above. A few seconds at the same `blackbox_sample_rate 1/4` removes all
-   three limitations.
+## 6. Open question for the reporter
+
+**A longer log.** 0.21 s gives 4.7 Hz resolution, no view of throttle dependence, and forces the
+amplitude caveats above. A few seconds at the same `blackbox_sample_rate 1/4` would settle the
+growth rate properly and show whether the instability exists at other collectives. Given that the
+craft builds real thrust while diverging, this needs restraint on the ground rather than a longer
+brave arm — the useful version is the same log with only `adrc_b0_*` raised to 4000, which tests
+the gain story with a single variable and should not diverge at all if the reading here is right.
 
 ## 7. Reproduction
 
 ```
 cd docs/flight-test-analysis/pr15400-dedlike-mamba
 gunzip -k *.bbl.gz && blackbox_decode btfl_001.bbl btfl_002.bbl btfl_003.bbl
+python3 divergence.py           # the 30 ms time course and the frequency-vs-time check
 python3 spectra.py              # peak frequencies, mixer-axis decomposition
 python3 compare_pid_adrc.py     # in-band energy, PID vs ADRC
 python3 control_law_terms.py    # P/D reconstruction against the actual command
