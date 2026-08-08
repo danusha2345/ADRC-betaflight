@@ -523,6 +523,19 @@ static bool testBlackboxConditionUncached(flightLogFieldCondition_e condition)
     case CONDITION(NONZERO_PID_D_0):
     case CONDITION(NONZERO_PID_D_1):
     case CONDITION(NONZERO_PID_D_2):
+#ifdef USE_ADRC
+        // Under ADRC, pidData[].D holds the control law's own D-equivalent term rather than a
+        // classic linear D-gain product (pid.c assigns adrcOutput.D to it), and ADRC never reads
+        // pid[].D at all - so gating the field on that gain drops a live signal. It is not a
+        // cosmetic gap: on yaw the shipped defaults leave pid[FD_YAW].D at 0, and in the one log
+        // where yaw showed a rapidly growing arm-time oscillation
+        // (docs/flight-test-analysis/pr15400-dedlike-mamba) the D-equivalent term was the larger
+        // contributor on exactly that axis and was absent from the log. Log all three axes
+        // whenever ADRC is the active controller.
+        if (currentPidProfile->pid_type == PID_TYPE_ADRC) {
+            return isFieldEnabled(FIELD_SELECT(PID));
+        }
+#endif
         return (currentPidProfile->pid[condition - FLIGHT_LOG_FIELD_CONDITION_NONZERO_PID_D_0].D != 0) && isFieldEnabled(FIELD_SELECT(PID));
 
 #ifdef USE_WING
