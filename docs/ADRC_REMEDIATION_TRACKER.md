@@ -321,6 +321,14 @@ simulation against these logs; (3) pure phase-margin shortfall at `wc=60`
 given `adrc_gyro_lpf 150` + craft latency — distinguished by the same
 ADRC-021 data.
 
+**A candidate fourth sighting was considered and rejected (2026-08-08).**
+@dedlike's arm-time log carries a 23 Hz roll tone inside this band on the same
+base tune (`wc 60`, `wo 100`, `b0 2000`), which initially looked like one. It is
+not: the episode lasts 0.108 s — about 2.5 cycles at 23 Hz — which is too short
+to identify a mechanism or to tell the tone apart from anything else, and the
+dominant event in that log is a separate yaw oscillation at 34–37 Hz. Filed as
+ADRC-028 instead. Anyone counting sightings should not count that one.
+
 Status: OPEN — root cause unknown; the b0 story above is the *leading
 hypothesis*, not an established cause. Data, methods and scripts:
 [`docs/flight-test-analysis/pr15400-b4/`](flight-test-analysis/pr15400-b4/)
@@ -950,6 +958,68 @@ show no stall window even under a loose scan (≥150 ms, |setpoint| > 100,
 gyro < 40 % of it) across four flights; a hang read off that pilot's video
 at ~1:46 was an intentional inverted stop per the pilot, and the logs
 agree.
+
+### ADRC-028 — Fast-growing yaw oscillation at arm on the shipped defaults (one craft, one arm)
+
+@dedlike's 2026-08-06 report, analysed in
+[`pr15400-dedlike-mamba/`](flight-test-analysis/pr15400-dedlike-mamba/).
+MAMBAF722, 5", 4S, **props on**, armed on the ground at **zero throttle stick**,
+ADRC parameters entirely at their defaults (`wc 60/60/60`, `wo 100/100/80`,
+`b0 2000`) on the PR branch head `6317fe2aa` (gate-wise b6-level).
+
+Within 211 ms of arming, a yaw oscillation at ~34–37 Hz grows to the yaw
+command limit: `pidsum_limit_yaw` is first reached at **87.017 ms**, the upper
+motor rail at **127.025 ms**, and the mean collective is dragged from 7.7 % to
+49.6 % **by the mixer's lower clamp** — `collective = −min(axis mix)` holds to a
+residual of 1.1e-16 in all 205 frames — at a throttle stick that never leaves
+zero. With props fitted that is real and increasing thrust; the pilot cut it
+short, which is why the log is 0.21 s.
+
+Growth over the unsaturated first 80 ms fits an exponential envelope well
+(f = 37.0 Hz, τ = 65.6 ms, R² = 0.988; a constant-amplitude sinusoid is 9.5×
+worse by SSE). **This is deliberately not called a divergent instability**: only
+about three cycles precede the first clamp, after which the loop is nonlinear
+with a moving operating point, and a saturation-limited cycle is not excluded
+(post-saturation extrema do not decay monotonically). Three earlier framings
+were published and withdrawn — see the write-up and the two review verdicts kept
+beside it.
+
+Not ADRC-026: the gate never opens and `z3` is exactly zero throughout. Not
+ADRC-024 either — that entry is a 24–27 Hz roll/pitch ring in
+disturbance-rich low-collective *flight*; here the axis, the frequency and the
+character all differ, and the craft's own 23 Hz roll tone lasts 0.108 s (~2.5
+cycles), too short to identify. A candidate for a fourth ADRC-024 sighting was
+considered and **rejected**.
+
+What the loop is doing is measured; *why* is not. The D-equivalent term is the
+larger one (`axisD`/`axisP` = 2.6 at the ring frequency on both logged axes, and
+≈2.55 on yaw reconstructed before the clamp), and the end-to-end gyro→command
+gain is 0.004–0.006 of full mixer authority per °/s. Three mechanisms were
+tried and dropped: the asymptotic `z2 → (3wo²/ω)·gyro` story overpredicts the
+measured ratio 2.8×; an instantaneous gain×gyro account of the saturation is
+refuted by the data; a phase test cannot separate the paths because the LESO
+contributes its own phase.
+
+**Leading hypothesis, from @jmsweng (2026-08-08)**: Gao's parameterization
+wants `wo ≈ 3–5 × wc`, and the shipped defaults give **1.67 on roll/pitch and
+1.33 on yaw** — yaw lowest, because the default deliberately sets `wo` to 80 on
+yaw against 100 elsewhere at the same `wc 60`. Yaw is the axis that grew. The
+ratio alone is not a predictor across craft (@jmsweng flies an Air65 well at
+55/75 = 1.36), so what this supports is narrower: *within* a craft, yaw carries
+the least observer margin by construction, and it is yaw that fails.
+
+Status: **OPEN, observed once.** One arm on one craft is not a reproduction, and
+the word "reproducible" was wrongly used in the first published version.
+Discriminator: `adrc_b0_yaw` alone, varied on the failing axis — but **only on a
+restraint or test stand with an automatic cutoff**, never as a repeated hand-on-
+the-switch ground arm: 87 ms to the command limit and 127 ms to the motor rail
+are both faster than human reaction, and an earlier version of the write-up
+asked for exactly that before the request was withdrawn.
+
+Instrumentation defect found alongside and fixed on branch
+`adrc-blackbox-dterm`: blackbox gates `axisD` on the *legacy* profile D-gain, so
+with the shipped default `pid[FD_YAW].D = 0` the D-equivalent term is not
+recorded at all on yaw — the one axis that failed here.
 
 ## Closed after publication
 
