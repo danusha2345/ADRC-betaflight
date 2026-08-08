@@ -48,9 +48,15 @@ closed gate is an *active* element: it forces `b0·u = 0` in the observer while 
 demonstrably moving the craft, so the observer is running against a deliberately falsified input
 model for the whole event. And the applied collective crosses the 40 % `adrc_liftoff_throttle`
 threshold at **87.017 ms** — the same frame the yaw command first clamps — yet b6 reads the
-*commanded* collective, so the gate stays shut. Counterfactually, a build reading the applied
-collective (b7 onward) would have opened it mid-event, giving different observer behaviour. Whether
-that would be better or worse is untested.
+*commanded* collective, so the gate stays shut. That is a measurable mismatch between the
+observer's input model and the actuator state.
+
+It does **not** follow that b7/b8 would have opened the gate here, as an earlier version of this
+file claimed. Their applied-collective path is interlocked on `!throttleAtIdle`, i.e. commanded
+throttle above `0.5 × adrc_liftoff_throttle` = 20 %, and the commanded throttle is **0 % in every
+frame** (stick at 1000 µs throughout); it also needs 250 ms above the applied threshold, and only
+**124 ms** of log remain after 87.017 ms. Neither condition is met. What opening the gate would
+have done here is untested.
 
 ## 2. It grows fast from the moment of arming
 
@@ -77,8 +83,10 @@ constant-amplitude sinusoid is 9.5× worse by SSE.
 about **three cycles** elapse before the first clamp, after which the loop is nonlinear and its
 operating point is moving; a finite transient in a discrete, saturating, operating-point-shifting
 loop does not establish an unstable pole. A saturation-limited limit cycle is not excluded either —
-after saturation the yaw peaks do **not** decay monotonically: 120 °/s @109 ms, 121 @112 ms,
-113 @140 ms, **128 @170 ms**, the largest of them last. The earlier claim that yaw fell 78 → 39 °/s
+after saturation the yaw extrema do **not** decay monotonically. Alternating half-cycle extrema
+are −134 @96 ms, +121 @112 ms, −135 @125 ms, +113 @140 ms, −106 @154 ms, **+128 @170 ms** — so the
+last *positive* peak is the largest positive one, though the largest excursion overall is −135 at
+125 ms. The earlier claim that yaw fell 78 → 39 °/s
 "precisely because saturation costs it authority" is wrong; that fall is a window-RMS effect, not a
 decaying envelope.
 
@@ -94,9 +102,9 @@ version's main factual error:
 The lower rail is continuously active but costs no axis authority before 127 ms — the mixer
 preserves the range by shifting the collective instead (next point).
 
-**Roll starts with the yaw clamp, not with the motor rail.** Roll `|gyro|` crosses 5 °/s at
-**86.017 ms**, 10 °/s at 103.020 ms and 15 °/s at 107.021 ms — all before the upper rail at
-127.025 ms. The table above already showed roll RMS rising 2.7 → 7.7 °/s in the 90–120 ms window
+**Roll starts with the yaw clamp, not with the motor rail.** Roll `|gyroUnfilt[0]|` crosses 5 °/s
+at **86.017 ms** — one millisecond *before* the first yaw-limit frame — then 10 °/s at 103.020 ms
+and 15 °/s at 107.021 ms, i.e. 24 and 20 ms before the upper rail at 127.025 ms. The table above already showed roll RMS rising 2.7 → 7.7 °/s in the 90–120 ms window
 at 0 % rail contact, which contradicted the claim it accompanied.
 
 **The collective is dragged up at zero throttle stick.** 7.7 % → 49.6 %, because the mixer's
@@ -104,7 +112,7 @@ lower clamp (`throttle = constrainf(throttle, -normalizedMotorMixMin, …)`) rai
 to fit axis demands the stick never asked for. With props on, that is real and increasing thrust
 — which is presumably why the log is only 0.21 s long.
 
-Whole-window figures, for reference only, since averaging a diverging transient understates its
+Whole-window figures, for reference only, since averaging a growing transient understates its
 end state:
 
 | axis | gyro RMS | gyro range | command RMS | command range | frames at the pidsum limit |
@@ -113,8 +121,11 @@ end state:
 | pitch | 15.6 °/s | 100 °/s | 0.068 | 0.377 | 0 % |
 | yaw | 57.8 °/s | 263 °/s | 0.241 | 0.800 | 13 % |
 
-That 13 % is itself a window average, and the per-window figures are **0 / 0 / 10 / 53 / 10 / 13 /
-0 %** — peaking in the 90–120 ms window and *falling* afterwards. The 53 / 60 / 78 % in the table
+That 13 % is itself a window average. Taking "at the limit" as applied mixer-axis
+`|Y| ≥ 0.399` (one quantisation step below the ±0.400 clamp — the raw pre-clamp yaw command cannot
+be recovered once clamped), the per-window frame counts are **0 / 0 / 3 / 16 / 3 / 4 / 0** of ~29
+frames each, i.e. **0 / 0 / 10 / 53 / 10 / 13 / 0 %** — peaking in the 90–120 ms window and
+*falling* afterwards. The 53 / 60 / 78 % in the table
 above are the **upper-motor-rail** column, a different quantity; the first version of this file
 attributed those three numbers to the yaw pidsum limit, which is simply wrong.
 
@@ -153,7 +164,7 @@ condition, or RPM-dependent excitation — the PID log never reaches the 30–67
 the ADRC log does. And one arm does not separate a reproducible ADRC defect from a rare
 ADRC-specific arm transient.
 
-## 4. The D-equivalent path carries it
+## 4. The D-equivalent term is the larger one
 
 Under ADRC the firmware logs the control law's own terms into `axisP`/`axisD`
 (`pid.c:1113–1115`: `pidData[axis].P = adrcOutput.P`, `.D = adrcOutput.D`), so this is measured,
@@ -170,10 +181,12 @@ terms are deliberately not clamped individually (`adrc.c`, the comment above the
 the bound is applied downstream as `constrainf(Sum, ±pidsum_limit)` in the mixer.
 
 Two roll numbers in this file measure different things and must not be read as one: **12 frames
-(5.9 %)** have an *input* `|axisP + axisD| ≥ 490`, while **0 frames** have an *applied* mixer-axis
-roll command at ±0.49 — the mixer renormalises the whole mix once `motorMixRange > 1`, which yaw's
-own clamp guarantees here. The §2 table reports the applied command; this paragraph reports the
-input.
+(5.9 %)** have a *raw* `|axisP + axisD| ≥ 500`, while **0 frames** have an *applied* mixer-axis
+roll command at ±0.49. All 12 raw-limit frames fall in **192.039–203.041 ms**, by which point
+**both** motor rails are active in every one of them; the combined mix is normalised there, so the
+applied roll component stays below ±0.49. (Yaw's own clamp does not explain this: ±0.400 spans only
+0.8, and between 87.017 and 127.025 ms yaw is at its limit with no upper rail and no normalisation
+yet.) The §2 table reports the applied command; this paragraph reports the raw sum.
 
 On yaw, `axisP` reaches only 203 and contributes 69.5 at 34 Hz, while the mixer command is pinned
 at 400 — so the yaw D-term supplies the balance there too, on the axis that actually goes
@@ -182,8 +195,8 @@ unstable. Reconstructed from the applied command and `axisP` **before** the clam
 
 **Blackbox does not record `axisD[2]`**, because the field is gated on the *legacy* profile D-gain
 being non-zero (`blackbox.c:206-208,523-526`) while the shipped default leaves `pid[FD_YAW].D` at 0
-and ADRC generates a live D there. A genuine instrumentation bug — fixed on the fork side by keying
-the condition on `pid_type == PID_TYPE_ADRC`. It is not true, though, that the term is "invisible":
+and ADRC generates a live D there. A genuine instrumentation bug, fixed on the fork side by keying the
+condition on `pid_type == PID_TYPE_ADRC` (branch `adrc-blackbox-dterm`). It is not true, though, that the term is "invisible":
 it is recoverable up to the clamp as above, and only after saturation is it unrecoverable.
 
 Reconstructing the law independently from the logged observer states —
@@ -227,15 +240,16 @@ Weaker than it first looks, and the time course is why.
 
 The **yaw** instability at 34 Hz is not ADRC-024: that entry is about a 24–27 Hz roll/pitch ring
 in disturbance-rich low-collective *flight*, and this is a different axis, a different frequency,
-and divergent from arm rather than episodic.
+and fast-growing from arm rather than episodic.
 
 The **roll** tone at 23 Hz does coincide with ADRC-024's band within the ±3 Hz resolution, and the
 craft runs the same base tune (`wc 60`, `wo 100`, `b0 2000`) on which that entry's hypotheses were
 formed. It is still not a fourth sighting — but for a different reason than the first version gave.
 That version said roll ignites only after the motors rail, which is false (roll crosses 5 °/s at
-86 ms, the rail arrives at 127 ms). The actual reason is duration: the active roll episode lasts
-about **0.11 s**, which is two to three cycles at 23 Hz — far too short to identify a mechanism, or
-to distinguish this tone from ADRC-024's.
+86 ms, the rail arrives at 127 ms). The actual reason is duration: taking onset as the first
+`|gyroUnfilt[0]| ≥ 10 °/s`, the active roll episode runs 103.020–211.045 ms = **0.108 s**, which is
+**2.5 cycles** at 23 Hz — far too short to identify a mechanism, or to distinguish this tone from
+ADRC-024's.
 
 What is solid and new: on the shipped defaults, on a stock 5" with props on, **yaw grew to its
 authority limit within 87 ms of arming**, on the ground, at zero throttle stick — no flying
