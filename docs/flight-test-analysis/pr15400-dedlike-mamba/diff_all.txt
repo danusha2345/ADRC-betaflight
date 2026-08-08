@@ -1,0 +1,113 @@
+
+Entering CLI Mode, type 'exit' to reboot, or 'help'
+
+# 
+# Building AutoComplete Cache ... Done!
+# 
+# diff all
+
+# version
+# Betaflight / STM32F7X2 (F722) 2026.6.0-alpha Aug  6 2026 / 14:22:59 (6317fe2aa) MSP API: 1.48
+# config rev: 57abd54
+
+# start the command batch
+batch start
+
+# reset configuration to default settings
+defaults nosave
+
+board_name MAMBAF722
+manufacturer_id DIAT
+mcu_id 004e00333237511634363730
+signature 
+
+# feature
+feature GPS
+feature TELEMETRY
+feature LED_STRIP
+feature OSD
+
+# serial
+serial UART2 131073 115200 57600 0 115200
+serial UART3 64 115200 57600 0 115200
+serial UART4 1 19200 57600 0 115200
+serial UART5 2 115200 115200 0 115200
+
+# beacon
+beacon RX_SET
+
+# aux
+aux 0 0 0 1800 2100 0 0
+aux 1 1 1 1300 1800 0 0
+aux 2 13 3 1800 2100 0 0
+aux 3 37 3 1400 1800 0 0
+
+# master
+set dyn_notch_count = 1
+set dyn_notch_q = 500
+set acc_calibration = -103,-10,343,1
+set blackbox_disable_gps = ON
+set dshot_bidir = ON
+set failsafe_procedure = GPS-RESCUE
+set align_board_roll = 180
+set ibata_scale = 255
+set gps_sbas_mode = AUTO
+set gps_ublox_use_galileo = ON
+set gps_set_home_point_once = ON
+set gps_rescue_alt_mode = CURRENT_ALT
+set gps_rescue_allow_arming_without_fix = ON
+set pid_process_denom = 2
+set osd_warn_bitmask = 274431
+set osd_rssi_alarm = 80
+set osd_cap_alarm = 1500
+set osd_rssi_pos = 636
+set osd_link_quality_pos = 2619
+set osd_rssi_dbm_pos = 244
+set osd_mah_drawn_pos = 2146
+set osd_gps_speed_pos = 2243
+set osd_gps_sats_pos = 2074
+set osd_home_dir_pos = 2718
+set osd_home_dist_pos = 2684
+set osd_altitude_pos = 18595
+set osd_warnings_pos = 14712
+set osd_avg_cell_voltage_pos = 2179
+set debug_mode = ADRC
+
+profile 0
+
+profile 1
+
+# profile 1
+set profile_name = CliProf1
+set simplified_pids_mode = OFF
+set pid_type = ADRC
+
+profile 2
+
+profile 3
+
+# restore original profile selection
+profile 1
+
+rateprofile 0
+
+rateprofile 1
+
+rateprofile 2
+
+rateprofile 3
+
+battery_profile 0
+
+battery_profile 1
+
+battery_profile 2
+
+# restore original rateprofile selection
+rateprofile 0
+
+# restore original battery_profile selection
+battery_profile 0
+
+# save configuration
+save
