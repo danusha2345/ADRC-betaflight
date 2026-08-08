@@ -321,13 +321,16 @@ simulation against these logs; (3) pure phase-margin shortfall at `wc=60`
 given `adrc_gyro_lpf 150` + craft latency — distinguished by the same
 ADRC-021 data.
 
-**A candidate fourth sighting was considered and rejected (2026-08-08).**
+**A candidate fourth sighting is not established and should not be counted
+(2026-08-08).**
 @dedlike's arm-time log carries a 23 Hz roll tone inside this band on the same
 base tune (`wc 60`, `wo 100`, `b0 2000`), which initially looked like one. It is
 not: the episode lasts 0.108 s — about 2.5 cycles at 23 Hz — which is too short
 to identify a mechanism or to tell the tone apart from anything else, and the
 dominant event in that log is a separate yaw oscillation at 34–37 Hz. Filed as
-ADRC-028 instead. Anyone counting sightings should not count that one.
+ADRC-028 instead. Anyone counting sightings should not count that one — which
+is a statement about insufficient evidence, not a demonstration that the
+mechanisms differ.
 
 Status: OPEN — root cause unknown; the b0 story above is the *leading
 hypothesis*, not an established cause. Data, methods and scripts:
@@ -972,8 +975,8 @@ command limit: `pidsum_limit_yaw` is first reached at **87.017 ms**, the upper
 motor rail at **127.025 ms**, and the mean collective is dragged from 7.7 % to
 49.6 % **by the mixer's lower clamp** — `collective = −min(axis mix)` holds to a
 residual of 1.1e-16 in all 205 frames — at a throttle stick that never leaves
-zero. With props fitted that is real and increasing thrust; the pilot cut it
-short, which is why the log is 0.21 s.
+zero. With props fitted that is real and increasing thrust. The log ends after
+0.21 s.
 
 Growth over the unsaturated first 80 ms fits an exponential envelope well
 (f = 37.0 Hz, τ = 65.6 ms, R² = 0.988; a constant-amplitude sinusoid is 9.5×
@@ -988,8 +991,9 @@ Not ADRC-026: the gate never opens and `z3` is exactly zero throughout. Not
 ADRC-024 either — that entry is a 24–27 Hz roll/pitch ring in
 disturbance-rich low-collective *flight*; here the axis, the frequency and the
 character all differ, and the craft's own 23 Hz roll tone lasts 0.108 s (~2.5
-cycles), too short to identify. A candidate for a fourth ADRC-024 sighting was
-considered and **rejected**.
+cycles), too short to identify. A fourth ADRC-024 sighting is therefore **not
+established** here and should not be counted — which is a statement about
+evidence, not a demonstration that the mechanisms differ.
 
 What the loop is doing is measured; *why* is not. The D-equivalent term is the
 larger one (`axisD`/`axisP` = 2.6 at the ring frequency on both logged axes, and
@@ -1000,21 +1004,38 @@ measured ratio 2.8×; an instantaneous gain×gyro account of the saturation is
 refuted by the data; a phase test cannot separate the paths because the LESO
 contributes its own phase.
 
-**Leading hypothesis, from @jmsweng (2026-08-08)**: Gao's parameterization
-wants `wo ≈ 3–5 × wc`, and the shipped defaults give **1.67 on roll/pitch and
-1.33 on yaw** — yaw lowest, because the default deliberately sets `wo` to 80 on
-yaw against 100 elsewhere at the same `wc 60`. Yaw is the axis that grew. The
-ratio alone is not a predictor across craft (@jmsweng flies an Air65 well at
-55/75 = 1.36), so what this supports is narrower: *within* a craft, yaw carries
-the least observer margin by construction, and it is yaw that fails.
+**Parameterization question raised by @jmsweng (2026-08-08)**: Gao gives
+`wo ≈ 3–5 × wc` as a rule of thumb. The shipped defaults give nominal ratios
+**1.67 on roll/pitch and 1.33 on yaw** — yaw is the lowest-ratio axis by
+construction in this profile, since `wo` defaults to 80 on yaw against 100
+elsewhere at the same `wc 60`, and yaw is the axis that grew in this one arm.
+
+That is where it stops. A sweep of every tune in this repository's log corpus is
+**not monotonic in this ratio and contains direct counterexamples to the
+minimum-ratio-axis pattern**: the b4 baseline and the doublet flights run the
+same defaults (yaw ratio 1.33, the minimum) and ring on roll/pitch, not yaw;
+@8ksal8's hotel tune has the yaw minimum at 1.20 with yaw reported solid;
+@8ksal8's b0 sweep changes outcome at a fixed ratio; and in @Pavel_M.'s part-3
+whoops the *higher* ratio was worse (`wc 20`, ratio 5, borderline unflyable,
+against `wc 60`, ratio 1.67, the best of those tested). Raising `wo` to 150 in
+the 2×2 produced ground failures of its own. So this is a tuning question worth
+asking, not a leading explanation of ADRC-028.
 
 Status: **OPEN, observed once.** One arm on one craft is not a reproduction, and
 the word "reproducible" was wrongly used in the first published version.
-Discriminator: `adrc_b0_yaw` alone, varied on the failing axis — but **only on a
-restraint or test stand with an automatic cutoff**, never as a repeated hand-on-
-the-switch ground arm: 87 ms to the command limit and 127 ms to the motor rail
-are both faster than human reaction, and an earlier version of the write-up
-asked for exactly that before the request was withdrawn.
+
+**No prop-on hand-triggered reproduction is requested.** 87 ms to the command
+limit and 127 ms to the motor rail are both faster than human reaction, and an
+earlier version of the write-up asked for exactly such a repeat before the
+request was withdrawn. Any reproduction must use a restraint or HIL setup with
+an automatic cutoff.
+
+On discriminators: varying `adrc_b0_yaw` would test gain sensitivity, **not**
+the `wo/wc` question — `b0` does not change that ratio at all, and it enters
+both the ESO's `b0·u` feedback and the z3 limit, so it is not a clean gain knob
+either. Testing the ratio needs an axis-isolated `wo` or `wc` change with output
+scale and `b0` controlled, and only after the event has first been reproduced
+safely.
 
 Instrumentation defect found alongside and fixed on branch
 `adrc-blackbox-dterm`: blackbox gates `axisD` on the *legacy* profile D-gain, so
