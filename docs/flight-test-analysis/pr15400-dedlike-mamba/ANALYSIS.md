@@ -102,7 +102,7 @@ version's main factual error:
 The lower rail is continuously active but costs no axis authority before 127 ms — the mixer
 preserves the range by shifting the collective instead (next point).
 
-**Roll starts with the yaw clamp, not with the motor rail.** Roll `|gyroUnfilt[0]|` crosses 5 °/s
+**Roll starts essentially contemporaneously with the yaw clamp, not with the motor rail.** Roll `|gyroUnfilt[0]|` crosses 5 °/s
 at **86.017 ms** — one millisecond *before* the first yaw-limit frame — then 10 °/s at 103.020 ms
 and 15 °/s at 107.021 ms, i.e. 24 and 20 ms before the upper rail at 127.025 ms. The table above already showed roll RMS rising 2.7 → 7.7 °/s in the 90–120 ms window
 at 0 % rail contact, which contradicted the claim it accompanied.
@@ -123,8 +123,8 @@ end state:
 
 That 13 % is itself a window average. Taking "at the limit" as applied mixer-axis
 `|Y| ≥ 0.399` (one quantisation step below the ±0.400 clamp — the raw pre-clamp yaw command cannot
-be recovered once clamped), the per-window frame counts are **0 / 0 / 3 / 16 / 3 / 4 / 0** of ~29
-frames each, i.e. **0 / 0 / 10 / 53 / 10 / 13 / 0 %** — peaking in the 90–120 ms window and
+be recovered once clamped), the per-window frame counts are **0 / 0 / 3 / 16 / 3 / 4 / 0** out of
+30 / 30 / 30 / 30 / 30 / 30 / 23 frames, i.e. **0 / 0 / 10 / 53 / 10 / 13 / 0 %** — peaking in the 90–120 ms window and
 *falling* afterwards. The 53 / 60 / 78 % in the table
 above are the **upper-motor-rail** column, a different quantity; the first version of this file
 attributed those three numbers to the yaw pidsum limit, which is simply wrong.
@@ -153,9 +153,10 @@ aerodynamic damping was present", as the first version did: the craft is on the 
 contact constraints vary through the event.
 
 The PID comparison is stronger than the whole-log figures suggest. First 211 ms of the PID log
-(matching the ADRC log's length): roll/yaw **0.74 / 0.88 °/s**. Worst 211 ms window anywhere in the
-PID log: 5.01 / 3.38. A PID 30 ms window at nearly the same collective as the ADRC log's first
-window (7.697 %): 1.18 / 1.71. Against ADRC's 34.2 / 57.9. That disposes of "this is just the arm
+(matching the ADRC log's length): roll/yaw **0.74 / 0.88 °/s**. Per-axis maxima across all 211 ms PID
+windows: 5.01 °/s roll and 3.38 °/s yaw, reached in *different* windows. A PID 30 ms window at
+7.697 % applied collective, matching ADRC's opening 30 ms mean of 7.732 %: 1.18 / 1.71, against
+ADRC's 34.2 / 57.9. That disposes of "this is just the arm
 transient any controller shows" for this session.
 
 What it does not establish is the heading this section originally carried. Proven: a
@@ -189,8 +190,8 @@ applied roll component stays below ±0.49. (Yaw's own clamp does not explain thi
 yet.) The §2 table reports the applied command; this paragraph reports the raw sum.
 
 On yaw, `axisP` reaches only 203 and contributes 69.5 at 34 Hz, while the mixer command is pinned
-at 400 — so the yaw D-term supplies the balance there too, on the axis that actually goes
-unstable. Reconstructed from the applied command and `axisP` **before** the clamp, yaw runs at
+at 400 — so the yaw D-term supplies the balance there too, on the axis showing the fast-growing
+oscillation. Reconstructed from the applied command and `axisP` **before** the clamp, yaw runs at
 `D/P ≈ 2.55` (2.52 at 34 Hz), so D dominance holds on the failing axis too.
 
 **Blackbox does not record `axisD[2]`**, because the field is gated on the *legacy* profile D-gain
@@ -202,13 +203,18 @@ it is recoverable up to the clamp as above, and only after saturation is it unre
 Reconstructing the law independently from the logged observer states —
 `P = wc²·(setpoint − z1)/b0`, `D = −2·wc·z2/b0` — reproduces the actual mixer-axis command to a max
 error of **0.00148** (roll) and **0.00118** (pitch) **over the first 120 ms**, cross-validating both
-the control-law model and the mixer-axis decomposition of §2 *in the unsaturated segment*.
+the control-law model and the mixer-axis decomposition of §2 over that region.
 
 The median-over-the-whole-record figure of 0.0009 quoted in the first version was misleading: it
 hides the saturated tail, where the same reconstruction reaches p95 0.271 / max 0.420 on roll. Two
-reasons — the sum is clipped downstream, and `b0` is not constant: `debug[7]` runs 100 → 120, i.e.
-`b0ThrottleScale` 1.00 → 1.20, so the effective `b0` rises 2000 → 2400 as the collective climbs,
-while `control_law_terms.py` assumes 2000 throughout.
+reasons — the sum is clipped downstream, and `b0` is not constant: `debug[7]` runs **−100 → −120**
+(its sign carries the gate state, its magnitude is `b0ThrottleScale`), so the scale goes 1.00 → 1.20
+and the effective `b0` rises 2000 → 2400 as the collective climbs, while `control_law_terms.py`
+assumes 2000 throughout.
+
+The region where the reconstruction is valid is properly described as the
+**pre-mixer-normalisation portion, `t < 120 ms`, and for roll and pitch only** — not as "the
+unsaturated segment", since yaw is already clamped from 87.017 ms.
 
 End-to-end gyro→command gain at the ring frequency, measured as the DFT ratio (ratios are far
 more window-stable than amplitudes, but not perfectly):
@@ -238,7 +244,7 @@ stand; the closed-form mechanism does not, and is not claimed.
 
 Weaker than it first looks, and the time course is why.
 
-The **yaw** instability at 34 Hz is not ADRC-024: that entry is about a 24–27 Hz roll/pitch ring
+The **yaw** oscillation at 34 Hz is not ADRC-024: that entry is about a 24–27 Hz roll/pitch ring
 in disturbance-rich low-collective *flight*, and this is a different axis, a different frequency,
 and fast-growing from arm rather than episodic.
 
@@ -247,8 +253,8 @@ craft runs the same base tune (`wc 60`, `wo 100`, `b0 2000`) on which that entry
 formed. It is still not a fourth sighting — but for a different reason than the first version gave.
 That version said roll ignites only after the motors rail, which is false (roll crosses 5 °/s at
 86 ms, the rail arrives at 127 ms). The actual reason is duration: taking onset as the first
-`|gyroUnfilt[0]| ≥ 10 °/s`, the active roll episode runs 103.020–211.045 ms = **0.108 s**, which is
-**2.5 cycles** at 23 Hz — far too short to identify a mechanism, or to distinguish this tone from
+`|gyroUnfilt[0]| ≥ 10 °/s`, the first such sample is at 103.020 ms and the last logged
+sample of the record is at 211.045 ms, giving **0.108 s** — about **2.5 cycles** at 23 Hz — far too short to identify a mechanism, or to distinguish this tone from
 ADRC-024's.
 
 What is solid and new: on the shipped defaults, on a stock 5" with props on, **yaw grew to its
@@ -256,16 +262,25 @@ authority limit within 87 ms of arming**, on the ground, at zero throttle stick 
 required to see it. "Reproducible" is not yet earned: this is **one** ADRC arm. It is an
 observation, awaiting a repeat.
 
-## 6. Open question for the reporter
+## 6. What is missing, and what must not be asked for
 
-**A longer log.** 0.21 s gives 4.7 Hz resolution, no view of throttle dependence, and forces the
-amplitude caveats above. A few seconds at the same `blackbox_sample_rate 1/4` would settle the
-growth rate properly and show whether the instability exists at other collectives. Given that the
-craft builds real thrust while the oscillation grows, this needs restraint on the ground rather
-than a longer brave arm. The useful version varies **`adrc_b0_yaw` alone** — the failing axis —
-over short repeated arms with a hard stop the moment motors move. Note that raising `b0` halves
-P and D authority but does **not** guarantee stability; the first version claimed it "should not
-diverge at all", which does not follow from anything measured here.
+A longer record would settle a lot: 0.21 s gives 4.7 Hz resolution, no view of throttle
+dependence, and forces the amplitude caveats above. **It must not be obtained by repeating this
+arm unrestrained.** Yaw reaches its command limit in 87 ms and a motor reaches the upper rail in
+127 ms — both faster than a human can react — while the collective climbs to real thrust with
+props fitted. A hand on the switch is not a cutoff, and earlier versions of this file asked for
+exactly that, over "short repeated arms with a hard stop the moment motors move". That request is
+withdrawn.
+
+A props-on repeat is only reasonable on a purpose-built restraint or test stand, in a cleared
+area, with an automatic cutoff that fires before those thresholds. A props-off arm is safe and
+worth doing, but it validates configuration and logging only — it cannot reproduce the
+aerodynamic event, so it answers a different question.
+
+If a safe setup exists, the single-variable test is **`adrc_b0_yaw` alone**, on the axis that
+grew. Raising `b0` halves the instantaneous P and D terms for a given observer state; it does
+**not** guarantee stability, and an earlier version of this file claiming it "should not diverge
+at all" did not follow from anything measured here.
 
 ## 7. Reproduction
 
