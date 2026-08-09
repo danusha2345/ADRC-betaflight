@@ -14,8 +14,9 @@ so the kv figure is his statement, not header-confirmed.
 **Firmware:** `6317fe2aa`, unchanged from his previous report — the PR branch head,
 gate-wise b6-level, **without** the `3c85c4b5a` z3 fix.
 **Tune:** `adrcWC 60,60,60`, `adrcWO 100,100,80`, `adrcB0 2000,2000,**4000**`.
-The yaw `b0` is the one change from 2026-08-06: he applied the
-`set adrc_b0_yaw = 4000` I recommended, and nothing else.
+The only ADRC-tune change from 2026-08-06 is `adrc_b0_yaw = 4000`, which he applied on my
+recommendation. Separately, legacy yaw D was changed from 0 to 1 in log 2/2 only, solely to
+make `axisD[2]` appear in blackbox — see §9.
 **Config:** `vbat_sag_compensation 0`, `dyn_idle_min_rpm 0`, `thrust_linear 0`,
 `motorOutput 158,2047`, `pid_process_denom 2`, `P interval 4`,
 `adrc_liftoff_throttle 40`. Full CLI state in `craft_config.txt`.
@@ -62,9 +63,10 @@ the logged `axisP+I+D+F`, the QUAD X coefficients (`mixer_init.c:84-89`) and the
 axis limits reproduces the motor-derived collective across the whole
 pre-throttle stretch (5589 saved rows) to **p99 = 0.1766 pp, max 0.2762 pp**.
 
-Static normalisation `(mean(motor) − 158)/1889` is exact here:
-`vbat_sag_compensation = 0` leaves `motorRangeMax` at the static endpoint, and
-dynamic idle and thrust linearisation are off.
+The static-endpoint normalisation `(mean(motor) − 158)/1889` is valid here:
+`vbat_sag_compensation = 0` leaves `motorRangeMax` at the static endpoint, and dynamic idle
+and thrust linearisation are off. Motor fields are logged as integers, so it is not exact —
+the reconstruction residual above is itself that quantisation.
 
 ## 3. Sequence
 
@@ -99,8 +101,9 @@ do not evidence a pre-throttle cause.
 ## 4. What is not settled
 
 **Whether the tail is self-sustaining.** After the R/P/Y setpoints return to
-nearly zero, roll oscillation and rail occupancy continue for **0.306972 s** at
-a Hann peak of 19.48–20.83 Hz. That the onset was command-triggered is
+nearly zero, roll oscillation and near-rail occupancy continue for **0.306972 s** at Hann peaks of 19.48
+and 20.83 Hz in two short windows. At 0.307 s the spectral resolution is only 3.3–3.5 Hz, so
+read those as "about 20 Hz", not to two decimals. That the onset was command-triggered is
 established; that the following regime could not sustain itself is not.
 
 **Whether classic PID would do the same.** There is no matched A/B with the same
@@ -126,9 +129,8 @@ Therefore `3c85c4b5a` would **not** have changed the onset or the first rail.
 
 It **would** have changed the window **5.631–5.656 s**: once the pilot's
 throttle crosses the idle floor while the gate is still shut, the b6/b8 inhibit
-condition lifts and `z3` runs to the telemetry rail before the gate opens. So
-the blind spot is live in this build and is not the cause of this event —
-neither statement alone is the whole truth.
+condition lifts and `z3` runs to the telemetry rail before the gate opens. So the blind spot is **not the cause of the onset or the first rail**. It is live later in
+this same record, and its contribution after 5.631 s is not isolated by these data.
 
 ## 6. Why this is not ADRC-028
 
@@ -184,6 +186,14 @@ python3 d2.py     # per-session summary, gate, z3, axisD[2]
 python3 d2b.py    # event timeline and 0.5 s windows
 python3 d2c.py    # the pre-throttle phase in detail
 ```
+
+Two notes on the scripts. `d2c.py` takes the pre-throttle phase as the continuous prefix
+before the first positive commanded collective; an earlier version selected every frame with
+zero commanded collective, which also swept in the return to zero *after* the gate opened,
+and so reported a non-zero `z3` and an open gate inside what it called the pre-throttle
+phase. And the motor-rail counters use `>= 2040`, a near-rail threshold: here 402 saved rows
+meet it against 400 at exactly 2047, and the first timestamp coincides, but the criteria are
+not the same.
 
 Read the mode field from the **raw** decode. The formatted output labels
 `BOXARM` as `ANGLE_MODE` and will tell you these are ANGLE flights; they are not.
