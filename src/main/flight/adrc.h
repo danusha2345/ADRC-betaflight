@@ -98,11 +98,12 @@ typedef struct adrcProfile_s {
                                         // below already covers the ground-rep use case it existed
                                         // for)
 
-    uint16_t gatedZ3DecayRate; // z3 decay rate x0.1 while ungated (grounded) - always faster than
-                                // sigmaDecay above, so a z3 that is already non-zero when the gate
-                                // shuts relaxes toward zero instead of holding. What keeps |z3| from
+    uint16_t gatedZ3DecayRate; // z3 decay rate x0.1 while ungated (grounded) - never slower than
+                                // sigmaDecay above (adrcInitConfig() takes the max of the two and a
+                                // 1/s floor), so a z3 that is already non-zero when the gate shuts
+                                // relaxes toward zero instead of holding. What keeps |z3| from
                                 // growing in the first place is the gate-only inhibit in
-                                // adrcUpdateEso(), not this rate (not per-axis)
+                                // adrcApplyControl(), not this rate (not per-axis)
     uint8_t b0ThrottleScaleMax; // ceiling on the throttle-scaled b0 multiplier (see
                                 // hoverThrottlePercent above); scaling is never applied below 1x
     uint8_t b0Law;              // adrcB0Law_e: which throttle->b0 schedule shape to apply (ADRC-021
@@ -124,9 +125,10 @@ typedef struct adrcCoefficient_s {
     float beta3;   // = wo*wo*wo (ESO observer gain)
     float decayRate; // = adrcProfile->sigmaDecay * 0.1 (z3 leaky-decay rate, shared across axes)
     float tdFilterGain; // stable PT1 gain for tdHz at the runtime looptime; 0 = TD disabled
-    float gatedDecayRate; // = adrcProfile->gatedZ3DecayRate * 0.1 (z3 decay rate while ungated,
-                           // shared across axes) - precomputed here so adrcApplyControl() doesn't
-                           // need the profile pointer just for this one field
+    float gatedDecayRate; // z3 decay rate while ungated (shared across axes). NOT simply
+                           // gatedZ3DecayRate * 0.1: adrcInitConfig() clamps the profile value,
+                           // then takes the max against decayRate above and a 1/s floor.
+                           // Precomputed so adrcApplyControl() doesn't need the profile pointer
 } adrcCoefficient_t;
 
 // Runtime state, embedded as a single field in pidRuntime_t.
@@ -145,10 +147,12 @@ typedef struct adrcRuntime_s {
                              // per-axis - gyro activity is checked across all three axes at once)
     float gyroActiveS;      // seconds of sustained gyro activity (liftoff detector)
     float appliedActiveS;   // seconds the applied collective has held above the liftoff threshold
-                             // - the gate's second path, see ADRC_LIFTOFF_APPLIED_HOLD_S
-    bool throttleAtIdle;    // commanded collective is below the gyro path's throttle floor
-                             // - shared cache updated once per loop by adrcUpdatePerLoopState(),
-                             // read per-axis by adrcApplyControl()'s z3 growth inhibit (ADRC-026)
+                             // - the gate's third path, see ADRC_LIFTOFF_APPLIED_HOLD_S
+    bool throttleAtIdle;    // commanded collective is below the gyro path's throttle floor. The gate
+                             // itself uses the local value computed in adrcUpdatePerLoopState(); this
+                             // cached copy has no production reader left since the z3 inhibit stopped
+                             // keying on the stick (ADRC-026), and is kept for the unit tests and
+                             // for anything that wants the per-loop decision after the fact
     float b0ThrottleScale;  // (throttle/hover)^2, clamped - shared cache updated once per loop by
                              // adrcUpdatePerLoopState(), applied per-axis in adrcApplyControl()
     float b0ScaleThrottle;  // low-passed collective feeding the b0 schedule above (the gate reads

@@ -77,7 +77,7 @@
 // landing from a calm mid-air float, and adrcUpdateArmTransition() below already covers the
 // ground-rep use case it existed for via a fresh epoch on every disarm->arm). That is not the same
 // as the gate being permanent: an explicit controller-epoch adrcResetAll() closes it, in flight
-// included - see the inhibit comment in adrcUpdateEso() for why that stays safe.
+// included - see the inhibit comment in adrcApplyControl() for why that stays safe.
 
 // ADRC-026: on the ground under airmode, the gate opened on a craft whose throttle stick had never
 // moved, and the ESO then integrated ground-contact dynamics it cannot model until the motors ran
@@ -106,9 +106,10 @@
 // That value is the commanded collective, NOT the stick - throttle angle correction, throttle
 // limit/boost, the dyn-idle floor and RPM limiting are all still in it (see mixer.c). The gate's
 // question is "was thrust commanded", and those are commands; the distinction that matters here is
-// commanded vs. mixer-added, not pilot vs. firmware. Both branches read it, since the toss-launch
-// floor below asks the same question. The b0 schedule keeps reading the applied value - it needs
-// the thrust that exists, not the thrust that was asked for.
+// commanded vs. mixer-added, not pilot vs. firmware. All three paths read it - directly for the
+// commanded test, and through the idle interlock for the other two, which ask the same question.
+// The b0 schedule keeps reading the applied value - it needs the thrust that exists, not the
+// thrust that was asked for.
 //
 // The gyro branch additionally requires a minimum throttle. On this evidence that is defence in
 // depth rather than the fix - it closes the toss-launch path against a slower ground excitation
@@ -120,7 +121,9 @@
 // equal to liftoffThrottlePercent would make the gyro path dead code.
 //
 // Known trade-off: a toss launch thrown at literally zero throttle no longer opens the gate on
-// rotation alone; it opens as soon as the throttle comes up, through either branch.
+// rotation alone. Once the throttle comes up, the direct commanded test opens it immediately at
+// liftoffThrottlePercent; below that the gyro and applied paths can open it, but each has to serve
+// its own hold from the moment the throttle leaves idle.
 #define ADRC_LIFTOFF_GYRO_THROTTLE_FRACTION 0.5f
 
 // Reading the commanded collective alone (above) closes the ADRC-026 false-open, but it opens the
@@ -135,15 +138,16 @@
 // 250 ms sits an order of magnitude above the ground worst case and still well inside a takeoff.
 #define ADRC_LIFTOFF_APPLIED_HOLD_S 0.25f
 
-// The liftoff gate above only zeroes the b0*u term in z2's update - it does nothing to stop z3
-// itself from winding up while grounded. z3 is a leaky integrator of errorEso regardless of gate
-// state, and its steady-state gain (beta3/decayRate) is enormous (beta3 = wo^3, decayRate is a
-// fraction of 1/s), so even a tiny sustained bias (sensor cal residual, filter phase lag) winds it
-// toward its clamp given enough idle time - confirmed on a props-off bench test, where sitting
-// armed at idle let yaw z3 wind to ~80% of its clamp before any stick input. While ungated, use a
-// much faster decay (adrcProfile->gatedZ3DecayRate) so z3 relaxes toward zero instead of
-// accumulating; it still updates smoothly (no reset discontinuity), just can't hold a wound-up
-// value while the craft isn't flying.
+// Zeroing the b0*u term in z2's update, which is all the liftoff gate above used to do, does
+// nothing on its own to stop z3 from winding up while grounded. z3 is a leaky integrator of
+// errorEso regardless of that term, and its steady-state gain (beta3/decayRate) is enormous
+// (beta3 = wo^3, decayRate is a fraction of 1/s), so even a tiny sustained bias (sensor cal
+// residual, filter phase lag) winds it toward its clamp given enough idle time - confirmed on a
+// props-off bench test, where sitting armed at idle let yaw z3 wind to ~80% of its clamp before
+// any stick input. Two things address that, and they are separate. First, while ungated, use a
+// much faster decay (adrcProfile->gatedZ3DecayRate) so an already non-zero z3 relaxes toward zero
+// instead of holding; it still updates smoothly (no reset discontinuity). Second - and this is
+// what actually forbids new growth - the gate state feeds the magnitude inhibit described next.
 //
 // The faster decay bounds where z3 settles, but not how fast it gets there: under the sustained
 // observer error of a ground oscillation, beta3 = wo^3 outruns it (at wo = 150 the decay time
@@ -155,7 +159,7 @@
 //
 // The condition is the gate alone, never the stick. It used to be gate AND idle throttle, which
 // left a blind window between the idle floor and the gate opening; see the inhibit itself in
-// adrcUpdateEso() for the measurements that closed it. Keying on the gate does not reintroduce
+// adrcApplyControl() for the measurements that closed it. Keying on the gate does not reintroduce
 // ADRC-020 (suppressing z3 growth at low throttle while airborne, when a genuine zero-throttle
 // float is flying and its estimate must stay live), because the gate does not close on a float -
 // only an explicit controller-epoch reset closes it, and that zeroes the estimate anyway.
@@ -288,9 +292,9 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // genuine landing, but adrcUpdateArmTransition()'s fresh-epoch-per-arm-cycle fix already
     // covers the ground-rep use case the heuristic existed for, so there is no validated use case
     // left to justify keeping the extra params/risk surface.
-    // z3 decay rate x0.1 while ungated (grounded) - always faster than sigmaDecay above, so a
+    // z3 decay rate x0.1 while ungated (grounded) - never slower than sigmaDecay above, so a
     // non-zero z3 relaxes toward zero while the gate is shut regardless of the configured airborne
-    // decay. Growth itself is refused by the gate-only inhibit in adrcUpdateEso(), not by this.
+    // decay. Growth itself is refused by the gate-only inhibit in adrcApplyControl(), not by this.
     adrcProfile->gatedZ3DecayRate = 200;
     // Ceiling on the throttle-scaled b0 multiplier (fix #10a). 3, not the fork's hardcoded 9: the
     // quadratic (throttle/hover)^2 law was only ever community-validated up to ~x3 (hover = 35%
@@ -337,7 +341,7 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         const float tdHz = fminf(adrcProfile->tdHz, LPF_MAX_HZ);
         c->tdFilterGain = (tdHz > 0.0f && validDt) ? pt1FilterGain(tdHz, dT) : 0.0f;
         // Never slower than the airborne decay and never zero. This rate is no longer the thing
-        // that prevents grounded windup - the gate-only growth inhibit in adrcUpdateEso() does
+        // that prevents grounded windup - the gate-only growth inhibit in adrcApplyControl() does
         // that, at any throttle - but it is what pulls an already non-zero z3 back toward zero
         // while the gate is shut, so a bias picked up before the gate closed (or carried in from a
         // pre-inhibit epoch) does not simply sit there and unwind as an I kick at takeoff. Ground
@@ -386,8 +390,9 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime)
     adrcRuntime->liftoff = false;
     adrcRuntime->gyroActiveS = 0.0f;
     adrcRuntime->appliedActiveS = 0.0f;
-    // adrcUpdatePerLoopState() recomputes this before any control step reads it; seed it to the
-    // grounded-and-idle assumption anyway so a closed gate never pairs with a stale "stick raised".
+    // adrcUpdatePerLoopState() recomputes this every loop, and since ADRC-026 nothing in the
+    // control path reads the cached copy at all. Seed it to the grounded-and-idle assumption
+    // anyway, so a reader added later cannot pair a closed gate with a stale "stick raised".
     adrcRuntime->throttleAtIdle = true;
 }
 
@@ -465,7 +470,7 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     // No mid-air re-arm (ADRC-020): nothing below closes the gate once it is open. Disarm
     // (adrcUpdateArmTransition() -> adrcResetAll()) is the only ground signal that cannot
     // false-trigger on a smooth zero-throttle float mid-flight. Controller-epoch resets close the
-    // gate too, and can do so while armed - see the inhibit comment in adrcUpdateEso().
+    // gate too, and can do so while armed - see the inhibit comment in adrcApplyControl().
     if (!adrcRuntime->liftoff) {
         if (commandedThrottle >= liftoffThrottle) {
             adrcRuntime->liftoff = true;
