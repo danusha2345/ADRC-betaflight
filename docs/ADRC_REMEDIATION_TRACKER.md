@@ -1044,6 +1044,20 @@ either. Testing the ratio needs an axis-isolated `wo` or `wc` change with output
 scale and `b0` controlled, and only after the event has first been reproduced
 safely.
 
+**A second event on the same craft (2026-08-09) is deliberately not counted
+here.** @dedlike applied the `adrc_b0_yaw = 4000` suggested above and got another
+ground runaway, but it is a different phenomenon:
+[`pr15400-dedlike-groundloop/`](flight-test-analysis/pr15400-dedlike-groundloop/).
+There the onset is a *commanded* pitch reversal (−197 → +275 °/s), the dominant
+axis is roll, the first rail is driven by the D-equivalent term (+439 of a +544
+raw roll sum), the tail sits at 19.5–20.8 Hz, and the first rail is 5.02 s into
+the recording rather than 127 ms. Shared with ADRC-028: ground contact, airmode,
+lower-clamp collective lift, closed gate and `z3 = 0` before any throttle. A
+common ground-loop susceptibility is a reasonable hypothesis; a second sighting
+of *this* entry it is not. That event is also not an established ADRC defect —
+the collective lift there is the documented behaviour of the legacy mixer's
+lower clamp under airmode, and no matched PID A/B exists.
+
 Instrumentation defect found alongside and fixed on branch
 `adrc-blackbox-dterm`: blackbox gates `axisD` on the *legacy* profile D-gain, so
 with the shipped default `pid[FD_YAW].D = 0` the D-equivalent term is not
