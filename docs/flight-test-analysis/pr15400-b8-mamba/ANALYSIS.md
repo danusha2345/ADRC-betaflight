@@ -141,12 +141,18 @@ Before touching code we tried the obvious thing: raise `adrc_liftoff_throttle` f
 | \|z3\| 0.5 s after gate open | 3063 | **7277** |
 | tracking error, median | 6 °/s | 8 °/s |
 
-The window shrank 6.5×, exactly as predicted — and it made no difference, because the
-estimate plateaus fast: within the first **0.25 s** after the inhibit releases, `|z3|`
-already reaches 887 at threshold 60, against 997 accumulated over the whole 5.58 s at
-threshold 40. Worse, the higher threshold opens the gate later, so the craft meets liftoff
-with more windup, not less (1054 vs 411). The pilot reported no perceptible difference,
-which matches.
+The interval shortened by roughly **6–7×** (the `setpoint[3]` proxy gives 6.5×, but that
+field is written before thrust-linearisation compensation and rounded to 0.001, so the
+runtime gate-domain ratio is only bounded to 6.44–6.96) — and it made no difference.
+
+**Correction, 2026-08-09:** the original explanation here was that the estimate plateaus
+within 0.25 s. That does not survive the raw data. Peak logged `|z3|` in the first 0.25 s
+is 558 at threshold 40 and 887 at threshold 60, against whole-interval peaks of 1584 and
+1491; threshold 40 takes 5.007 s to reach 90 % of its peak. What is true is simpler: the
+shorter window did not suppress the growth — peak roll/pitch `|z3|` went **1312 → 1491** —
+and the higher threshold opens the gate later, so the craft meets liftoff with **more**
+windup, not less (1054 vs 411). The pilot reported no perceptible difference, which
+matches. Only the code fix removes the interval.
 
 So the duration of the window is not the variable that matters. Only the code fix is.
 
