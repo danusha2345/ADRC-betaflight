@@ -90,13 +90,20 @@ last *positive* peak is the largest positive one, though the largest excursion o
 "precisely because saturation costs it authority" is wrong; that fall is a window-RMS effect, not a
 decaying envelope.
 
+**All times in this file are measured from the first saved data frame, not from arming.** The log
+carries an earlier firmware marker — a `Sync beep` event at 10 892 467 µs against a first data
+frame at 11 051 816 µs, i.e. the recording starts **159.349 ms** after the beep. Relative to that
+marker the two figures below become **246.366 ms** and **286.374 ms**, and even the beep is not
+the exact `ARMED` transition: blackbox waits over 100 ms before it starts writing headers, so the
+physical arm is earlier still by an unknown amount.
+
 **Three different limits engage at three different times**, and conflating them was the first
 version's main factual error:
 
 | limit | first reached |
 |---|---|
-| yaw command at `pidsum_limit_yaw` (±0.400) | **87.017 ms** |
-| upper motor rail (2047) | **127.025 ms** |
+| yaw command at `pidsum_limit_yaw` (±0.400) | **87.017 ms** (246.366 ms after the arming beep) |
+| upper motor rail (2047) | **127.025 ms** (286.374 ms after the arming beep) |
 | lower motor rail (158) | active in **205/205** frames from the start |
 
 The lower rail is continuously active but costs no axis authority before 127 ms — the mixer

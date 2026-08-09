@@ -971,12 +971,19 @@ ADRC parameters entirely at their defaults (`wc 60/60/60`, `wo 100/100/80`,
 `b0 2000`) on the PR branch head `6317fe2aa` (gate-wise b6-level).
 
 Within 211 ms of arming, a yaw oscillation at ~34–37 Hz grows to the yaw
-command limit: `pidsum_limit_yaw` is first reached at **87.017 ms**, the upper
-motor rail at **127.025 ms**, and the mean collective is dragged from 7.7 % to
-49.6 % **by the mixer's lower clamp** — `collective = −min(axis mix)` holds to a
+command limit: `pidsum_limit_yaw` is first reached at **87.017 ms** into the
+recording, the upper motor rail at **127.025 ms**, and the mean collective is
+dragged from 7.7 % to 49.6 % (30 ms window means) **by the mixer's lower clamp** — `collective = −min(axis mix)` holds to a
 residual of 1.1e-16 in all 205 frames — at a throttle stick that never leaves
 zero. With props fitted that is real and increasing thrust. The log ends after
 0.21 s.
+
+**Timebase.** Those times are from the first saved data frame. The log's earliest
+firmware arming marker is a `Sync beep` 159.349 ms earlier, against which the two
+figures are **246.366 ms** and **286.374 ms**; the physical `ARMED` transition is
+earlier still, since blackbox waits over 100 ms before writing headers. The
+safety conclusion is unchanged — neither figure leaves a credible margin for a
+manual cutoff — but they are not arm-to-limit latencies.
 
 Growth over the unsaturated first 80 ms fits an exponential envelope well
 (f = 37.0 Hz, τ = 65.6 ms, R² = 0.988; a constant-amplitude sinusoid is 9.5×
