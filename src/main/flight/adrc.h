@@ -131,8 +131,9 @@ typedef struct adrcRuntime_s {
     float vRef[XYZ_AXIS_COUNT]; // tracking-differentiator-filtered setpoint fed to the control law;
                                  // tracks the raw setpoint directly when tdFilterGain == 0 (disabled)
     float lastOutput[XYZ_AXIS_COUNT]; // control output fed back into the observer next iteration
-    bool liftoff;           // craft has left the ground; the detector only ever sets it, and
-                             // adrcResetAll() is the only thing that clears it (shared, not
+    bool liftoff;           // craft has left the ground; the detector only ever sets it, and it
+                             // is cleared only by adrcResetGate() - through adrcResetAll(), or by
+                             // the one direct disarmed call in pidInitConfig() (shared, not
                              // per-axis - gyro activity is checked across all three axes at once)
     float gyroActiveS;      // seconds of sustained gyro activity (liftoff detector)
     float appliedActiveS;   // seconds the applied collective has held above the liftoff threshold
@@ -169,7 +170,8 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
 void adrcResetState(adrcRuntime_t *adrcRuntime, int axis);
 
 // Resets the liftoff-gate state (shared across axes, not touched by adrcResetState() above).
-// Call ONLY from a controller-disabled epoch, i.e. via adrcResetAll() below - NOT from
+// Call ONLY from a controller-disabled epoch via adrcResetAll() below, or while disarmed - the one
+// direct caller is pidInitConfig() on a pid_type change, which is gated on !ARMED. NOT from
 // pidResetIterm()-style resets, which also fire mid-flight (launch control trigger, 3D motor
 // reversal) where force-closing the gate would wrongly cut the ESO's b0*u feedback while still
 // airborne.
@@ -178,8 +180,9 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime);
 // Resets everything: all per-axis ESO/output state, the liftoff gate, and the recovery-latch
 // flags. Call on the disarm->arm transition (via adrcUpdateArmTransition() below) and from
 // controller-disabled epochs - all four branches of the reset in pidController(): stabilisation
-// off, gyro overflow, a wing in PASSTHRU_MODE, and Crash Flip. The last three can fire while
-// armed, so this can close the gate in flight.
+// off, gyro overflow, a wing in PASSTHRU_MODE, and Crash Flip. All four can fire while armed, the
+// first one included (core.c selects PID_STABILISATION_OFF at low throttle when airmode is
+// inactive and pid_at_min_throttle is off), so this can close the gate in flight.
 void adrcResetAll(adrcRuntime_t *adrcRuntime);
 
 // Feed the current ARMED state once per loop; a rising edge (disarm->arm) starts a fresh ADRC

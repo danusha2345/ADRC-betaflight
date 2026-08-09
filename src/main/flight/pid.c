@@ -332,8 +332,9 @@ void pidResetIterm(void)
     }
     // Liftoff-gate state is intentionally not reset here: pidResetIterm() also fires mid-flight
     // (launch control trigger, 3D motor reversal), where force-closing the gate would wrongly cut
-    // the ESO's b0*u feedback while still airborne. See adrcResetGate(), reached only through
-    // adrcResetAll() from a controller-disabled epoch.
+    // the ESO's b0*u feedback while still airborne. See adrcResetGate(), reached from a
+    // controller-disabled epoch through adrcResetAll(), or directly from pidInitConfig() on a
+    // disarmed pid_type change.
 }
 
 #ifdef USE_WING
