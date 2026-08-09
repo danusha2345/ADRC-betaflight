@@ -82,19 +82,27 @@ typedef struct adrcProfile_s {
     // you set one; it answers a different question ("how sure am I this throttle means I'm off the
     // ground", vs. hoverThrottlePercent's "where do I actually hover"). Set it a bit above your
     // actual hover throttle rather than equal to it.
-    uint8_t liftoffThrottlePercent;     // throttle % that alone confirms liftoff (not per-axis)
-    uint8_t liftoffGyroDps;             // sustained rotation (deg/s, any axis) that alone confirms
-                                        // liftoff - the toss-launch path (not per-axis)
-    uint16_t liftoffHoldMs;             // how long the rotation above must sustain before it counts
-                                        // (ADRC-020: the opt-in mid-air re-arm heuristic that used
-                                        // to live here was removed rather than fixed - throttle+gyro
-                                        // alone cannot distinguish a landing from a calm mid-air
-                                        // float, and the arm-epoch fix below already covers the
-                                        // ground-rep use case it existed for)
+    uint8_t liftoffThrottlePercent;     // commanded throttle % that alone confirms liftoff; also
+                                        // the threshold the applied-collective path uses, and half
+                                        // of it is the idle floor the other two paths need cleared
+                                        // (not per-axis)
+    uint8_t liftoffGyroDps;             // sustained rotation (deg/s, any axis) that confirms
+                                        // liftoff once the throttle is off idle - the toss-launch
+                                        // path, which is why it is not rotation alone (not per-axis)
+    uint16_t liftoffHoldMs;             // how long the rotation above must sustain before it counts;
+                                        // also the floor on the applied-collective path's hold, so
+                                        // raising it hardens both (ADRC-020: the opt-in mid-air
+                                        // re-arm heuristic that used to live here was removed rather
+                                        // than fixed - throttle+gyro alone cannot distinguish a
+                                        // landing from a calm mid-air float, and the arm-epoch fix
+                                        // below already covers the ground-rep use case it existed
+                                        // for)
 
     uint16_t gatedZ3DecayRate; // z3 decay rate x0.1 while ungated (grounded) - always faster than
-                                // sigmaDecay above so z3 can't wind up while idle regardless of its
-                                // configured airborne decay (not per-axis)
+                                // sigmaDecay above, so a z3 that is already non-zero when the gate
+                                // shuts relaxes toward zero instead of holding. What keeps |z3| from
+                                // growing in the first place is the gate-only inhibit in
+                                // adrcUpdateEso(), not this rate (not per-axis)
     uint8_t b0ThrottleScaleMax; // ceiling on the throttle-scaled b0 multiplier (see
                                 // hoverThrottlePercent above); scaling is never applied below 1x
     uint8_t b0Law;              // adrcB0Law_e: which throttle->b0 schedule shape to apply (ADRC-021

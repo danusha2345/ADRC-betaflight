@@ -64,9 +64,14 @@
 // community-validated defaults, set in adrcResetProfile()). While the craft is ground-constrained
 // the plant does not respond to the control output, but the ESO doesn't know that: it misattributes
 // the "missing" response to a phantom disturbance and winds z3 up, which then has to unwind
-// violently at liftoff. Until liftoff is detected - throttle above liftoffThrottlePercent, or
-// any-axis rotation above liftoffGyroDps sustained for liftoffHoldMs (so a toss launch opens the
-// gate almost instantly) - the observer's b0*u feedback term is held at zero. Detection is
+// violently at liftoff. Until liftoff is detected the observer's b0*u feedback term is held at
+// zero. Three paths detect it, all in adrcUpdatePerLoopState(): commanded throttle at or above
+// liftoffThrottlePercent; any-axis rotation above liftoffGyroDps sustained for liftoffHoldMs; and
+// applied collective at or above the same throttle threshold, held for ADRC_LIFTOFF_APPLIED_HOLD_S
+// or liftoffHoldMs, whichever is longer. The latter two additionally require the commanded
+// throttle to be off idle (ADRC_LIFTOFF_GYRO_THROTTLE_FRACTION of the liftoff threshold), so
+// rotation alone does not open the gate - a toss launch thrown at literally zero throttle waits
+// for the throttle to come up, which is the ADRC-026 trade-off recorded further down. Detection is
 // one-way: nothing in the detector closes the gate once it is open (ADRC-020: an earlier opt-in
 // mid-air re-arm heuristic was removed rather than kept - throttle+gyro alone cannot distinguish a
 // landing from a calm mid-air float, and adrcUpdateArmTransition() below already covers the
@@ -142,13 +147,18 @@
 //
 // The faster decay bounds where z3 settles, but not how fast it gets there: under the sustained
 // observer error of a ground oscillation, beta3 = wo^3 outruns it (at wo = 150 the decay time
-// constant is ~50 ms against a per-loop beta3 term three orders larger). While ungated AND at idle
-// throttle, therefore, additionally refuse any update that would grow |z3| - the decay half of the
-// update still applies, so z3 relaxes but cannot accumulate. This is the damage-bounding half of
-// the ADRC-026 pair: keeping the gate shut removes the runaway's trigger, this bounds the charge
-// z3 can carry into any open that still happens. The condition is ungated AND idle, never idle
-// alone: suppressing z3 growth at low throttle while airborne is the ADRC-020 failure - a genuine
-// zero-throttle float is flying, and its disturbance estimate must stay live.
+// constant is ~50 ms against a per-loop beta3 term three orders larger). While the gate is shut,
+// therefore, additionally refuse any update that would grow |z3| - the decay half of the update
+// still applies, so z3 relaxes but cannot accumulate. This is the damage-bounding half of the
+// ADRC-026 pair: keeping the gate shut removes the runaway's trigger, this bounds the charge z3
+// can carry into any open that still happens.
+//
+// The condition is the gate alone, never the stick. It used to be gate AND idle throttle, which
+// left a blind window between the idle floor and the gate opening; see the inhibit itself in
+// adrcUpdateEso() for the measurements that closed it. Keying on the gate does not reintroduce
+// ADRC-020 (suppressing z3 growth at low throttle while airborne, when a genuine zero-throttle
+// float is flying and its estimate must stay live), because the gate does not close on a float -
+// only an explicit controller-epoch reset closes it, and that zeroes the estimate anyway.
 
 // Throttle-scaled b0 (fix #10a): motor authority scales with RPM, and thrust ~ RPM^2 ~ throttle^2,
 // so a b0 tuned at hover is wrong away from hover. Scaled only UP from hover, clamped to
@@ -278,8 +288,9 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // genuine landing, but adrcUpdateArmTransition()'s fresh-epoch-per-arm-cycle fix already
     // covers the ground-rep use case the heuristic existed for, so there is no validated use case
     // left to justify keeping the extra params/risk surface.
-    // z3 decay rate x0.1 while ungated (grounded) - always faster than sigmaDecay above so z3
-    // can't wind up while idle regardless of its configured airborne decay.
+    // z3 decay rate x0.1 while ungated (grounded) - always faster than sigmaDecay above, so a
+    // non-zero z3 relaxes toward zero while the gate is shut regardless of the configured airborne
+    // decay. Growth itself is refused by the gate-only inhibit in adrcUpdateEso(), not by this.
     adrcProfile->gatedZ3DecayRate = 200;
     // Ceiling on the throttle-scaled b0 multiplier (fix #10a). 3, not the fork's hardcoded 9: the
     // quadratic (throttle/hover)^2 law was only ever community-validated up to ~x3 (hover = 35%
@@ -325,11 +336,12 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         c->decayRate = fminf(adrcProfile->sigmaDecay, ADRC_SIGMA_DECAY_MAX) * 0.1f;
         const float tdHz = fminf(adrcProfile->tdHz, LPF_MAX_HZ);
         c->tdFilterGain = (tdHz > 0.0f && validDt) ? pt1FilterGain(tdHz, dT) : 0.0f;
-        // Never slower than the airborne decay and never zero: adrc_gated_z3_decay = 0 would
-        // silently reintroduce the grounded z3 windup this rate exists to prevent (a small sensor
-        // bias integrates for as long as the craft sits armed at idle, then unwinds as an I kick
-        // at takeoff - the exact failure the gated decay was added for). Ground tau is floored at
-        // ~1 s.
+        // Never slower than the airborne decay and never zero. This rate is no longer the thing
+        // that prevents grounded windup - the gate-only growth inhibit in adrcUpdateEso() does
+        // that, at any throttle - but it is what pulls an already non-zero z3 back toward zero
+        // while the gate is shut, so a bias picked up before the gate closed (or carried in from a
+        // pre-inhibit epoch) does not simply sit there and unwind as an I kick at takeoff. Ground
+        // tau is floored at ~1 s.
         const float gatedZ3Decay = fminf(adrcProfile->gatedZ3DecayRate, ADRC_GATED_Z3_DECAY_MAX) * 0.1f;
         c->gatedDecayRate = fmaxf(fmaxf(gatedZ3Decay, c->decayRate), 1.0f);
 
