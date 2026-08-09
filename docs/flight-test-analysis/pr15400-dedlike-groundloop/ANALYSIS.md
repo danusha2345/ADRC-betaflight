@@ -65,8 +65,11 @@ pre-throttle stretch (5589 saved rows) to **p99 = 0.1766 pp, max 0.2762 pp**.
 
 The static-endpoint normalisation `(mean(motor) − 158)/1889` is valid here:
 `vbat_sag_compensation = 0` leaves `motorRangeMax` at the static endpoint, and dynamic idle
-and thrust linearisation are off. Motor fields are logged as integers, so it is not exact —
-the reconstruction residual above is itself that quantisation.
+and thrust linearisation are off. The reconstruction is not exact because telemetry is
+quantised on both sides of the comparison — the motor fields and the logged controller
+terms alike. Motor rounding alone cannot account for the residual: four integers can move
+their mean by at most 0.5 motor units, i.e. 0.026 pp, which is a factor of 6.7 below the
+p99 and 10.4 below the max.
 
 ## 3. Sequence
 
@@ -191,9 +194,11 @@ Two notes on the scripts. `d2c.py` takes the pre-throttle phase as the continuou
 before the first positive commanded collective; an earlier version selected every frame with
 zero commanded collective, which also swept in the return to zero *after* the gate opened,
 and so reported a non-zero `z3` and an open gate inside what it called the pre-throttle
-phase. And the motor-rail counters use `>= 2040`, a near-rail threshold: here 402 saved rows
-meet it against 400 at exactly 2047, and the first timestamp coincides, but the criteria are
-not the same.
+phase. And the rail criteria differ between scripts: `d2.py` and `d2c.py` report the
+`>= 2040` near-rail threshold, `d2b.py` the exact 2047 endpoint. Within the pre-throttle
+prefix the two give 402 and 400 saved rows and the same first timestamp — a coincidence at
+this onset, not an identity; over the whole session they are 505 and 502. `d2c.py` prints
+both.
 
 Read the mode field from the **raw** decode. The formatted output labels
 `BOXARM` as `ANGLE_MODE` and will tell you these are ANGLE flights; they are not.

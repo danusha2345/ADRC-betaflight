@@ -2,7 +2,7 @@ import csv,math,cmath
 MLOW=158.0; MRANGE=2047.0-158.0
 def rms(v):
     mu=sum(v)/len(v); return (sum((q-mu)**2 for q in v)/len(v))**0.5
-for f,lab in [('btfl_all.01.csv','лог 1/2 (норм)'),('btfl_all.02.csv','лог 2/2 (УБЕГАНИЕ)')]:
+for f,lab in [('groundloop_btfl_all.01.csv','лог 1/2 (норм)'),('groundloop_btfl_all.02.csv','лог 2/2 (УБЕГАНИЕ)')]:
     rows=[]
     with open(f) as fh:
         r=csv.reader(fh); hdr=[h.strip() for h in next(r)]

@@ -1,7 +1,7 @@
 import csv
 MLOW=158.0; MRANGE=2047.0-158.0
 rows=[]
-with open('btfl_all.02.csv') as fh:
+with open('groundloop_btfl_all.02.csv') as fh:
     r=csv.reader(fh); hdr=[h.strip() for h in next(r)]
     ix={h:i for i,h in enumerate(hdr)}
     for row in r:
@@ -9,6 +9,7 @@ with open('btfl_all.02.csv') as fh:
             m=[float(row[ix[f'motor[{k}]']]) for k in range(4)]
             rows.append(dict(t=int(row[ix['time (us)']])/1e6, m=m,
                 c=float(row[ix['setpoint[3]']])/10.0,
+                stick=float(row[ix['rcCommand[3]']]),
                 g=[float(row[ix[f'gyroUnfilt[{k}]']]) for k in range(3)],
                 coll=(sum(m)/4-MLOW)/MRANGE*100,
                 d7=float(row[ix['debug[7]']]),
@@ -22,11 +23,16 @@ print('фаза ДО первого движения газа (commanded == 0):'
 first_gas=next((i for i,x in enumerate(rows) if x['c']>0.05), len(rows))
 pre=rows[:first_gas]
 print(f'  кадров: {len(pre)}, до t={max(T(x) for x in pre):.3f}с')
-print(f'  коллектив max: {max(x["coll"] for x in pre):.1f} %   (стик всё это время на нуле)')
+print(f'  commanded max: {max(x["c"] for x in pre):.1f} %   raw rcCommand[3]: {min(x["stick"] for x in pre):.0f}..{max(x["stick"] for x in pre):.0f}')
+print(f'  коллектив max: {max(x["coll"] for x in pre):.1f} %')
 print(f'  |z3| max:      {max(x["z3"] for x in pre):.0f}')
 print(f'  гейт открыт в этой фазе: {"да" if any(x["d7"]>0 for x in pre) else "НЕТ"}')
-sat=[x for x in pre if max(x['m'])>=2040]
-print(f'  кадров с мотором на упоре: {len(sat)}, первый в t={T(sat[0]):.3f}с' if sat else '  моторов на упоре нет')
+# два разных критерия: околоупор и точный верхний endpoint. В этом префиксе они
+# дают 402 и 400 кадров с одним и тем же первым моментом — совпадение, не тождество
+near=[x for x in pre if max(x['m'])>=2040]
+exact=[x for x in pre if max(x['m'])>=2047]
+print(f'  кадров с мотором >=2040 (околоупор): {len(near)}' + (f', первый в t={T(near[0]):.3f}с' if near else ''))
+print(f'  кадров с мотором ==2047 (точный упор): {len(exact)}' + (f', первый в t={T(exact[0]):.3f}с' if exact else ''))
 print(f'  |гиро| max R/P/Y: {max(abs(x["g"][0]) for x in pre):.0f} / {max(abs(x["g"][1]) for x in pre):.0f} / {max(abs(x["g"][2]) for x in pre):.0f}')
 print()
 print('покадрово вокруг начала (шаг ~50 мс):')

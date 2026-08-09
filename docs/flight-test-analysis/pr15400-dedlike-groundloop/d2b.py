@@ -1,7 +1,7 @@
 import csv
 MLOW=158.0; MRANGE=2047.0-158.0
 rows=[]
-with open('btfl_all.02.csv') as fh:
+with open('groundloop_btfl_all.02.csv') as fh:
     r=csv.reader(fh); hdr=[h.strip() for h in next(r)]
     ix={h:i for i,h in enumerate(hdr)}
     for row in r:
