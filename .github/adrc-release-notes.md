@@ -194,10 +194,10 @@ save
 ```
 
 > **Safety, read before your first ADRC arm.** ADRC-028 has been observed once: a
-> single unrestrained props-on ground arm on a 5" craft using the shipped ADRC
+> single props-on ground arm on a 5" craft using the shipped ADRC
 > defaults reached the yaw command limit 87 ms into the recording and an upper
 > motor rail 127 ms in, with the mean collective dragged from 7.7 % to 49.6 % at
-> zero throttle stick. Measured against the log's earliest arming marker those
+> zero throttle stick (both 30 ms window means). Measured against the log's earliest arming marker those
 > are 246 ms and 286 ms; the physical arm is earlier still. That is one craft and one arm — not a demonstration that it happens
 > everywhere — but 87 and 127 ms leave no credible margin for a manual cutoff.
 > **Do not make your first ADRC arm with props on and the craft unrestrained.**
@@ -206,11 +206,14 @@ save
 
 Starting tunables (see the
 [tuning guide](https://github.com/danusha2345/ADRC-betaflight#tuning)):
-`adrc_wc_* = 60`, `adrc_wo_* = 100` (yaw 80), `adrc_b0_* = 2000` (5") — whoops need
-roughly `33/65/3200`. These are the shipped defaults and a starting point only;
+`adrc_wc_* = 60`, `adrc_wo_* = 100` (yaw 80), `adrc_b0_* = 2000`. These are the
+shipped defaults and a starting point only;
 they are **not** validated as safe across airframes, and the arm-time behaviour
-above was seen on exactly this tune. Set `debug_mode = ADRC` and enable blackbox
-if you can — logs are the most valuable thing you can send.
+above was seen on exactly this tune, on a 5". Whoop pilots: ask in the thread
+rather than take a number from here — the values that have flown well on small
+frames differ a lot and none of them is validated as a safe default either. Set
+`debug_mode = ADRC` and enable blackbox if you can — logs are the most valuable
+thing you can send.
 
 ## Where to report
 
