@@ -193,11 +193,23 @@ set pid_type = ADRC
 save
 ```
 
-Starting tunables (flight-validated on two 5" and a 65 mm whoop; see the
+> **Safety, read before your first ADRC arm.** ADRC-028 has been observed once: a
+> single unrestrained props-on ground arm on a 5" craft using the shipped ADRC
+> defaults reached the yaw command limit in 87.017 ms and an upper motor rail in
+> 127.025 ms, with the collective dragged from 7.7 % to 49.6 % at zero throttle
+> stick. That is one craft and one arm — not a demonstration that it happens
+> everywhere — but 87 and 127 ms leave no credible margin for a manual cutoff.
+> **Do not make your first ADRC arm with props on and the craft unrestrained.**
+> Use props off, or a restraint/test stand with an automatic cutoff. Analysis:
+> [pr15400-dedlike-mamba](https://github.com/danusha2345/ADRC-betaflight/tree/master/docs/flight-test-analysis/pr15400-dedlike-mamba).
+
+Starting tunables (see the
 [tuning guide](https://github.com/danusha2345/ADRC-betaflight#tuning)):
 `adrc_wc_* = 60`, `adrc_wo_* = 100` (yaw 80), `adrc_b0_* = 2000` (5") — whoops need
-roughly `33/65/3200`. Set `debug_mode = ADRC` and enable blackbox if you can — logs
-are the most valuable thing you can send.
+roughly `33/65/3200`. These are the shipped defaults and a starting point only;
+they are **not** validated as safe across airframes, and the arm-time behaviour
+above was seen on exactly this tune. Set `debug_mode = ADRC` and enable blackbox
+if you can — logs are the most valuable thing you can send.
 
 ## Where to report
 
