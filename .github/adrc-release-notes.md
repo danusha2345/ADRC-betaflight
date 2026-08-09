@@ -10,30 +10,36 @@ Two changes over b8, both narrow. Everything described under b8 and earlier stil
 `!liftoff && throttleAtIdle`, and `throttleAtIdle` clears at half the liftoff threshold —
 so a craft still on the ground with the stick past that point charged its disturbance
 estimate freely while the gate was still shut, and carried the result into the first
-airborne loop. It now keys on `!liftoff`.
+gate-open loop. It now keys on `!liftoff`.
 
 Flight-checked before release rather than after: six arm cycles on a 5" Mamba F722 with
-`z3` **exactly zero** before the gate in every one, tracking error unchanged from b8
-(6 °/s median), and rail contact down from 2.8 % to 0.2 % and 0.0 % on the two props-on
-flights. A configuration workaround was tried first — raising `adrc_liftoff_throttle` to
+`z3` **exactly zero** before the gate in every one, roll/pitch tracking-error median
+unchanged from b8 at 6 °/s, and frames with a motor on a rail after gate opening down from
+2.8 % to 0.2 % and 0.0 % on the two props-on flights. Those are matched observations, not
+a demonstrated causal reduction. A configuration workaround was tried first — raising `adrc_liftoff_throttle` to
 shrink the blind window — and measured not to work: the interval shortened by roughly
 6–7×, but peak logged roll/pitch `z3` went **1312 → 1491** and the value carried into gate
 opening was **higher**, not lower (411 → 1054).
 
 This blind spot is live in b8 and executes on real takeoffs: all eight logs in @8ksal8's
-two b0-law sweeps enter it, five of them reaching the `z3` telemetry rail before the gate
-opens 26–77 ms later. Those logs do **not** demonstrate a resulting flight-quality
-penalty, so this is a correctness fix, not a rescue.
+two b0-law sweeps enter the interval, and five reach the `z3` telemetry rail before the
+gate opens. The full commanded-floor-to-gate interval is 25.9–76.5 ms. Those logs do
+**not** demonstrate a resulting flight-quality penalty, so this is a correctness fix, not
+a rescue.
 
 **2. `axisD` is now logged on all three axes under ADRC.** The field was gated on the
 *legacy* profile D-gain being non-zero, which ADRC never reads — so on the shipped
 defaults, where `pid[FD_YAW].D` is 0, the D-equivalent term was not recorded at all on
-yaw. That is the axis that failed in ADRC-028. Costs one signed-VB field per main frame,
-roughly 1–5 bytes/frame.
+yaw. That is the axis that showed the fast-growing oscillation in ADRC-028. On the shipped
+defaults this adds one signed-VB field per main frame, typically 1–5 bytes/frame; a custom
+profile with more zero legacy D gains can add up to three fields under ADRC. The field was
+verified in a hardware log, but this narrow schema branch does not yet have an automated
+ADRC/classic-PID condition regression test.
 
-**What b9 does not fix.** ADRC-028 is untouched: in that event the gate never opened and
-`z3` was exactly zero, so neither change would have altered it. Read the safety note under
-"Enabling ADRC" before your first arm.
+**What b9 does not fix.** Neither change fixes the ADRC-028 control-law path; b9 leaves
+ADRC-028 open. In that event the gate never opened and `z3` was exactly zero, so the z3
+change does not reach it, and the second change is instrumentation. Read the safety note
+under "Enabling ADRC" before your first arm.
 
 ## b8 — b7 is withdrawn, use this instead
 
