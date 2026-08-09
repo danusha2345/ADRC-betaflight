@@ -16,7 +16,11 @@ with open('btfl_all.02.csv') as fh:
         except Exception: pass
 t0=rows[0]['t']; T=lambda x:(x['t']-t0)
 print('фаза ДО первого движения газа (commanded == 0):')
-pre=[x for x in rows if x['c']<0.05]
+# непрерывный префикс ДО первого положительного commanded collective,
+# а не все кадры с нулевым газом (те включают возврат к нулю уже после
+# открытия гейта и дают ложные ненулевой z3 и открытый гейт)
+first_gas=next((i for i,x in enumerate(rows) if x['c']>0.05), len(rows))
+pre=rows[:first_gas]
 print(f'  кадров: {len(pre)}, до t={max(T(x) for x in pre):.3f}с')
 print(f'  коллектив max: {max(x["coll"] for x in pre):.1f} %   (стик всё это время на нуле)')
 print(f'  |z3| max:      {max(x["z3"] for x in pre):.0f}')

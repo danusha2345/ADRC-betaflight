@@ -26,7 +26,7 @@ ev=[
  ('|z3| упирается в 32767',            first(lambda x:max(x['z3'])>=32767)),
  ('|гиро pitch| >100 °/с',             first(lambda x:abs(x['g'][1])>100)),
  ('|гиро pitch| >500 °/с',             first(lambda x:abs(x['g'][1])>500)),
- ('первый мотор на упоре 2047',        first(lambda x:max(x['m'])>=2040)),
+ ('первый мотор на верхнем упоре 2047', first(lambda x:max(x['m'])>=2047)),
  ('ГЕЙТ открывается',                  first(lambda x:x['d7']>0)),
  ('|гиро pitch| >1500 °/с',            first(lambda x:abs(x['g'][1])>1500)),
 ]

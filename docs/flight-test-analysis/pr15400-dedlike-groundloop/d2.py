@@ -33,5 +33,5 @@ for f,lab in [('btfl_all.01.csv','лог 1/2 (норм)'),('btfl_all.02.csv','л
         v=[x['D2'] for x in rows]
         print(f'   axisD[2] (yaw D-эквивалент): размах {min(v):+.0f}..{max(v):+.0f}  СКО {rms(v):.1f}  против axisP[2] СКО {rms([x["P"][2] for x in rows]):.1f}  → D/P {rms(v)/max(rms([x["P"][2] for x in rows]),1e-9):.2f}')
     sat=sum(1 for x in rows if max(x['m'])>=2040)/len(rows)*100
-    print(f'   мотор на упоре: {sat:.1f}% кадров')
+    print(f'   мотор >=2040 (околоупор): {sat:.1f}% кадров')
     print()
