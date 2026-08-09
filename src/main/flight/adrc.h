@@ -65,8 +65,8 @@ typedef struct adrcProfile_s {
     uint16_t b0[XYZ_AXIS_COUNT]; // control-input gain estimate [deg/s^3 per PID output] per axis
     uint16_t gyroFilterHz;       // low-pass cutoff applied to the ESO's gyro input (not per-axis,
                                  // matching dterm_lpf1/lpf2's single-value convention)
-    uint8_t hoverThrottlePercent; // throttle % at hover; b0 is scaled by (throttle/hover)^2 above
-                                   // hover, since motor authority ~ throttle^2 (not per-axis)
+    uint8_t hoverThrottlePercent; // throttle % at hover; b0 is scheduled above hover by the selected
+                                   // b0Law (quadratic by default; not per-axis)
     uint8_t sigmaDecay;           // z3 leaky-decay rate x0.1; 0 = classic pure integrator (not
                                    // per-axis)
     uint16_t tdHz;                // tracking-differentiator corner freq on the setpoint feeding the
@@ -153,8 +153,8 @@ typedef struct adrcRuntime_s {
                              // cached copy has no production reader left since the z3 inhibit stopped
                              // keying on the stick (ADRC-026), and is kept for the unit tests and
                              // for anything that wants the per-loop decision after the fact
-    float b0ThrottleScale;  // (throttle/hover)^2, clamped - shared cache updated once per loop by
-                             // adrcUpdatePerLoopState(), applied per-axis in adrcApplyControl()
+    float b0ThrottleScale;  // scale selected by b0Law, clamped to [1, max] (quadratic by default) -
+                             // updated once per loop, applied per-axis in adrcApplyControl()
     float b0ScaleThrottle;  // low-passed collective feeding the b0 schedule above (the gate reads
                              // the raw value) - see ADRC_B0_SCALE_THROTTLE_LPF_HZ in adrc.c
 #ifdef USE_YAW_SPIN_RECOVERY

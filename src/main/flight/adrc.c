@@ -145,11 +145,12 @@
 // residual, filter phase lag) winds it toward its clamp given enough idle time - confirmed on a
 // props-off bench test, where sitting armed at idle let yaw z3 wind to ~80% of its clamp before
 // any stick input. Two things address that, and they are separate. First, while ungated, use a
-// much faster decay (adrcProfile->gatedZ3DecayRate) so an already non-zero z3 relaxes toward zero
-// instead of holding; it still updates smoothly (no reset discontinuity). Second - and this is
-// what actually forbids new growth - the gate state feeds the magnitude inhibit described next.
+// never-slower effective decay (selected from gatedZ3DecayRate, airborne decay, and the 1/s floor)
+// so an already non-zero z3 relaxes toward zero instead of holding; it still updates smoothly (no
+// reset discontinuity). Second - and this is what actually forbids new growth - the gate state
+// feeds the magnitude inhibit described next.
 //
-// The faster decay bounds where z3 settles, but not how fast it gets there: under the sustained
+// The effective decay bounds where z3 settles, but not how fast it gets there: under the sustained
 // observer error of a ground oscillation, beta3 = wo^3 outruns it (at wo = 150 the decay time
 // constant is ~50 ms against a per-loop beta3 term three orders larger). While the gate is shut,
 // therefore, additionally refuse any update that would grow |z3| - the decay half of the update
@@ -345,7 +346,7 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         // that, at any throttle - but it is what pulls an already non-zero z3 back toward zero
         // while the gate is shut, so a bias picked up before the gate closed (or carried in from a
         // pre-inhibit epoch) does not simply sit there and unwind as an I kick at takeoff. Ground
-        // tau is floored at ~1 s.
+        // tau is capped at ~1 s.
         const float gatedZ3Decay = fminf(adrcProfile->gatedZ3DecayRate, ADRC_GATED_Z3_DECAY_MAX) * 0.1f;
         c->gatedDecayRate = fmaxf(fmaxf(gatedZ3Decay, c->decayRate), 1.0f);
 
@@ -528,9 +529,9 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
         // tracking gyro while the gate was closed. The mixer may already have applied airmode
         // output that the ground-constrained plant could not realise; admitting that ground-epoch
         // lastOutput as b0*u in the first open loop creates exactly the discontinuity the gate is
-        // meant to prevent. Drop only that stale input. The first open loop then matches the
-        // closed-path observer update, and the following loop feeds back the first output actually
-        // generated during this airborne epoch.
+        // meant to prevent. Drop only that stale input. The first open loop's b0*u contribution
+        // then matches the closed-path value (zero); the following loop feeds back the first output
+        // actually generated during this airborne epoch.
         for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
             adrcRuntime->lastOutput[axis] = 0.0f;
         }
@@ -551,8 +552,8 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     const float throttleRatio = adrcRuntime->b0ScaleThrottle / hover;
     const float maxB0Scale = constrainf(adrcProfile->b0ThrottleScaleMax, 1.0f, ADRC_B0_SCALE_MAX);
     // ADRC-021 A/B: candidate schedule shapes, selectable per PID profile (see adrcB0Law_e).
-    // throttleRatio < 1 maps below 1 under every law, so the "scale only UP" clamp above hover
-    // stays the sole low-side policy regardless of the selected shape.
+    // Non-FIXED laws map throttleRatio < 1 below 1, while FIXED maps it to exactly 1; either way,
+    // the "scale only UP" clamp stays the sole low-side policy regardless of the selected shape.
     float rawScale;
     switch (adrcProfile->b0Law) {
     case ADRC_B0_LAW_SQRT:
@@ -590,8 +591,8 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
         adrcRuntime->b0ThrottleScale = ADRC_B0_SCALE_MAX;
     }
 
-    // Throttle-scaled plant gain: motor authority ~ throttle^2, so a hover-tuned b0 stays calibrated
-    // across the throttle range instead of only at hover. See adrcUpdatePerLoopState().
+    // Throttle-scheduled plant-gain estimate: apply the selected b0 law above hover (quadratic by
+    // default), with the resulting scale cached by adrcUpdatePerLoopState().
     const float b0Base = (adrcIsFinite(c->b0) && c->b0 >= ADRC_B0_MIN) ? c->b0 : ADRC_B0_MIN;
     const float b0 = b0Base * adrcRuntime->b0ThrottleScale;
 
@@ -669,7 +670,7 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     adrcRuntime->z3[axis] = constrainf(adrcRuntime->z3[axis], -maxZ3, maxZ3);
 
     // Tracking differentiator (opt-in, off by default): smooths the setpoint driving the control
-    // law's P term, separate from the ESO's own error term above (errorEso still tracks the raw
+    // law's P term, separate from the ESO's own error term above (errorEso still tracks the filtered
     // gyro directly - the TD only changes what the control law treats as "where we're steering
     // toward", not what the observer treats as "what actually happened"). tdFilterGain is the
     // unconditionally stable PT1 gain omega*dT/(1 + omega*dT), so every positive cutoff/looptime

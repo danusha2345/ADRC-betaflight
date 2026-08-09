@@ -1128,7 +1128,7 @@ static FAST_CODE_NOINLINE void adrcZeroThrottleItermReset(void)
     // (community fork fix #4, danusha2345/ADRC-betaflight). Safe not because the liftoff gate
     // zeroes the ESO's b0*u feedback - z3 integrates errorEso regardless of that term - but
     // because the same closed gate refuses any update that would grow |z3| (ADRC-026, see
-    // adrcUpdateEso()). That is what keeps an alive ESO from winding up while grounded
+    // adrcApplyControl()). That is what keeps an alive ESO from winding up while grounded
     // pre-liftoff. Post-landing (gate still open on the ground) windup remains possible, but is
     // bounded to the current arm cycle by the arm-transition reset in updateAdrcSharedState().
     // Only the legacy I accumulator is cleared; ADRC recomputes I = -z3/b0 every loop regardless.

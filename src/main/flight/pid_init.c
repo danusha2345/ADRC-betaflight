@@ -382,8 +382,9 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     // Stock PID-profile selection paths reject changes while armed. Treat a pid_type change here
     // as a disarmed control-law configuration transition, not as an in-flight handover promise:
     // clear both classic I and ADRC observer/output memory so neither controller inherits the
-    // other's state on the next arm. Same-type pidInitConfig() calls still preserve ADRC state;
-    // adjustment ranges legitimately use that path while armed.
+    // other's state on the next arm. Same-type calls preserve the gate and per-axis observer/output
+    // state, while adrcInitConfig() still resets the b0 scheduling cache; adjustment ranges
+    // legitimately use that path while armed.
     if (pidProfile->pid_type != pidRuntime.activePidType) {
         pidResetIterm();
         if (!ARMING_FLAG(ARMED)) {
