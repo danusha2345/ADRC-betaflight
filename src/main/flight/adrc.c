@@ -609,12 +609,19 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // throttleAtIdle clears at half the liftoff threshold, so any craft still on the ground with
     // the stick past that point charged z3 freely until the gate opened. Measured on a 5" (docs/
     // flight-test-analysis/pr15400-b8-mamba): 0.6 s of that window unloaded and 5.6 s with a 1 kg
-    // payload, and raising adrc_liftoff_throttle does not help - the estimate reaches its plateau
-    // within about 0.25 s, so shortening the window leaves the accumulated value unchanged.
+    // payload. Raising adrc_liftoff_throttle does not help: it shortened the blind interval by
+    // roughly 6-7x and did not suppress the growth - peak logged roll/pitch z3 went 1312 -> 1491,
+    // and the value carried into gate opening was higher, not lower (411 -> 1054). Only the code
+    // fix removes the interval.
     //
     // Dropping the idle condition does not reintroduce ADRC-020 (a mid-air float at zero throttle
-    // freezing the observer), because the gate latches for the rest of the arm cycle: airborne,
-    // liftoff is true and the inhibit cannot engage regardless of stick position.
+    // freezing the observer), but NOT because the gate is permanent - adrcResetAll() closes it in
+    // flight on three paths (zero-throttle stop with pid_at_min_throttle off and airmode off,
+    // gyroOverflowDetected(), and a wing leaving PASSTHRU_MODE). Each of those zeroes z1/z2/z3 on
+    // its way out, so there is no accumulated estimate left for the inhibit to freeze, and the
+    // gyro path reopens the gate within liftoffHoldMs. What ADRC-020 was about - an intact
+    // airborne estimate blinded by stick position - cannot happen now, because the stick no longer
+    // takes part in the decision at all.
     const bool inhibitZ3Growth = !adrcRuntime->liftoff;
     adrcRuntime->z3[axis] = (inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed)) ? z3Decayed : z3Updated;
 
