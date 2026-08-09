@@ -1,0 +1,240 @@
+diff all
+
+# version
+# Betaflight / STM32F7X2 (F722) 2026.6.0-alpha Aug  7 2026 / 19:35:17 (3c85c4b5a) MSP API: 1.48
+# config rev: 57abd54
+
+# start the command batch
+batch start
+
+# reset configuration to default settings
+defaults nosave
+
+board_name MAMBAF722_I2C
+manufacturer_id DIAT
+mcu_id 0006001f4638501120383937
+signature 
+
+# name: RSSI LOW
+
+# feature
+feature TELEMETRY
+feature OSD
+feature ESC_SENSOR
+
+# serial
+serial UART1 64 115200 57600 0 115200
+serial UART2 2 115200 57600 0 115200
+serial UART3 1 115200 57600 0 115200
+serial UART6 1024 115200 57600 0 115200
+
+# beacon
+beacon RX_LOST
+beacon RX_SET
+
+# aux
+aux 0 0 0 1500 2100 0 0
+aux 1 2 1 1300 1700 0 0
+aux 2 13 1 900 1300 0 0
+
+# vtxtable
+vtxtable bands 6
+vtxtable channels 8
+vtxtable band 1 BOSCAM_A A FACTORY 5865 5845 5825 5805 5785 5765 5745 5725
+vtxtable band 2 BOSCAM_B B FACTORY 5733 5752 5771 5790 5809 5828 5847 5866
+vtxtable band 3 BOSCAM_E E FACTORY 5705 5685 5665    0 5885 5905    0    0
+vtxtable band 4 FATSHARK F FACTORY 5740 5760 5780 5800 5820 5840 5860 5880
+vtxtable band 5 RACEBAND R FACTORY 5658 5695 5732 5769 5806 5843 5880 5917
+vtxtable band 6 IMD6     I CUSTOM  5732 5765 5828 5840 5866 5740    0    0
+vtxtable powerlevels 4
+vtxtable powervalues 0 1 2 3
+vtxtable powerlabels 25 200 500 800
+
+# master
+set gyro_lpf1_static_hz = 0
+set dyn_notch_count = 2
+set dyn_notch_q = 500
+set gyro_lpf1_dyn_min_hz = 0
+set gyro_lpf1_dyn_max_hz = 0
+set acc_calibration = 0,28,63,1
+set min_check = 1000
+set max_check = 2000
+set rc_smoothing_auto_factor = 250
+set rc_smoothing_setpoint_cutoff = 25
+set blackbox_sample_rate = 1/2
+set failsafe_recovery_delay = 10
+set vbat_scale = 111
+set beeper_dshot_beacon_tone = 5
+set yaw_motors_reversed = ON
+set small_angle = 180
+set deadband = 3
+set yaw_deadband = 3
+set pid_process_denom = 2
+set simplified_gyro_filter = OFF
+set report_cell_voltage = ON
+set osd_warn_bitmask = 8191
+set osd_vbat_pos = 2440
+set osd_rssi_pos = 58
+set osd_link_quality_pos = 234
+set osd_link_tx_power_pos = 87
+set osd_rssi_dbm_pos = 56
+set osd_rsnr_pos = 234
+set osd_tim_1_pos = 397
+set osd_tim_2_pos = 234
+set osd_remaining_time_estimate_pos = 234
+set osd_flymode_pos = 35
+set osd_anti_gravity_pos = 234
+set osd_g_force_pos = 234
+set osd_throttle_pos = 385
+set osd_vtx_channel_pos = 1
+set osd_crosshairs_pos = 205
+set osd_ah_sbar_pos = 206
+set osd_ah_pos = 174
+set osd_current_pos = 234
+set osd_mah_drawn_pos = 56
+set osd_wh_drawn_pos = 234
+set osd_motor_diag_pos = 234
+set osd_craft_name_pos = 2091
+set osd_pilot_name_pos = 234
+set osd_gps_speed_pos = 2114
+set osd_gps_lon_pos = 386
+set osd_gps_lat_pos = 400
+set osd_gps_sats_pos = 2391
+set osd_home_dir_pos = 2278
+set osd_home_dist_pos = 2402
+set osd_flight_dist_pos = 234
+set osd_compass_bar_pos = 234
+set osd_altitude_pos = 2359
+set osd_pid_roll_pos = 234
+set osd_pid_pitch_pos = 234
+set osd_pid_yaw_pos = 234
+set osd_debug_pos = 234
+set osd_power_pos = 234
+set osd_pidrate_profile_pos = 234
+set osd_warnings_pos = 14697
+set osd_avg_cell_voltage_pos = 2440
+set osd_pit_ang_pos = 385
+set osd_rol_ang_pos = 234
+set osd_battery_usage_pos = 392
+set osd_disarmed_pos = 2123
+set osd_nheading_pos = 234
+set osd_up_down_reference_pos = 205
+set osd_ready_mode_pos = 234
+set osd_nvario_pos = 234
+set osd_esc_tmp_pos = 234
+set osd_esc_rpm_pos = 234
+set osd_esc_rpm_freq_pos = 131
+set osd_rtc_date_time_pos = 234
+set osd_adjustment_range_pos = 234
+set osd_flip_arrow_pos = 234
+set osd_core_temp_pos = 234
+set osd_log_status_pos = 234
+set osd_stick_overlay_left_pos = 234
+set osd_stick_overlay_right_pos = 234
+set osd_rate_profile_name_pos = 234
+set osd_pid_profile_name_pos = 234
+set osd_profile_name_pos = 234
+set osd_rcchannels_pos = 192
+set osd_camera_frame_pos = 35
+set osd_efficiency_pos = 234
+set osd_total_flights_pos = 234
+set osd_aux_pos = 234
+set osd_sys_goggle_voltage_pos = 234
+set osd_sys_vtx_voltage_pos = 234
+set osd_sys_bitrate_pos = 234
+set osd_sys_delay_pos = 234
+set osd_sys_distance_pos = 234
+set osd_sys_lq_pos = 234
+set osd_sys_goggle_dvr_pos = 234
+set osd_sys_vtx_dvr_pos = 234
+set osd_sys_warnings_pos = 234
+set osd_displayport_device = AUTO
+set osd_craftname_msgs = ON
+set debug_mode = ADRC
+set vtx_band = 3
+set vtx_channel = 1
+set vtx_power = 3
+set vtx_low_power_disarm = ON
+set vtx_freq = 5705
+set vcd_video_system = AUTO
+set displayport_msp_fonts = 0,0,0,0
+set rpm_filter_harmonics = 0
+set craft_name = RSSI LOW
+set altitude_d_lpf = 100
+
+profile 0
+
+# profile 0
+set dterm_lpf1_dyn_min_hz = 78
+set dterm_lpf1_dyn_max_hz = 157
+set dterm_lpf1_static_hz = 78
+set dterm_lpf2_static_hz = 157
+set vbat_sag_compensation = 100
+set iterm_windup = 85
+set horizon_level_strength = 50
+set launch_control_mode = NORMAL
+set feedforward_jitter_factor = 9
+set dyn_idle_min_rpm = 30
+set simplified_pids_mode = OFF
+set simplified_dterm_filter_multiplier = 105
+set pid_type = ADRC
+set adrc_wc_roll = 150
+set adrc_wc_pitch = 150
+set adrc_wc_yaw = 100
+set adrc_wo_roll = 120
+set adrc_wo_pitch = 120
+set adrc_wo_yaw = 120
+set adrc_b0_roll = 4000
+set adrc_b0_pitch = 4000
+set adrc_b0_yaw = 4000
+set adrc_liftoff_throttle = 16
+set adrc_liftoff_gyro_dps = 255
+
+profile 1
+
+profile 2
+
+profile 3
+
+# restore original profile selection
+profile 0
+
+rateprofile 0
+
+# rateprofile 0
+set roll_rc_rate = 5
+set pitch_rc_rate = 5
+set yaw_rc_rate = 5
+set roll_expo = 40
+set pitch_expo = 40
+set yaw_expo = 40
+set roll_srate = 90
+set pitch_srate = 90
+set yaw_srate = 90
+set throttle_limit_type = SCALE
+
+rateprofile 1
+
+rateprofile 2
+
+rateprofile 3
+
+battery_profile 0
+
+# battery_profile 0
+set vbat_min_cell_voltage = 320
+set force_battery_cell_count = 6
+
+battery_profile 1
+
+battery_profile 2
+
+# restore original rateprofile selection
+rateprofile 0
+
+# restore original battery_profile selection
+battery_profile 0
+
+# save configuration
+save
+# 
