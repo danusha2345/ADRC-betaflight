@@ -4,7 +4,8 @@
 
 ## b9 — the z3 pre-takeoff blind spot, and yaw D is finally logged
 
-Two changes over b8, both narrow. Everything described under b8 and earlier still applies.
+Two changes over b8, both narrow. All behaviour and safety caveats under b8 and earlier
+still apply.
 
 **1. The z3 growth inhibit now keys on the gate alone.** It used to key on
 `!liftoff && throttleAtIdle`, and `throttleAtIdle` clears at half the liftoff threshold —
@@ -12,14 +13,20 @@ so a craft still on the ground with the stick past that point charged its distur
 estimate freely while the gate was still shut, and carried the result into the first
 gate-open loop. It now keys on `!liftoff`.
 
-Flight-checked before release rather than after: six arm cycles on a 5" Mamba F722 with
-`z3` **exactly zero** before the gate in every one, roll/pitch tracking-error median
-unchanged from b8 at 6 °/s, and frames with a motor on a rail after gate opening down from
-2.8 % to 0.2 % and 0.0 % on the two props-on flights. Those are matched observations, not
-a demonstrated causal reduction. A configuration workaround was tried first — raising `adrc_liftoff_throttle` to
-shrink the blind window — and measured not to work: the interval shortened by roughly
-6–7×, but peak logged roll/pitch `z3` went **1312 → 1491** and the value carried into gate
-opening was **higher**, not lower (411 → 1054).
+Hardware-checked before release rather than after, on six distinct arms on one 5" Mamba
+F722: two props-on flights and four props-off bench arms. `z3` before the gate is exactly
+zero in every one — that exactness is code-derived, from the arm reset and the inhibit,
+and the logged field corroborates it at its own resolution. Roll/pitch tracking error is
+unchanged from b8 at a median of 6 °/s, measured as the per-frame maximum of roll and
+pitch `|setpoint − gyroADC|` over gate-open saved frames. Frames with a motor on a rail
+after gate opening were 2.8 % in the preceding b8 payload flight and 0.2 % / 0.0 % in the
+two fixed-code flights; that is descriptive, not a demonstrated causal reduction.
+
+A configuration workaround was tried first — raising `adrc_liftoff_throttle` to shrink the
+blind window — and measured not to work: on the logged `setpoint[3]` proxy the interval
+shortened by roughly 6–7×, but peak logged roll/pitch `z3` went **1312 → 1491** and the
+value carried into gate opening was **higher**, not lower (411 → 1054). The exact
+runtime-domain ratio is not recoverable from that rounded, pre-thrust-linearisation field.
 
 This blind spot is live in b8 and executes on real takeoffs: all eight logs in @8ksal8's
 two b0-law sweeps enter the interval, and five reach the `z3` telemetry rail before the

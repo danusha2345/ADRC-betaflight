@@ -332,8 +332,8 @@ void pidResetIterm(void)
     }
     // Liftoff-gate state is intentionally not reset here: pidResetIterm() also fires mid-flight
     // (launch control trigger, 3D motor reversal), where force-closing the gate would wrongly cut
-    // the ESO's b0*u feedback while still airborne. See adrcResetGate(), called only on genuine
-    // disarm/overflow.
+    // the ESO's b0*u feedback while still airborne. See adrcResetGate(), reached only through
+    // adrcResetAll() from a controller-disabled epoch.
 }
 
 #ifdef USE_WING
@@ -1664,8 +1664,9 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         }
 #ifdef USE_ADRC
         // Reset ADRC state (per-axis ESO plus the shared liftoff-gate) here. Unlike
-        // pidResetIterm(), these are controller-disabled epochs: disarm/overflow, or Crash Flip
-        // where a separate motor command path owns the craft, so resetting the gate is safe.
+        // pidResetIterm(), these are controller-disabled epochs - stabilisation off, gyro
+        // overflow, a wing in PASSTHRU_MODE, or Crash Flip, where a separate motor command path
+        // owns the craft - so resetting the gate is safe.
         adrcResetAll(&pidRuntime.adrc);
 #endif
     } else if (pidRuntime.zeroThrottleItermReset) {

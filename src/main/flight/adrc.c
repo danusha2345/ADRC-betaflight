@@ -66,11 +66,13 @@
 // the "missing" response to a phantom disturbance and winds z3 up, which then has to unwind
 // violently at liftoff. Until liftoff is detected - throttle above liftoffThrottlePercent, or
 // any-axis rotation above liftoffGyroDps sustained for liftoffHoldMs (so a toss launch opens the
-// gate almost instantly) - the observer's b0*u feedback term is held at zero. Once open the gate
-// stays open until disarm, the only ground signal that cannot false-trigger mid-flight (ADRC-020:
-// an earlier opt-in mid-air re-arm heuristic was removed rather than kept - throttle+gyro alone
-// cannot distinguish a landing from a calm mid-air float, and adrcUpdateArmTransition() below
-// already covers the ground-rep use case it existed for via a fresh epoch on every disarm->arm).
+// gate almost instantly) - the observer's b0*u feedback term is held at zero. Detection is
+// one-way: nothing in the detector closes the gate once it is open (ADRC-020: an earlier opt-in
+// mid-air re-arm heuristic was removed rather than kept - throttle+gyro alone cannot distinguish a
+// landing from a calm mid-air float, and adrcUpdateArmTransition() below already covers the
+// ground-rep use case it existed for via a fresh epoch on every disarm->arm). That is not the same
+// as the gate being permanent: an explicit controller-epoch adrcResetAll() closes it, in flight
+// included - see the inhibit comment in adrcUpdateEso() for why that stays safe.
 
 // ADRC-026: on the ground under airmode, the gate opened on a craft whose throttle stick had never
 // moved, and the ESO then integrated ground-contact dynamics it cannot model until the motors ran
@@ -262,8 +264,9 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     adrcProfile->liftoffThrottlePercent = 40;
     adrcProfile->liftoffGyroDps = 20;
     adrcProfile->liftoffHoldMs = 25;
-    // No mid-air re-arm: the gate opens once at first liftoff and stays open until disarm, which
-    // is the only ground signal that cannot false-trigger mid-flight (ADRC-020). An earlier
+    // No mid-air re-arm: the detector opens the gate once at first liftoff and never closes it
+    // itself; disarm is the only ground signal that cannot false-trigger mid-flight (an explicit
+    // adrcResetAll() can still close the gate while armed - ADRC-020). An earlier
     // opt-in re-arm heuristic (idle throttle + stillness sustained for a hold) was removed rather
     // than kept: in the first freestyle log flown on this branch (btfl_002-ACRO.bbl, SpeedyBee F7
     // Mini, acro - airmode feature not even enabled) it closed the gate mid-air three times, on
@@ -447,9 +450,10 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     const bool throttleAtIdle = commandedThrottle < gyroPathThrottleFloor;
     adrcRuntime->throttleAtIdle = throttleAtIdle;
 
-    // No mid-air re-arm (ADRC-020): once open, the gate stays open for the rest of the arm cycle.
-    // Disarm (adrcUpdateArmTransition() -> adrcResetAll()) is the only ground signal that cannot
-    // false-trigger on a smooth zero-throttle float mid-flight.
+    // No mid-air re-arm (ADRC-020): nothing below closes the gate once it is open. Disarm
+    // (adrcUpdateArmTransition() -> adrcResetAll()) is the only ground signal that cannot
+    // false-trigger on a smooth zero-throttle float mid-flight. Controller-epoch resets close the
+    // gate too, and can do so while armed - see the inhibit comment in adrcUpdateEso().
     if (!adrcRuntime->liftoff) {
         if (commandedThrottle >= liftoffThrottle) {
             adrcRuntime->liftoff = true;
@@ -609,19 +613,21 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // throttleAtIdle clears at half the liftoff threshold, so any craft still on the ground with
     // the stick past that point charged z3 freely until the gate opened. Measured on a 5" (docs/
     // flight-test-analysis/pr15400-b8-mamba): 0.6 s of that window unloaded and 5.6 s with a 1 kg
-    // payload. Raising adrc_liftoff_throttle does not help: it shortened the blind interval by
-    // roughly 6-7x and did not suppress the growth - peak logged roll/pitch z3 went 1312 -> 1491,
-    // and the value carried into gate opening was higher, not lower (411 -> 1054). Only the code
-    // fix removes the interval.
+    // payload. Raising adrc_liftoff_throttle does not help: on the logged setpoint[3] proxy it
+    // shortened the blind interval by roughly 6-7x (that field is rounded and sits ahead of thrust
+    // linearisation, so the runtime-domain ratio is not recoverable from it) and did not suppress
+    // the growth - peak logged roll/pitch z3 went 1312 -> 1491, and the value carried into gate
+    // opening was higher, not lower (411 -> 1054). Only the code fix removes the interval.
     //
     // Dropping the idle condition does not reintroduce ADRC-020 (a mid-air float at zero throttle
-    // freezing the observer), but NOT because the gate is permanent - adrcResetAll() closes it in
-    // flight on three paths (zero-throttle stop with pid_at_min_throttle off and airmode off,
-    // gyroOverflowDetected(), and a wing leaving PASSTHRU_MODE). Each of those zeroes z1/z2/z3 on
-    // its way out, so there is no accumulated estimate left for the inhibit to freeze, and the
-    // gyro path reopens the gate within liftoffHoldMs. What ADRC-020 was about - an intact
-    // airborne estimate blinded by stick position - cannot happen now, because the stick no longer
-    // takes part in the decision at all.
+    // freezing the observer), but NOT because the gate is permanent - adrcResetAll() closes it
+    // while armed on any of the four branches guarding the reset in pidController():
+    // !pidStabilisationEnabled, gyroOverflowDetected(), a wing in PASSTHRU_MODE, and Crash Flip.
+    // What makes it safe is that each of those zeroes z1/z2/z3 on its way out, so no intact
+    // airborne estimate is left for the closed-gate inhibit to freeze; the gate then reopens
+    // whenever one of the normal detection paths meets its own conditions again. What ADRC-020 was
+    // about - an intact airborne estimate blinded by stick position - cannot happen now, because
+    // the stick no longer takes part in the decision at all.
     const bool inhibitZ3Growth = !adrcRuntime->liftoff;
     adrcRuntime->z3[axis] = (inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed)) ? z3Decayed : z3Updated;
 
