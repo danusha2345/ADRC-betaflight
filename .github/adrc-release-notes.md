@@ -195,9 +195,10 @@ save
 
 > **Safety, read before your first ADRC arm.** ADRC-028 has been observed once: a
 > single unrestrained props-on ground arm on a 5" craft using the shipped ADRC
-> defaults reached the yaw command limit in 87.017 ms and an upper motor rail in
-> 127.025 ms, with the collective dragged from 7.7 % to 49.6 % at zero throttle
-> stick. That is one craft and one arm — not a demonstration that it happens
+> defaults reached the yaw command limit 87 ms into the recording and an upper
+> motor rail 127 ms in, with the mean collective dragged from 7.7 % to 49.6 % at
+> zero throttle stick. Measured against the log's earliest arming marker those
+> are 246 ms and 286 ms; the physical arm is earlier still. That is one craft and one arm — not a demonstration that it happens
 > everywhere — but 87 and 127 ms leave no credible margin for a manual cutoff.
 > **Do not make your first ADRC arm with props on and the craft unrestrained.**
 > Use props off, or a restraint/test stand with an automatic cutoff. Analysis:
