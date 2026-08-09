@@ -1063,6 +1063,40 @@ Instrumentation defect found alongside and fixed on branch
 with the shipped default `pid[FD_YAW].D = 0` the D-equivalent term is not
 recorded at all on yaw — the one axis that failed here.
 
+### ADRC-029 — The `z3` debug field clips in ordinary flight on high-`wo` tunes
+
+Instrumentation, not control law. Blackbox writes the disturbance estimate as
+`lrintf(z3 / 16)` into a signed 16-bit debug field, so the representable range
+ends at `|z3| = 524272`. Tunes with a high observer bandwidth exceed that during
+normal flying, and the field silently saturates.
+
+Measured on @8ksal8's `ADRC_Good_Tune` log (Air65, b8 base `c40f1e096`,
+`adrcWO 103,103,125`, 180.5 s, 145542 saved frames) — saved frames sitting at
+the rail `32767`:
+
+| axis | frames | share |
+|---|---:|---:|
+| roll | 3493 | 2.40 % |
+| pitch | 5747 | 3.95 % |
+| yaw | 6389 | 4.39 % |
+
+This is a good flight, not a failure: the tester reports it flying as well as or
+better than the stock PID tune. That is the point — the clipping is not a symptom
+of anything going wrong, it is the field being too narrow for the tune.
+
+Consequences while it stands: every `z3` figure quoted from such a log is bounded
+above by the field rather than by the estimator, peak-based comparisons between
+tunes are invalid once either side clips, and any offline model fitting that uses
+`z3` has to censor the railed samples. Stated publicly to @jmsweng in
+[PR #15400](https://github.com/betaflight/betaflight/pull/15400) alongside a
+commitment to widen the scaling on the fork side.
+
+Status: OPEN, fork-side only. The fix is a wider or adaptive divisor, which
+changes the meaning of the logged number and therefore needs the analysis scripts
+and any published figures updated in the same change — not a one-line edit.
+Do not confuse this with `ADRC_DEBUG_LIMIT`, which is the separate clamp on what
+the estimator itself may reach.
+
 ## Closed after publication
 
 Items that were open when this tracker was first published and have since been
