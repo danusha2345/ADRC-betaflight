@@ -1058,6 +1058,46 @@ of *this* entry it is not. That event is also not an established ADRC defect —
 the collective lift there is the documented behaviour of the legacy mixer's
 lower clamp under airmode, and no matched PID A/B exists.
 
+**A third ground event, on a different craft (2026-08-10), is also not counted
+here — but it moves the hypothesis.** @8ksal8 posted five arming logs from a
+1S BETAFPVG473_V2 (`AIR65 R`):
+[`pr15400-8ksal8-arming/`](flight-test-analysis/pr15400-8ksal8-arming/). Two arms
+of five entered a self-sustaining, motor-saturating ground oscillation at zero
+commanded collective — roll and pitch at about 21 Hz by three estimators, first
+above 100 °/s at 170.1 and 155.6 ms, first motor at the upper rail at 182.802 and
+176.480 ms, a motor at the rail in 71.2 % and 64.8 % of frames, 16.54 and 15.12 A
+peak on a 1S pack. The gate is open in 0 of 577 and 0 of 534 frames, and logged
+`z3` is zero throughout, as in ADRC-028.
+
+Two things make it worth reading. First, it is **not on the shipped defaults**:
+`wc 80,80,96`, `wo 103,103,125`, `b0 7007,4312,5848`, his own tune, and the same
+tune completed a 96.506 s flight in the same set without this event. That refutes
+the simple form of "the default `b0 = 2000` is miscalibrated" as a complete
+account of ground events, without clearing `b0` — a craft in ground contact is a
+different plant, and with the gate shut the observer sees `b0·u = 0` while P and
+D are still divided by `b0`. Second, **it is intermittent**: the closest pair
+(same firmware, same tune, same mixer Airmode state) differ in outcome, and no
+tested pre-onset observable predicts which way an arm goes.
+
+It is **not** a second sighting of ADRC-028. The axis differs (roll/pitch against
+yaw), the frequency differs (about 21 Hz against
+Lomb 34.66, Welch/128 37.76 Hz (bin width 7.55 Hz) on his 0.211045 s record), and — the reason the whole
+comparison has to be made carefully — the observables that looked like a shared
+fingerprint do not discriminate: in a common 0–100 ms window `RMS(D)/RMS(P) > 1`
+on every axis of the *quiet* arms too, alongside the same closed gate and the same
+zero `z3`. What this adds is that the common ground-loop susceptibility hypothesis
+now spans two airframe classes rather than one craft.
+
+Two cautions for anyone reading that set. The two logs named `PID` also recorded
+`pid_type = ADRC`, so there is no classic-PID comparison in it. And Airmode's
+mixer-side flag (`isAirmodeEnabled()`, `mixer.c:707`) is independent of the
+throttle-latched `isAirmodeActive` in `fc/core.c`: the latch is not logged at all,
+and `FEATURE_AIRMODE` is what differs across the set — counting all five logs by their arm, 2 of the 3
+feature-enabled logs failed and 0 of the 2 feature-off ones did, one of which is
+the flight rather than a bench arm.
+BOXAIRMODE cannot be read back from a decoded log, because the mode field is
+`rcModeActivationMask` and the decoder drops bits above 9 (blackbox-tools #72/#73).
+
 Instrumentation defect found alongside and fixed on branch
 `adrc-blackbox-dterm`: blackbox gates `axisD` on the *legacy* profile D-gain, so
 with the shipped default `pid[FD_YAW].D = 0` the D-equivalent term is not
