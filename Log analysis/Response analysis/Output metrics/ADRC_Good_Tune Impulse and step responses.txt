@@ -1,0 +1,4 @@
+Sample rate ~ 791.1 Hz, duration 180.5 s
+  roll: rise-to-90% = 37.9 ms, overshoot = 19.5%
+ pitch: rise-to-90% = 44.2 ms, overshoot = 20.7%
+   yaw: rise-to-90% = 59.4 ms, overshoot = 21.4%
