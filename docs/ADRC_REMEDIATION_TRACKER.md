@@ -1150,9 +1150,22 @@ tunes are invalid once either side clips, and any offline model fitting that use
 [PR #15400](https://github.com/betaflight/betaflight/pull/15400) alongside a
 commitment to widen the scaling on the fork side.
 
-Status: OPEN, fork-side only. The fix is a wider or adaptive divisor, which
-changes the meaning of the logged number and therefore needs the analysis scripts
-and any published figures updated in the same change — not a one-line edit.
+Status: **FIXED on `adrc-blackbox-dterm`** (commit `b82a9e16bd`, 2026-08-11),
+ships with the next fork build (b10). The divisor is now profile-derived: the
+smallest integer whose int16 endpoint covers the controller's own worst-case
+anti-windup bound — `pidsum_limit · b0 · adrc_b0_scale_max`, per axis — in
+every float32 evaluation the runtime can produce (the exact bound and the ceil
+are integer arithmetic; the two possible float32 roundings of the runtime clamp
+are modelled explicitly, so an exactly-representable bound keeps its exact
+divisor). Floored at the legacy 16. The value is written to the blackbox header
+as `adrc_z3_log_scale`, so every log carries its own decode key: readers use
+the header value and fall back to 16 when the line is absent, which covers
+every b9-and-earlier log — nothing about old logs changes. Shipped defaults
+log at /92; the Air65 tune that motivated this entry at /321. The generic
+plotter `adrc_log_plot.py` reads the key per contained log block (a `.bbl`
+mixing legacy and new logs cannot shift the mapping; `--selftest` covers the
+four mixed cases); the corpus-specific scripts under `pr15400-*` keep their
+fixed 16, correct for the b8/b9 logs they are pinned to.
 Do not confuse this with `ADRC_DEBUG_LIMIT`, which is the separate clamp on what
 the estimator itself may reach.
 

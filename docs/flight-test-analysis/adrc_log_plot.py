@@ -79,18 +79,82 @@ def read_log(path):
     return cols
 
 
-def tune_label(csv_path):
+_BBL_LOG_MARK = b"H Product:Blackbox flight data recorder"
+
+
+def _bbl_log_blocks(csv_path):
+    """The sibling .bbl split into per-log blocks (a .bbl can hold several logs).
+
+    Splitting matters for any header key that may be present in one contained
+    log and absent in another: findall() over the whole file would silently
+    compact the list and shift every later log onto the wrong header.
+    """
     base = re.sub(r"\.\d+\.csv$", "", csv_path)
-    m = re.search(r"\.(\d+)\.csv$", csv_path)
-    flight = int(m.group(1)) if m else 1
     bbl = base + ".bbl"
-    if os.path.exists(bbl):
-        with open(bbl, "rb") as f:
-            heads = re.findall(rb"H rollPID:(\d+),(\d+),(\d+)", f.read())
-        if heads:
-            p, i, d = heads[min(flight, len(heads)) - 1]
-            return f"{p.decode()}/{i.decode()}/{d.decode()}"
+    if not os.path.exists(bbl):
+        return []
+    with open(bbl, "rb") as f:
+        blob = f.read()
+    return [_BBL_LOG_MARK + part for part in blob.split(_BBL_LOG_MARK)[1:]]
+
+
+def _flight_index(csv_path):
+    m = re.search(r"\.(\d+)\.csv$", csv_path)
+    return int(m.group(1)) if m else 1
+
+
+def _block_header(csv_path, pattern):
+    """The pattern's match within THIS csv's own log block, or None."""
+    blocks = _bbl_log_blocks(csv_path)
+    if not blocks:
+        return None
+    block = blocks[min(_flight_index(csv_path), len(blocks)) - 1]
+    m = re.search(pattern, block)
+    return m.groups() if m else None
+
+
+def tune_label(csv_path):
+    g = _block_header(csv_path, rb"H rollPID:(\d+),(\d+),(\d+)")
+    if g:
+        p, i, d = g
+        return f"{p.decode()}/{i.decode()}/{d.decode()}"
     return os.path.basename(csv_path)
+
+
+def z3_log_scale(csv_path):
+    """The divisor the firmware applied to the z3 debug fields for THIS log.
+
+    Since ADRC-029 the divisor is profile-derived and written to the header as
+    adrc_z3_log_scale; a log block without the line (b9 and earlier) used the
+    fixed 16. Resolved inside this csv's own log block, so a .bbl mixing
+    legacy and post-ADRC-029 logs cannot shift the mapping.
+    """
+    g = _block_header(csv_path, rb"H adrc_z3_log_scale:(\d+)")
+    return int(g[0]) if g else 16
+
+
+def _selftest_z3_scale():
+    """python3 adrc_log_plot.py --selftest: the four mixed-corpus cases."""
+    import tempfile
+    legacy = _BBL_LOG_MARK + b"\nH rollPID:38,54,26\nH looptime:312\n\x00data"
+    modern = _BBL_LOG_MARK + b"\nH rollPID:80,103,70\nH adrc_z3_log_scale:92\n\x00data"
+    modern2 = _BBL_LOG_MARK + b"\nH rollPID:80,103,70\nH adrc_z3_log_scale:321\n\x00data"
+    cases = [
+        ("old-only", [legacy, legacy], [16, 16]),
+        ("new-only", [modern, modern2], [92, 321]),
+        ("old-then-new", [legacy, modern], [16, 92]),
+        ("new-then-old", [modern, legacy], [92, 16]),
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, blocks, expected in cases:
+            bbl = os.path.join(tmp, f"{name}.bbl")
+            with open(bbl, "wb") as f:
+                f.write(b"".join(blocks))
+            got = [z3_log_scale(os.path.join(tmp, f"{name}.{i:02d}.csv"))
+                   for i in range(1, len(blocks) + 1)]
+            assert got == expected, f"{name}: expected {expected}, got {got}"
+            print(f"  {name}: {got} ok")
+    print("selftest: all cases pass")
 
 
 def spoolup_time(t, cols):
@@ -174,9 +238,10 @@ def plot_log(path, out_dir, window):
     # 4: ESO states (debug_mode = ADRC only)
     if debug:
         ax = axes[3]
-        # z3 (debug[5]) is logged /16 on recent firmware (fix #12) so it doesn't clip int16 —
-        # multiply back to put it on the same scale as z1/z2. Harmless x16 on older raw-z3 logs.
-        Z3_SCALE = 16
+        # z3 (debug[5]) is logged divided so it doesn't clip int16 (fix #12); since ADRC-029 the
+        # divisor is profile-derived and comes from the log's own header (16 when absent, which
+        # covers every log before b10). Harmless x16 on the oldest raw-z3 logs.
+        Z3_SCALE = z3_log_scale(path)
         for idx, name, c, lw, scale in ((3, "pitch z1 (rate)", S1, LW_THIN, 1),
                                         (4, "pitch z2 (accel)", S3, LW_THIN, 1),
                                         (5, "pitch z3 (disturbance)", S2, LW, Z3_SCALE)):
@@ -197,7 +262,7 @@ def plot_log(path, out_dir, window):
             ax2.set_yticks([0, 1])
             ax2.set_yticklabels(["gated", "air"], color=INK2)
             ax2.grid(False)
-        ax.set_ylabel("ESO states (pitch)")  # z3 logged /16 on recent fw (fix #12)
+        ax.set_ylabel("ESO states (pitch)")  # z3 divisor from the log header (ADRC-029)
         ax.legend(labelcolor=INK2, loc="upper right", ncols=3)
 
     for ax in axes:
@@ -245,6 +310,10 @@ def plot_overlay(paths, out_dir, window):
 
 
 def main():
+    if "--selftest" in sys.argv:
+        _selftest_z3_scale()
+        return
+
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("csv", nargs="+", help="decoded blackbox CSV file(s) or globs")
