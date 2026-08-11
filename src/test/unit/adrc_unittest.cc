@@ -50,6 +50,8 @@ extern "C" {
     float mixerGetAdrcCommandedThrottle(void) { return simulatedCommandedThrottle; }
 }
 
+#include <algorithm>
+
 #include "unittest_macros.h"
 #include "gtest/gtest.h"
 
@@ -784,6 +786,104 @@ TEST_F(AdrcUnittest, InitConfigCapsObserverBandwidthAgainstLoopTime)
     profile.wo[FD_ROLL] = 600;
     adrcInitConfig(&profile, &runtime, 1.0f / 1600.0f);
     EXPECT_FLOAT_EQ(600.0f, runtime.coefficient[FD_ROLL].wo);
+}
+
+TEST_F(AdrcUnittest, Z3LogScaleSpansTheProfilesOwnAntiWindupBound)
+{
+    // ADRC-029. The divisor must be the smallest integer that fits the worst-case z3 bound
+    // (pidSumLimit * b0 * b0ThrottleScaleMax, per axis) into the int16 debug field.
+
+    // Shipped defaults: b0 = 2000 everywhere, scale max 3, limits 500/400.
+    // Worst axis is roll/pitch: 500 * 2000 * 3 = 3 000 000 -> ceil(/32767) = 92.
+    EXPECT_EQ(92u, adrcZ3LogScale(&profile, 500, 400));
+
+    // A flown high-b0 tune (the Air65 corpus that motivated ADRC-029): its roll b0 of 7007
+    // clipped the b9-era /16 field in ordinary flight. 500 * 7007 * 3 = 10 510 500 -> 321.
+    profile.b0[FD_ROLL] = 7007;
+    profile.b0[FD_PITCH] = 4312;
+    profile.b0[FD_YAW] = 5848;
+    EXPECT_EQ(321u, adrcZ3LogScale(&profile, 500, 400));
+
+    // Small bounds never sharpen the divisor below the legacy 16, so old-log resolution is a floor.
+    profile.b0[FD_ROLL] = 100;
+    profile.b0[FD_PITCH] = 100;
+    profile.b0[FD_YAW] = 100;
+    profile.b0ThrottleScaleMax = 1;
+    EXPECT_EQ(16u, adrcZ3LogScale(&profile, 500, 400));
+
+    // Review counterexample against the float32 version this replaced: worst = 385 * 28508 * 48
+    // = 526 827 840, whose float32 quotient rounds to exactly 16078 before ceilf can act, leaving
+    // the endpoint 14 short of the bound. Integer ceil must give 16079.
+    profile.b0[FD_ROLL] = 28508;
+    profile.b0ThrottleScaleMax = 48;
+    EXPECT_EQ(16079u, adrcZ3LogScale(&profile, 385, 400));
+
+    // Second-review counterexample: the runtime clamp is float32, and 976 * 40721 * 49 rounds UP
+    // 48 above the exact product - an exact-bound divisor (59433) left the endpoint 41 short of
+    // what the firmware actually clamps to. The covering divisor is 59434, and minimal.
+    profile.b0[FD_ROLL] = 40721;
+    profile.b0ThrottleScaleMax = 49;
+    EXPECT_EQ(59434u, adrcZ3LogScale(&profile, 976, 400));
+
+    // Third-review boundary: 151 * 217 * 16 = 524272 exactly, representable exactly in float32,
+    // exactly the legacy /16 endpoint. A blanket safety pad wrongly pushed this to /17, costing
+    // 6.25 % resolution for nothing; the minimal covering divisor is the legacy 16.
+    profile.b0[FD_ROLL] = 217;
+    profile.b0[FD_PITCH] = 100;
+    profile.b0[FD_YAW] = 100;
+    profile.b0ThrottleScaleMax = 16;
+    EXPECT_EQ(16u, adrcZ3LogScale(&profile, 151, 151));
+}
+
+TEST_F(AdrcUnittest, Z3LogScaleEndpointAlwaysCoversTheBound)
+{
+    // The one invariant the divisor exists for: scale * 32767 >= pidSumLimit * b0 * scaleMax for
+    // the worst axis, over a deterministic sweep of the valid input space (a float32
+    // implementation failed this on ~0.06 % of it).
+    uint32_t seed = 0x029A5EED;
+    for (int i = 0; i < 20000; i++) {
+        seed = seed * 1664525u + 1013904223u;               // LCG, deterministic
+        const uint16_t limit = 100 + (seed >> 8) % 901;     // 100..1000
+        seed = seed * 1664525u + 1013904223u;
+        const uint16_t b0 = 100 + (seed >> 8) % 65436;      // 100..65535
+        seed = seed * 1664525u + 1013904223u;
+        const uint8_t scaleMax = 1 + (seed >> 8) % 50;      // 1..50
+
+        profile.b0[FD_ROLL] = b0;
+        profile.b0[FD_PITCH] = 100;
+        profile.b0[FD_YAW] = 100;
+        profile.b0ThrottleScaleMax = scaleMax;
+        const uint64_t bound = (uint64_t)limit * b0 * scaleMax;
+        const uint64_t endpoint = (uint64_t)adrcZ3LogScale(&profile, limit, limit) * 32767u;
+        ASSERT_GE(endpoint, bound) << "limit=" << limit << " b0=" << b0
+                                   << " scaleMax=" << (int)scaleMax;
+        // ... and against the clamp as the firmware computes it: float32, in either association
+        // -ffast-math might choose (each product here is integer-valued and exactly convertible).
+        const float clampA = (float)limit * ((float)b0 * (float)scaleMax);
+        const float clampB = ((float)limit * (float)b0) * (float)scaleMax;
+        const uint64_t cover = std::max({bound, (uint64_t)clampA, (uint64_t)clampB});
+        ASSERT_GE(endpoint, cover) << "limit=" << limit << " b0=" << b0
+                                   << " scaleMax=" << (int)scaleMax;
+        // ... and it must be the SMALLEST such divisor (above the legacy floor): one step down
+        // must fail to cover. This is the other half of the contract, which a coverage-only
+        // assertion cannot see.
+        const uint32_t divisor = adrcZ3LogScale(&profile, limit, limit);
+        if (divisor > 16u) {
+            ASSERT_LT((uint64_t)(divisor - 1) * 32767u, cover)
+                << "limit=" << limit << " b0=" << b0 << " scaleMax=" << (int)scaleMax;
+        }
+    }
+}
+
+TEST_F(AdrcUnittest, Z3LogScaleReachesTheRuntimeThroughItsOwnInit)
+{
+    // adrcInitConfig() alone must leave the b9-era divisor (isolated-module callers, incl. these
+    // tests), and adrcInitZ3LogScale() - the pidInitConfig() path - must overwrite it.
+    adrcInitConfig(&profile, &runtime, 0.000125f);
+    EXPECT_FLOAT_EQ(16.0f, runtime.z3LogScale);
+
+    adrcInitZ3LogScale(&runtime, &profile, 500, 400);
+    EXPECT_FLOAT_EQ(92.0f, runtime.z3LogScale);
 }
 
 TEST_F(AdrcUnittest, InitConfigCapsCorruptUpperRangeValues)

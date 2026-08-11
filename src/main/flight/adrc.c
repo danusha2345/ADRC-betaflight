@@ -184,6 +184,15 @@
 
 // z3 is the lumped rate-plant disturbance [deg/s^3], so its numeric range is much larger than z1
 // [deg/s] or z2 [deg/s^2]. Scale it down to fit the int16 blackbox debug field (fix #12).
+//
+// ADRC-029: a fixed divisor of 16 clips at |z3| = 524272, which flown high-b0 tunes exceed in
+// ordinary flight (0.05-4.4 % of saved frames on an Air65 at b0 4312-7007), while the controller's
+// own anti-windup bound sits at pidSumLimit * b0 * b0ThrottleScale - an order of magnitude higher.
+// The divisor is therefore derived per profile in adrcZ3LogScale() - the smallest integer whose
+// int16 endpoint covers that bound in every float32 evaluation the runtime can produce - and is
+// written into the blackbox header as adrc_z3_log_scale so
+// every log carries its own decode key. ADRC_Z3_LOG_SCALE remains as the floor and as the value
+// implied for logs whose header lacks the field (b9 and earlier).
 #define ADRC_Z3_LOG_SCALE 16.0f
 #define ADRC_DEBUG_LIMIT 32767.0f
 
@@ -370,6 +379,68 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
 
     adrcRuntime->b0ThrottleScale = 1.0f;
     adrcRuntime->b0ScaleThrottle = 0.0f;
+    // Callers that never learn the pidSum limits (unit-test SetUp paths init the ADRC module in
+    // isolation) keep the b9-era divisor; production overwrites this one line below via
+    // adrcInitZ3LogScale(), which pidInitConfig() calls with the real limits.
+    adrcRuntime->z3LogScale = ADRC_Z3_LOG_SCALE;
+}
+
+uint32_t adrcZ3LogScale(const adrcProfile_t *adrcProfile, uint16_t pidSumLimit, uint16_t pidSumLimitYaw)
+{
+    // Worst-case |z3| the controller itself allows (ADRC-029): the anti-windup bound in
+    // adrcApplyControl() is pidSumLimit * b0, where b0 is the scheduled value - base b0 times a
+    // throttle scale of up to b0ThrottleScaleMax. The same floors/clamps the runtime applies are
+    // applied here so the two calculations cannot drift apart.
+    //
+    // The exact bound and the final ceil are computed in uint64_t: every input is an integer
+    // (uint16 limits and b0, uint8 scale max), and an all-float32 version of this -
+    // ceilf(worst / 32767.0f) - returned a divisor one short of the bound on ~0.06 % of the valid
+    // input space, because the quotient rounds before ceilf sees it. Float32 appears below only
+    // where it is the point: to model, explicitly and one rounding at a time, the two values the
+    // runtime's own float32 clamp evaluation can produce. The largest possible bound,
+    // 1000 * 65535 * 50, is ~3.3e9, comfortably inside uint64.
+    const uint32_t maxB0Scale = constrain(adrcProfile->b0ThrottleScaleMax, 1, (uint8_t)ADRC_B0_SCALE_MAX);
+    uint64_t worstZ3 = 0;
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        const uint32_t b0 = MAX((uint32_t)adrcProfile->b0[axis], (uint32_t)ADRC_B0_MIN);
+        const uint32_t sumLimit = (axis == FD_YAW) ? pidSumLimitYaw : pidSumLimit;
+        const uint64_t bound = (uint64_t)sumLimit * b0 * maxB0Scale;
+        if (bound > worstZ3) {
+            worstZ3 = bound;
+        }
+    }
+    // The runtime evaluates its clamp in float32, and a float32 product can land ABOVE the exact
+    // integer product. Which value it lands on depends on the association -ffast-math picks for
+    // pidSumLimit * b0Base * b0ThrottleScale, but with these integer-valued factors only two
+    // results are possible: pairing the two small factors first keeps their product exact
+    // (b0 * scale <= 65535 * 50 < 2^24, and limit * scale likewise), so the full product is
+    // rounded ONCE - that is (float)worstZ3; pairing limit with b0 first can round twice. Both
+    // are computed below through single conversions and a single multiply each, which fast-math
+    // cannot reassociate, so this covers every clamp value the firmware can actually produce -
+    // without a blanket pad that would cost resolution on profiles where the product is exact
+    // (a bound of exactly 524272 must keep the legacy /16, not be pushed to /17).
+    const uint64_t worstZ3RoundedOnce = (uint64_t)(float)worstZ3;
+    uint64_t clampCover = MAX(worstZ3, worstZ3RoundedOnce);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        const uint32_t b0 = MAX((uint32_t)adrcProfile->b0[axis], (uint32_t)ADRC_B0_MIN);
+        const uint32_t sumLimit = (axis == FD_YAW) ? pidSumLimitYaw : pidSumLimit;
+        const float roundedTwice = (float)(sumLimit * b0) * (float)maxB0Scale;
+        clampCover = MAX(clampCover, (uint64_t)roundedTwice);
+    }
+    // Smallest integer divisor whose int16 endpoint covers that clamp, floored at the legacy
+    // divisor so the resolution never gets worse than b9's for no reason.
+    const uint64_t debugLimit = (uint64_t)ADRC_DEBUG_LIMIT;   // 32767
+    const uint64_t needed = (clampCover + debugLimit - 1) / debugLimit;
+    if (needed <= (uint64_t)ADRC_Z3_LOG_SCALE) {
+        return (uint32_t)ADRC_Z3_LOG_SCALE;
+    }
+    return (uint32_t)needed;
+}
+
+void adrcInitZ3LogScale(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adrcProfile,
+    uint16_t pidSumLimit, uint16_t pidSumLimitYaw)
+{
+    adrcRuntime->z3LogScale = (float)adrcZ3LogScale(adrcProfile, pidSumLimit, pidSumLimitYaw);
 }
 
 void adrcResetState(adrcRuntime_t *adrcRuntime, int axis)
@@ -704,20 +775,22 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // Log all three axes simultaneously (the ported source gates on gyro.gyroDebugAxis, one axis
     // only): roll z1/z2/z3 in [0..2], pitch z1/z2/z3 in [3..5], yaw z3 in [6], throttle-scaled b0
     // multiplier x100 sign-tagged by the liftoff latch (positive = airborne, negative = gated) in
-    // [7]. z3 is logged /ADRC_Z3_LOG_SCALE so the int16 field does not clip as easily. debug[] is
+    // [7]. z3 is logged divided by adrcRuntime->z3LogScale - profile-derived so the field spans the
+    // controller's own z3 bound, written to the blackbox header as adrc_z3_log_scale (ADRC-029);
+    // headers without that field imply the legacy divisor 16. debug[] is
     // int16_t and DEBUG_SET does not range-check, so an over-range value would otherwise WRAP into
     // garbage instead of reading as an honest off-scale rail (fix #12).
     if (axis == FD_ROLL) {
         DEBUG_SET(DEBUG_ADRC, 0, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
         DEBUG_SET(DEBUG_ADRC, 1, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(adrcRuntime->z3[axis] / ADRC_Z3_LOG_SCALE, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
     } else if (axis == FD_PITCH) {
         DEBUG_SET(DEBUG_ADRC, 3, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
         DEBUG_SET(DEBUG_ADRC, 4, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(adrcRuntime->z3[axis] / ADRC_Z3_LOG_SCALE, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
         DEBUG_SET(DEBUG_ADRC, 7, lrintf((adrcRuntime->liftoff ? 1.0f : -1.0f) * adrcRuntime->b0ThrottleScale * 100.0f));
     } else { // FD_YAW
-        DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(adrcRuntime->z3[axis] / ADRC_Z3_LOG_SCALE, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
     }
 
     return output;

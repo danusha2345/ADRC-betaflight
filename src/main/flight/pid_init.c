@@ -378,6 +378,8 @@ void pidInitConfig(const pidProfile_t *pidProfile)
 
 #ifdef USE_ADRC
     adrcInitConfig(&pidProfile->adrc, &pidRuntime.adrc, pidRuntime.dT);
+    adrcInitZ3LogScale(&pidRuntime.adrc, &pidProfile->adrc,
+        pidProfile->pidSumLimit, pidProfile->pidSumLimitYaw);
 
     // Stock PID-profile selection paths reject changes while armed. Treat a pid_type change here
     // as a disarmed control-law configuration transition, not as an in-flight handover promise:
