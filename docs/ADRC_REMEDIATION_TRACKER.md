@@ -1098,6 +1098,25 @@ the flight rather than a bench arm.
 BOXAIRMODE cannot be read back from a decoded log, because the mode field is
 `rcModeActivationMask` and the decoder drops bits above 9 (blackbox-tools #72/#73).
 
+**Props-off follow-up (2026-08-11).** @8ksal8 then flew sixteen props-off arms —
+four in each cell of {ADRC, CLASSIC} × {Airmode feature on, off}, this time with
+a genuine `pid_type = 0` in the CLASSIC logs:
+[`pr15400-8ksal8-propsoff/`](flight-test-analysis/pr15400-8ksal8-propsoff/).
+Two findings. First, **the runaway did not reproduce**: zero frames at the motor
+rail across all sixteen arms, and on the same band-RMS metric the props-on
+events are 32–48× the worst props-off group median (one-sided Fisher p = 0.13
+against 2-of-5, so this supports a prop-dependent contribution without proving
+necessity). Second, **a yaw line in a band around 50 Hz is present without
+props** — 28.66–42.68 deg/s RMS in the ADRC cells against 4.51–5.98 under
+CLASSIC. Attribution is open: the two profiles differ in at least four material
+ways besides the controller (no yaw D at all in the CLASSIC profile, dynamic
+idle on only in the CLASSIC runs, different gains, different pack state), in the
+CLASSIC arms the line sits within about 1 Hz of motor 2's rotation frequency and
+may simply be its 1×, and in the ADRC arms a 1× contribution is neither ruled
+out nor established. The gate and `z3` are inert in all eight ADRC arms.
+Follow-up bench runs that would separate these are listed in the write-up;
+a props-on repeat is explicitly excluded from the low-risk list.
+
 Instrumentation defect found alongside and fixed on branch
 `adrc-blackbox-dterm`: blackbox gates `axisD` on the *legacy* profile D-gain, so
 with the shipped default `pid[FD_YAW].D = 0` the D-equivalent term is not
