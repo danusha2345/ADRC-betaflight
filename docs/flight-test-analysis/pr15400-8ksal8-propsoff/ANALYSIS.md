@@ -1,5 +1,14 @@
 # @8ksal8's props-off arms: the runaway did not reproduce; a yaw line did
 
+> **Correction, 2026-08-12.** The four "Airmode feature off" cells here are not one regime per
+> arm: the numeric mode mask (`blackbox_decode --unit-flags raw`; the default flag rendering
+> discards bit 24) shows the BOXAIRMODE box became active for a mid-arm stretch in every one of
+> them. The whole-arm medians below therefore mix a ×0.5-authority and a ×1.0-authority phase —
+> the "ADRC, feature off" 28.66 deg/s is mostly its airmode-on phase; the airmode-off phases
+> alone sit at 5.20 deg/s. The ADRC/CLASSIC ratios survive (both sides were mixed the same
+> way), the regime labels do not. Recovery tool, phase-split numbers and the follow-up corpus:
+> [`../pr15400-8ksal8-propsoff2/`](../pr15400-8ksal8-propsoff2/) (`modemask.py`, `spectra.py`).
+
 **Reporter:** @8ksal8, PR #15400 comment of 2026-08-10, four archives, **props off**, four arms in
 each of {ADRC, CLASSIC} × {Airmode feature on, off}.
 **Craft and firmware:** the same Air65 and the same b9 build `919116fed` as the props-on set
