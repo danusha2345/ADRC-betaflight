@@ -1122,6 +1122,26 @@ Instrumentation defect found alongside and fixed on branch
 with the shipped default `pid[FD_YAW].D = 0` the D-equivalent term is not
 recorded at all on yaw — the one axis that failed here.
 
+**Confound-removal corpus (2026-08-12).** @8ksal8 delivered all three requested
+runs (21 arms):
+[`pr15400-8ksal8-propsoff2/`](flight-test-analysis/pr15400-8ksal8-propsoff2/).
+The yaw-line gap survives: CLASSIC with yaw D = 26 rises only 5.98 → 10.37
+(its peak sits on the rotor 1×), ADRC with dynamic idle keeps the 53–54 Hz
+peak, and the clean feature-on ratio is 5.8×. The wc sweep pins the behaviour:
+amplitude strictly monotonic in yaw wc (4.8× over 80→120) at a frequency that
+does not move (47.9–52.0 Hz), with the gate shut and z3 logged zero in all 13
+ADRC arms — the oscillation runs through kp = wc²/kd = 2wc over the ESO's z1/z2.
+Which loop element sets ~50 Hz is still open (higher rotor orders not broadly
+excluded; rotor speed co-varies with wc; wo was fixed at 125). Also recovered
+via `blackbox_decode --unit-flags raw`: **every "Airmode switch" arm of both
+corpora contains a mid-arm BOXAIRMODE-active phase**, so the earlier whole-arm
+"feature off" medians were two-regime mixtures (ADRC airmode-off phases sit at
+5.20, near the CLASSIC floor; a correction note now heads the first corpus's
+ANALYSIS.md). Requested next: a yaw wo sweep; on our side: an order-tracking
+pass over the existing logs. Pavo20 companion campaign (tracking metrics, two
+GPS rescues, the "wobble" log):
+[`pr15400-8ksal8-pavo20/`](flight-test-analysis/pr15400-8ksal8-pavo20/).
+
 ### ADRC-029 — The `z3` debug field clips in ordinary flight on high-`wo` tunes
 
 Instrumentation, not control law. Blackbox writes the disturbance estimate as
