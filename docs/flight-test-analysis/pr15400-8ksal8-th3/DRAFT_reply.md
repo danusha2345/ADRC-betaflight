@@ -29,3 +29,8 @@ implicated. The b10 header-scale fix is exactly for these tunes.
 (Your wobble logs are the ANGLE-mode rocking procedure again — noted as such; their numbers
 aren't comparable to the acro flights. The eight tuning arms in the archive are preserved in
 the PR attachment; I didn't carry them into the repo.)
+
+On the `adrc_hover_throttle` you mentioned forgetting: all six logs record it at 40 on every
+pack. It anchors the b0 throttle schedule, so on the packs where your true hover collective
+sits away from 40 % the schedule engages at the wrong point — worth setting per profile next
+time, as you said.

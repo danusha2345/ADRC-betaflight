@@ -18,7 +18,8 @@ from common import (LOGS, STEMS, headers, load, motors, time_s, sha256_gz,
                     mask_transitions, DEBUG_CLIP)
 
 SHOW = ['Firmware revision', 'Craft name', 'pid_type', 'adrcWC', 'adrcWO',
-        'adrcB0', 'motor_idle', 'dyn_idle_min_rpm', 'looptime',
+        'adrcB0', 'adrc_hover_throttle', 'adrc_liftoff_throttle',
+        'motor_idle', 'dyn_idle_min_rpm', 'looptime',
         'pid_process_denom', 'P interval', 'debug_mode', 'vbatref',
         'pidsum_limit', 'pidsum_limit_yaw']
 PER_ARM = {'Firmware date', 'Log start datetime', 'vbatref',
