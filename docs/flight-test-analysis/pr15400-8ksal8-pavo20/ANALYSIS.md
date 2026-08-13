@@ -75,6 +75,37 @@ With `b0` yaw = 12307, the yaw z3 debug channel saturates its b9 int16 rail in *
 log. This is the exact case ADRC-029 (the `adrc_z3_log_scale` header line, shipping in b10) was
 built for; on b10 these logs would decode with a per-craft scale and no rail.
 
+## Addendum (2026-08-13): the pre-reduction log
+
+The tester supplied the flight flown on the numbers he later reduced by 5 %
+(`Finished_initial_btfl_001`, analysed by `initial.py`). The header diff against the finished
+flight shows the tune step (`wc/wo` 115/115/135 over 150/150/161 → 109/109/128 over
+143/143/153, `b0` up 5 %) **plus** the deadbands (0 → 3 / 0 → 10), `thr_hover`,
+`altitude_prefer_baro`, `ap_hover_throttle` and a `d_max` value — so, as with the wobble log,
+nothing here is a single-variable comparison, and the two flights are different days and
+conditions besides.
+
+What the log shows: a 338.2 s acro+airmode flight, no failsafe activity, tracking medians
+1/1/1 deg/s (p90 5/4/6) — the same rounded headline numbers as the finished flight. The strict
+quiet-setpoint test finds **zero** oscillation-like windows (the loose setting admits nine, all
+peaking at 2–3 Hz — manoeuvre lag). The turn-window comparison (1-s windows with |roll or pitch
+setpoint| > 300 deg/s; 5–30 Hz band RMS of the tracking error; the finished flight's rescue
+span excluded):
+
+| flight | n | median | p90 | max (deg/s) |
+|---|---|---|---|---|
+| initial | 25 | 19.3 | 29.8 | 32.7 |
+| finished | 40 | 12.1 | 26.2 | 35.4 |
+
+The observed median is lower in the finished flight; the distributions overlap; the single
+worst window belongs to the finished flight; both flights' worst turn content peaks in the same
+6–10 Hz band. The windows are 50 %-overlapped and there is one flight per tune, so no formal
+statistical comparison is attempted, and nothing is attributable to the tune. On instability
+specifically only a negative statement is available: **these two logs provide no separating
+evidence that the −5 % step removed an instability — and none that one existed.** Oscillation
+inside high-setpoint windows is invisible to the quiet-setpoint instrument by construction, and
+the turn-window metric does not separate propwash, manoeuvre lag and loop instability.
+
 ## Reproduction
 
 ```bash
@@ -83,5 +114,6 @@ export BLACKBOX_DECODE=/path/to/blackbox_decode   # betaflight/blackbox-tools, c
 python3 overview.py
 python3 wobble.py
 python3 boxes.py     # numeric mode mask via --unit-flags raw
+python3 initial.py   # the pre-reduction log (addendum)
 python3 summaries.py --check
 ```

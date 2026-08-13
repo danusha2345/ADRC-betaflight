@@ -76,8 +76,36 @@ def main():
          f'motor samples at the upper endpoint in the finished flight: {rail} '
          f'of {m.shape[0] * m.shape[1]} ({full(pct)} %)', artifacts=(ANALYSIS,))
 
+    # the pre-reduction addendum (initial.py)
+    from initial import turn_windows, rescue_span, INITIAL, FINAL
+    rs = rescue_span(FINAL)
+    rows = {}
+    for label, stem, excl in (('initial', INITIAL, None), ('finished', FINAL, rs)):
+        vals = [v for v, *_ in turn_windows(stem, exclude=excl)]
+        rows[label] = (len(vals), float(np.median(vals)),
+                       float(np.percentile(vals, 90)), float(max(vals)))
+    for label in ('initial', 'finished'):
+        n, med, p90v, mx = rows[label]
+        line(f'| {label} | {n} | {med:.1f} | {p90v:.1f} | {mx:.1f} |',
+             f'{label}: n={n} turn windows, median {full(med)}, p90 {full(p90v)}, '
+             f'max {full(mx)}', artifacts=(ANALYSIS,))
+
+    d = load(INITIAL)
+    t = time_s(d)
+    med = [float(np.median(np.abs(d[f'setpoint[{ax}]'] - d[f'gyroADC[{ax}]'])))
+           for ax in range(3)]
+    p90 = [float(np.percentile(np.abs(d[f'setpoint[{ax}]'] - d[f'gyroADC[{ax}]']), 90))
+           for ax in range(3)]
+    line(f'tracking medians {"/".join(f"{v:.0f}" for v in med)} deg/s '
+         f'(p90 {"/".join(f"{v:.0f}" for v in p90)})',
+         'initial-log per-axis error median/p90',
+         artifacts=(ANALYSIS,))
+    line(f'a {t[-1]:.1f} s acro+airmode flight',
+         f'initial-log span {full(float(t[-1]))}', artifacts=(ANALYSIS,))
+
     print('\nEverything else quoted in ANALYSIS.md appears directly in')
-    print('overview.py / wobble.py output and is traced by the reverse check.')
+    print('overview.py / wobble.py / boxes.py / initial.py output and is traced')
+    print('by the reverse check.')
 
 
 def check(sources):
@@ -115,7 +143,7 @@ def check(sources):
     print('\n# Reverse\n')
     corpus = io.StringIO()
     with contextlib.redirect_stdout(corpus):
-        for mod in ('overview', 'wobble', 'boxes'):
+        for mod in ('overview', 'wobble', 'boxes', 'initial'):
             __import__(mod).main()
     haystack = corpus.getvalue() + ' ' + ' '.join(p for p, _ in PHRASES)
     token = re.compile(r'(?<![\w.])\d+(?:\.\d+)?')
@@ -152,4 +180,6 @@ if __name__ == '__main__':
         sources = {ANALYSIS: os.path.join(here, 'ANALYSIS.md')}
         if 'PAVO20_REPLY' in os.environ:
             sources[REPLY] = os.environ['PAVO20_REPLY']
+        if 'PAVO20_REPLY2' in os.environ:
+            sources['DRAFT_reply2.md'] = os.environ['PAVO20_REPLY2']
         sys.exit(check(sources))
