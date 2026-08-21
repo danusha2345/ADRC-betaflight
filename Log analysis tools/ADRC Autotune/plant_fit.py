@@ -1067,7 +1067,7 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
             ax0.set_xlabel('Hz')
             ax0.grid(True, which='both', alpha=.3); ax0.legend(fontsize=7)
 
-        fig.suptitle(f"{base} — plant identified from closed loop (indirect, frequency domain)",
+        fig.suptitle(f"{base} — plant identified from closed loop",
                      fontsize=13, fontweight='bold')
 
         # Variable size for footer text box in image
