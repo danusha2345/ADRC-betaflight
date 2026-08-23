@@ -46,7 +46,7 @@ crossing in an unsaved frame is expected. The endpoint is yaw-D dominated:
 
 ## Supported conclusions
 
-1. On this second Mamba craft, `wo` was the only changed configuration value
+1. On this Mamba craft, `wo` was the only changed configuration value
    and there is a strong same-craft dose-response association with zero-command
    arm-time yaw-controller growth.
 2. `wo=100` produced six quiet bounded arms; `wo=125` produced a large but
