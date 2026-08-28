@@ -34,8 +34,8 @@ jobs:
           - STM32F411
           - STM32F446
           - STM32F745
-          - STM32F7X2
-          - STM32G47X
+          - STM32F722
+          - STM32G474
           - STM32H723
           - STM32H725
           - STM32H730
@@ -107,13 +107,20 @@ jobs:
 
       - name: Build shard targets
         run: |
-          mapfile -t targets < <(ls src/config/configs | sort | awk -v n="$SHARD_COUNT" -v s="${{ matrix.shard }}" '(NR - 1) % n == s')
+          # Current config stores boards under configs/<manufacturer>/<board>; older releases used
+          # configs/<board>. Enumerate config.h leaves so both layouts remain supported.
+          mapfile -t targets < <(
+            find src/config/configs -mindepth 2 -maxdepth 3 -type f -name config.h -printf '%h\n' |
+              sed 's#.*/##' | sort -u |
+              awk -v n="$SHARD_COUNT" -v s="${{ matrix.shard }}" '(NR - 1) % n == s'
+          )
           echo "Shard ${{ matrix.shard }}: ${targets[*]}"
           failed=()
           skipped=()
           for t in "${targets[@]}"; do
             # Only the ARM SDK is installed here; skip configs needing another toolchain.
-            mcu=$(grep -oP 'FC_TARGET_MCU\s+\K\w+' "src/config/configs/$t/config.h" || true)
+            config_h=$(find src/config/configs -mindepth 2 -maxdepth 3 -type f -path "*/$t/config.h" -print -quit)
+            mcu=$(grep -oP 'FC_TARGET_MCU\s+\K\w+' "$config_h" | tr -d '\r' || true)
             case "$mcu" in
               SITL|RP2350A|RP2350B|STM32N657|STM32H563|STM32C562)
                 echo "SKIP $t ($mcu)"; skipped+=("$t"); continue ;;

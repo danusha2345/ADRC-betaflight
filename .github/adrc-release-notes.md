@@ -1,6 +1,64 @@
-# ADRC — prebuilt hex of upstream PR betaflight/betaflight#15400
+# ADRC — experimental tester firmware based on betaflight/betaflight#15400
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
+
+## b10 — current Betaflight master, exact ADRC observability
+
+b10 merges the b9 tester line plus ADRC-029 into Betaflight master
+`e8580ad977` (2026-08-28), 118 upstream commits after the base used by the
+ADRC line. This is a large platform integration, not a new flight-validated
+ADRC tune. The automatic protection/derating idea remains deferred and is not
+present in this build.
+
+The ADRC control-law policy stays on the b9/ADRC-029 line. New instrumentation
+under `set debug_mode = ADRC` records, in the same PID iteration:
+
+- exact final controller sums `adrcPidSum[0..2]` (scale in
+  `adrc_pid_sum_scale`);
+- commanded and actually-applied collective (scale in
+  `adrc_collective_scale`);
+- gate-open state, the branch that opened it (commanded, gyro, or sustained
+  applied collective), and the axes whose `z3` growth was actually inhibited;
+- `adrcGateResetCount`, so a reset epoch remains visible even if Blackbox
+  decimation skipped the exact loop;
+- the ADRC-029 profile-derived `adrc_z3_log_scale`, replacing the old fixed
+  `/16` telemetry range. Old logs without this header still decode with 16.
+
+### Upgrade warning: restore selectively, then verify the ports
+
+**PID profiles intentionally reset on first boot.** Current upstream uses PID
+profile PG version 12 without ADRC fields, while b9 used wrapped version 0 with
+a different layout. b10 uses version 13 so neither incompatible binary layout
+is copied into the other. Back up `diff all`, then re-enter and verify every PID
+profile and explicitly select `pid_type = ADRC` where intended.
+
+Do not paste an old dump blindly. Upstream replaced the writable `serial ...`
+bitmask with per-feature UART settings; the old `serial ...` command is now a
+read-only synthesized view. Apply the board's custom defaults, then verify the
+Ports tab and the relevant `*_uart`/`*_baud` settings (at least receiver, MSP,
+Blackbox, VTX and GPS where used). Keep and verify the motor protocol you chose;
+b10 does not require DShot.
+
+Other upstream-visible changes include removal of Integrated Yaw, the new
+autopilot/Position Hold/GPS Rescue stack, and generic target renames
+`STM32F7X2` → `STM32F722` and `STM32G47X` → `STM32G474`. The release workflow
+has been updated for both the renamed targets and the current nested config
+repository layout.
+
+### Verification and remaining risks
+
+- `make EXTRA_FLAGS=-Werror checks` and the complete `make
+  EXTRA_FLAGS=-Werror test-all` suite pass on the integrated tree.
+- Clean local builds pass for generic `STM32F411`, `MAMBAF722_I2C`, and
+  `BETAFPVG473_V2`; the release CI builds the full target/config matrix.
+- Generic F411 is close to full: `FLASH1` is 97.09% (about 14 KiB free).
+  Generic F446, which still excludes ADRC, is at 99.62% (about 1.8 KiB free).
+  A later upstream addition or a larger board config can overflow either one
+  and must be treated as a build failure, not ignored.
+- ADRC-028's mechanism and a universal production b0 law/default remain open.
+  The F411 8 kHz real-hardware DWT timing measurement is also still pending.
+- This merged 2026.12-alpha base has not yet been validated by a new hardware
+  log. Testers decide what further hardware or flight checks are appropriate.
 
 ## b9 — the z3 pre-takeoff blind spot, and yaw D is finally logged
 
@@ -211,20 +269,20 @@ Because keeping the old stored values would silently re-create both problems, th
 profile version was bumped: **your PID profiles reset to defaults on first boot of
 this build** — `diff all` before flashing and re-apply your tune after.
 
-These are ready-to-flash builds of the **upstream ADRC pull request**
+Builds b1–b9 are ready-to-flash snapshots of the **upstream ADRC pull request**
 [betaflight/betaflight#15400](https://github.com/betaflight/betaflight/pull/15400)
 (opt-in `pid_type = ADRC` per PID profile, classic PID untouched by default), so you
 don't have to wait on the Configurator cloud build — or fight it when it queues or
-errors out. The exact source commit is in the release tag description; the same code
-can also be cloud-built by entering `#15400` in the Configurator's *Select commit*
-field (visible only when the `2026.6.0-alpha` version is selected in the dropdown).
+errors out. b10 is different: it is a fork-only integration on newer Betaflight master
+and cannot be reproduced by entering `#15400` in the official cloud builder. The exact
+source is the release tag.
 
 ## Which file do I flash?
 
 Same convention as official Betaflight releases:
 
-- **Your board has its own hex** (`betaflight_2026.6.0-alpha_<BOARDNAME>.hex`) — use it.
-- **Board not listed?** Use the **generic hex for your MCU** (`STM32F7X2` for any F722,
+- **Your board has its own hex** (`betaflight_2026.12.0-alpha_<BOARDNAME>.hex`) — use it.
+- **Board not listed?** Use the **generic hex for your MCU** (`STM32F722` for any F722,
   `STM32F405`, `STM32H743`, `AT32F435M/G`, …) and accept *Apply custom defaults* on
   first connect.
 
