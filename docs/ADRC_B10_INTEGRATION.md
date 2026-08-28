@@ -107,6 +107,17 @@ generic; старых имён `STM32F7X2`/`STM32G47X` в нём нет.
 | MAMBAF722_I2C | `1fa8a40d7e7989244400be7996e55d811e95857bea60aa4cd154fc649f706cc7` | да |
 | BETAFPVG473_V2 | `6497b483dbc6d19302258640d219001c1950080e37bdd8bce5a70968f6307ccb` | да |
 
+### Post-tag metadata
+
+Исходный тег `343572dcba` неизменяем и остаётся точной базой всех
+firmware assets. После сборки в live release body внесены две
+metadata-only поправки: уточнена граница supported ARM/hex matrix и
+добавлено предупреждение о Configurator API 1.49. Поэтому файл
+`.github/adrc-release-notes.md` внутри тега содержит первоначальную
+формулировку, а обновлённый live body и эта запись — точную
+границу миграции. Код прошивки, revision и хеши артефактов не
+менялись.
+
 ## Явно не входит в b10
 
 - выбор production/default между LINEAR и SQRT для b0 law;

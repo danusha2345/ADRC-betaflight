@@ -28,7 +28,7 @@ This repository implements **Active Disturbance Rejection Control (ADRC)** on Be
 > its releases stay the easiest way to fly ADRC today; everything validated here feeds
 > straight into that PR.
 
-> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — the current ARM board-config matrix is built with the config baked in, plus generic images for mainstream MCUs (F405/F411/F446, F722/F745, G474, H7 series, AT32F435). Flash via Configurator → *Load Firmware [Local]*.
+> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — b10 contains 615 supported ARM/hex board configs plus 15 generic images; 14 configs needing another SDK/output path are listed as skips. F446 images are classic-PID-only because ADRC does not fit in their flash budget. Flash via Configurator → *Load Firmware [Local]*.
 
 ---
 
@@ -120,8 +120,10 @@ On a 5" (2300 kV, 4S) the round-2 sweet spot came out at **60 / 100 / 200**: cri
 
 The latest tester release on the [**Releases page**](https://github.com/danusha2345/ADRC-betaflight/releases) ships ready-to-flash `.hex` files built by CI from its exact source tag:
 
-- **Board-specific builds across the current supported ARM config matrix**, with each board's config baked in.
+- **615 board-specific builds across the supported ARM/hex config subset**, with each board's config baked in. Fourteen SITL/RP2350/separate-SDK or output-format configs are reported as explicit skips, not silently counted as builds.
 - **Generic per-MCU images** for everything else — pick the hex matching your board's MCU (`STM32F722` for any F722 board, `STM32F405`, `STM32G474`, `STM32H743`, `AT32F435M/G`, …), flash it, and accept *Apply custom defaults* when the Configurator offers it (same scheme official Betaflight releases use).
+
+> **F446 exception:** the F446 board and generic images are working classic-PID firmware, but do not contain ADRC. `set pid_type = ADRC` is intentionally unavailable on F446 because its 512 KiB flash region is already almost full.
 
 > **b10 is a major base upgrade to Betaflight 2026.12-alpha.** PID profiles reset
 > intentionally because the stored upstream and b9 layouts are incompatible. Also,
