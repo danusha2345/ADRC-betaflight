@@ -4,7 +4,14 @@ blackbox logs. Imported by the Fit_plant notebook -- see show_fit_summary()
 for the main entry point.
 """
 
-import io, sys, contextlib
+import contextlib
+import csv
+import hashlib
+import io
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -16,6 +23,102 @@ from IPython.display import display
 
 # Define axis names in order they're used
 AXIS_NAMES = ['roll', 'pitch', 'yaw']
+PINNED_BLACKBOX_TOOLS_COMMIT = 'f832acf9cd9dbe5ad8220de1a5f4eb4021523d72'
+DIRECT_PID_SUM_FIELDS = [f'adrcPidSum[{i}]' for i in range(3)]
+EXPLORER_PID_SUM_FIELDS = [f'axisSum[{i}]' for i in range(3)]
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_root(path):
+    """Return the git worktree containing path, or None."""
+    try:
+        out = subprocess.run(
+            ['git', '-C', str(Path(path).resolve().parent), 'rev-parse', '--show-toplevel'],
+            check=True, capture_output=True, text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return Path(out.stdout.strip())
+
+
+def verify_blackbox_decoder(decoder):
+    """Fail unless decoder was built from the pinned, clean source checkout."""
+    decoder = Path(decoder).expanduser().resolve()
+    if not decoder.is_file() or not os.access(decoder, os.X_OK):
+        raise ValueError(f'blackbox_decode is not executable: {decoder}')
+    root = _git_root(decoder)
+    if root is None:
+        raise ValueError(
+            'blackbox_decode must live inside a git checkout so its source commit can be verified')
+    head = subprocess.run(
+        ['git', '-C', str(root), 'rev-parse', 'HEAD'], check=True,
+        capture_output=True, text=True,
+    ).stdout.strip()
+    dirty = subprocess.run(
+        ['git', '-C', str(root), 'status', '--porcelain', '--untracked-files=no'],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    if head != PINNED_BLACKBOX_TOOLS_COMMIT or dirty:
+        raise ValueError(
+            'blackbox_decode source is not the pinned clean blackbox-tools checkout: '
+            f'expected {PINNED_BLACKBOX_TOOLS_COMMIT}, got {head}'
+            + (' with tracked changes' if dirty else ''))
+    return decoder, root, head
+
+
+def decode_blackbox_bbl(path, out_dir, decoder=None, log_index=1):
+    """Decode one raw BBL flight through the pinned blackbox-tools contract."""
+    path = Path(path).expanduser().resolve()
+    if decoder is None:
+        decoder = os.environ.get('BLACKBOX_DECODE')
+    if not decoder:
+        raise ValueError(
+            'raw BBL input needs BLACKBOX_DECODE pointing to blackbox-tools '
+            f'{PINNED_BLACKBOX_TOOLS_COMMIT}')
+    decoder, root, head = verify_blackbox_decoder(decoder)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = out_dir / f'{path.stem}.{int(log_index):02d}.csv'
+    command = [
+        str(decoder), '--index', str(int(log_index)), '--save-headers',
+        '--output-dir', str(out_dir),
+        '--unit-frame-time', 'us', '--unit-rotation', 'raw', str(path),
+    ]
+    subprocess.run(command, check=True)
+    if not csv_path.is_file():
+        raise ValueError(f'blackbox_decode did not create expected output: {csv_path}')
+    provenance = {
+        'input': str(path),
+        'input_sha256': _sha256_file(path),
+        'decoder': str(decoder),
+        'decoder_source': str(root),
+        'decoder_commit': head,
+        'decoder_sha256': _sha256_file(decoder),
+        'log_index': int(log_index),
+        'command': command,
+    }
+    with open(csv_path.with_suffix('.decode.json'), 'w') as fh:
+        json.dump(provenance, fh, indent=2)
+        fh.write('\n')
+    return csv_path
+
+
+def prepare_blackbox_input(path, out_dir='Output metrics', decoder=None, log_index=1):
+    """Accept a CSV directly or decode a raw BBL with a pinned decoder."""
+    path = Path(path)
+    if path.suffix.lower() == '.bbl':
+        return decode_blackbox_bbl(
+            path, Path(out_dir) / 'decoded', decoder=decoder, log_index=log_index)
+    if path.suffix.lower() != '.csv':
+        raise ValueError('input must be a raw .bbl or a Blackbox CSV')
+    return path
 
 # Stuff to load in data
 def load_blackbox_csv(path):
@@ -34,6 +137,15 @@ def load_blackbox_csv(path):
         raise ValueError(f"Could not find column header row in {path}")
     df = pd.read_csv(path, skiprows=header_idx)
     df.columns = [c.strip().strip("'\"") for c in df.columns]
+    rename = {}
+    if 'time' not in df.columns and 'time (us)' in df.columns:
+        rename['time (us)'] = 'time'
+    if 'vbatLatest' not in df.columns and 'vbatLatest (V)' in df.columns:
+        rename['vbatLatest (V)'] = 'vbatLatest'
+    if 'amperageLatest' not in df.columns and 'amperageLatest (A)' in df.columns:
+        rename['amperageLatest (A)'] = 'amperageLatest'
+    if rename:
+        df = df.rename(columns=rename)
     return df
 
 def read_blackbox_header(path, max_lines=400):
@@ -48,6 +160,14 @@ def read_blackbox_header(path, max_lines=400):
             parts = line.rstrip('\n').split(',', 1)
             if len(parts) == 2:
                 hdr[parts[0].strip().strip('"')] = parts[1].strip().strip('"')
+    sidecar = Path(path).with_name(Path(path).stem + '.headers.csv')
+    if sidecar.is_file():
+        with open(sidecar, newline='') as fh:
+            rows = csv.reader(fh)
+            next(rows, None)
+            for row in rows:
+                if len(row) >= 2:
+                    hdr[row[0].strip()] = row[1].strip().strip('"')
     return hdr
 
 def _num(hdr, key, default=0.0):
@@ -59,7 +179,45 @@ def _num(hdr, key, default=0.0):
     except ValueError:
         return float(default)
 
-def get_axis_signals(df, axis='roll'):
+
+def blackbox_input_contract(df, hdr, require_logged_u=False):
+    """Validate the columns used for identification and identify pidSum provenance."""
+    required = ['time']
+    required += [f'setpoint[{i}]' for i in range(3)]
+    required += [f'gyroADC[{i}]' for i in range(3)]
+    missing = [name for name in required if name not in df.columns]
+    if missing:
+        raise ValueError('Blackbox input is missing required columns: ' + ', '.join(missing))
+
+    direct = [name in df.columns for name in DIRECT_PID_SUM_FIELDS]
+    explorer = [name in df.columns for name in EXPLORER_PID_SUM_FIELDS]
+    if any(direct) and not all(direct):
+        raise ValueError('partial adrcPidSum[] set; all three axes are required')
+    if any(explorer) and not all(explorer):
+        raise ValueError('partial axisSum[] set; all three axes are required')
+
+    if all(direct):
+        scale = _num(hdr, 'adrc_pid_sum_scale', 0.0)
+        if not np.isfinite(scale) or scale <= 0:
+            raise ValueError(
+                'adrcPidSum[] is present but adrc_pid_sum_scale is missing or invalid')
+        source = 'direct adrcPidSum[]'
+    elif all(explorer):
+        scale = 1.0
+        source = 'Blackbox Explorer axisSum[]'
+    else:
+        scale = float('nan')
+        source = None
+
+    if require_logged_u and source is None:
+        raise ValueError(
+            'logged-u recovery needs either direct adrcPidSum[0..2] plus '
+            'adrc_pid_sum_scale, or Blackbox Explorer axisSum[0..2]. '
+            'P+I+D+F reconstruction is intentionally not accepted.')
+    return dict(pid_sum_source=source, pid_sum_scale=scale)
+
+
+def get_axis_signals(df, axis='roll', hdr=None):
     '''
     Gets signals for specified axis, defaults to roll axis.
     Takes 'roll', 'pitch', or 'yaw' as inputs
@@ -70,7 +228,13 @@ def get_axis_signals(df, axis='roll'):
     t = df['time'].to_numpy(float) * 1e-6
     r = df[f'setpoint[{i}]'].to_numpy(float)
     y = df[f'gyroADC[{i}]'].to_numpy(float)
-    u = df[f'axisSum[{i}]'].to_numpy(float) if f'axisSum[{i}]' in df.columns else None
+    contract = blackbox_input_contract(df, hdr or {}, require_logged_u=False)
+    if contract['pid_sum_source'] == 'direct adrcPidSum[]':
+        u = df[f'adrcPidSum[{i}]'].to_numpy(float) / contract['pid_sum_scale']
+    elif contract['pid_sum_source'] == 'Blackbox Explorer axisSum[]':
+        u = df[f'axisSum[{i}]'].to_numpy(float)
+    else:
+        u = None
     return t, r, y, u
 # Frequency response stuff
 def estimate_frf(r, x, fs, nperseg=8192, overlap=0.75):
@@ -863,12 +1027,64 @@ def axis_warnings(fit, bw, bw_fit, b0_values=None, adrc_flight=True):
     return flags
 
 
+def paired_wc_wo(bw, wc, wo):
+    """Return the wc ceiling together with the wo evaluated at that ceiling."""
+    wc_limit = float(bw['wc_max'])
+    if not np.isfinite(wc_limit) or wc <= 0:
+        return float('nan'), float('nan')
+    return wc_limit, wc_limit * float(wo) / float(wc)
+
+
+def tune_validation_gate(fit, bw, bw_fit, b0_estimates=None, min_bins=12):
+    """Fail-closed gate for publishing an input triple as a tune recommendation."""
+    reasons = []
+    if int(fit.get('n_bins', 0)) < min_bins:
+        reasons.append(f"only {int(fit.get('n_bins', 0))} coherent fit bins (<{min_bins})")
+    if not np.isfinite(bw.get('f_3db_hz', float('nan'))):
+        reasons.append('no sustained measured -3 dB bandwidth in the coherent band')
+    if bw.get('wc_max_at_bound'):
+        reasons.append('wc ceiling is not bounded by the identified model')
+    if bw.get('wc_max_band_limited'):
+        reasons.append('wc ceiling is set by the identification-band boundary')
+    if bw.get('cfg_extrapolated'):
+        reasons.append('final gain crossover is outside the identified band')
+    pm = bw.get('pm_cfg', float('nan'))
+    if not np.isfinite(pm):
+        reasons.append('final phase margin is not measurable')
+    elif pm < bw['pm_target']:
+        reasons.append(
+            f"final phase margin {pm:.1f} deg is below {bw['pm_target']:.0f} deg")
+    peak = bw.get('cl_peak_db', float('nan'))
+    if np.isfinite(peak) and peak > 6.0:
+        reasons.append(f'closed-loop peak is resonant ({peak:+.1f} dB)')
+    if fit.get('wm_at_bound') or bw_fit.get('pole_at_bound'):
+        reasons.append('actuator/second pole is unresolved')
+
+    independent = [x for x in (b0_estimates or [])
+                   if x.get('independent') and np.isfinite(x.get('value', float('nan')))]
+    if len(independent) >= 2:
+        a, b = independent[:2]
+        delta = abs(a['value'] - b['value'])
+        pooled = np.hypot(a.get('sd', float('nan')), b.get('sd', float('nan')))
+        if np.isfinite(pooled):
+            disagree = delta > 2.0 * pooled
+        else:
+            mean = max(0.5 * (a['value'] + b['value']), 1e-9)
+            disagree = delta / mean > 0.25
+        if disagree:
+            reasons.append(
+                f"independent b0 methods disagree beyond fit error "
+                f"({a['name']} {a['value']:.0f}, {b['name']} {b['value']:.0f})")
+    return dict(ok=not reasons, reasons=reasons)
+
+
 # Function that does all the fitting and plotting. 
 def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
                                 f_lo=0.8, f_hi=15.0, coh_min=0.85,
                                 cross_check=True, use_rpm=True,
                                 include_dterm=False, out_dir='Output metrics',
-                                full_output=False, adrc_flight=True):
+                                full_output=False, adrc_flight=True,
+                                decoder=None, log_index=1):
     '''
     Recovers and fits the open-loop plant for roll/pitch/yaw from a blackbox
     log, given the (wc, wo, b0) the flight was flown with.
@@ -893,9 +1109,13 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
 
     Returns {axis: {K, a, wm, tau, b0, rms_rel, f, G, coh, tf, ...}}
     '''
+    out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = prepare_blackbox_input(
+        csv_path, out_dir=out_dir, decoder=decoder, log_index=log_index)
     df = load_blackbox_csv(csv_path)
     hdr = read_blackbox_header(csv_path)
-    out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    contract = blackbox_input_contract(
+        df, hdr, require_logged_u=(not adrc_flight or cross_check or use_rpm))
     base = Path(csv_path).name.split('.')[0]
     out_png = out_dir / f'{base} Plant fit.png'
     out_txt = out_dir / f'{base} Plant fit.txt'
@@ -923,10 +1143,11 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
                  "primary path.\nwc/wo/b0 below are read as proposed values, not flown ones.\n")
               + "Margin sweep includes header lag "
               f"(gyro lpf2={_lag['gyro_lpf2']:.0f} Hz, delay={_lag['delay_s']*1e3:.2f} ms); "
-              "notches excluded, so margins stay slightly optimistic.")
+              "notches excluded, so margins stay slightly optimistic.\n"
+              f"Logged pidSum source: {contract['pid_sum_source']}.")
 
         for i, axis in enumerate(AXIS_NAMES):
-            t, r, y, u = get_axis_signals(df, axis)
+            t, r, y, u = get_axis_signals(df, axis, hdr)
             fs = 1.0 / np.median(np.diff(t))
 
             if adrc_flight:
@@ -981,7 +1202,8 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
                                  t=tt, impulse=h, step=st,
                                  G_cf=G_cf, fit_cf=fit_cf, fit_rpm=fit_rpm,
                                  b0_eff=b0_effective(fit, wc_a[axis]),
-                                 bandwidth=bw, ctrl_check=ctrl_chk)
+                                 bandwidth=bw, ctrl_check=ctrl_chk,
+                                 input_contract=contract)
 
             # --- footer text: b0 and bandwidth only, with error bars -----
             b0_c, b0_sd = b0_uncertainty(fit, wc_a[axis])
@@ -993,6 +1215,16 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
             if fit_rpm is not None:
                 v, sd = b0_uncertainty(fit_rpm, wc_a[axis])
                 rows.append(('eRPM decomposition', v, sd))
+
+            estimates = []
+            for row_index, (name, value, sd) in enumerate(rows):
+                estimates.append(dict(
+                    name=name.strip(), value=value, sd=sd,
+                    independent=(row_index == 0 or name == 'eRPM decomposition'),
+                ))
+            gate = tune_validation_gate(fit, bw, bw_fit, estimates)
+            results[axis]['tune_validation'] = gate
+            results[axis]['b0_estimates'] = estimates
 
             _cfgword = 'configured' if adrc_flight else 'proposed'
             msg = f"{axis:>6}  b0_eff at wc={wc_a[axis]:.0f}   ({_cfgword} {b0_a[axis]:.0f})"
@@ -1021,10 +1253,12 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
                     + (f"  [{bw['wc_cfg']/bw['w_3db']:.1f}x]" if f3 == f3 else "")
                     + (f"\n         closed-loop peak = {_pk:+.1f} dB at "
                        f"{bw['cl_peak_hz']:.1f} Hz" if _pk == _pk else ""))
-            msg += ("\n         max wc for "
+            wc_limit, wo_limit = paired_wc_wo(bw, wc_a[axis], wo_a[axis])
+            msg += ("\n         diagnostic max wc/wo for "
                     + f"{bw['pm_target']:.0f} deg PM = "
                     + ("not bounded by this model" if bw['wc_max_at_bound']
-                       else f"{bw['wc_max']:5.0f} +/- {bw['wc_max_sd']:4.1f} rad/s")
+                       else f"{wc_limit:5.0f}/{wo_limit:5.0f} rad/s "
+                            f"(wc +/- {bw['wc_max_sd']:4.1f})")
                     + f";   PM at {_cfgword} wc = "
                     + (f"{bw['pm_cfg']:5.1f} +/- {bw['pm_cfg_sd']:4.2f} deg"
                        if bw['pm_cfg'] == bw['pm_cfg'] else "n/a (|L|<1)"))
@@ -1040,6 +1274,12 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
                                   adrc_flight=adrc_flight)
             for fl in flags:
                 msg += f"\n         [WARNING: {fl}]"
+            if gate['ok']:
+                msg += "\n         [FINAL TUNE CHECK: PASS]"
+            else:
+                msg += "\n         [FINAL TUNE CHECK: BLOCKED -- no recommendation issued]"
+                for reason in gate['reasons']:
+                    msg += f"\n           - {reason}"
             print(msg)
 
             # --- plots -------------------------------------------------
@@ -1098,6 +1338,74 @@ def fit_plant_from_csv_indirect(csv_path, wo, b0, wc, order=2, nperseg=8192,
     print(f"Saved metrics log to {out_txt}")
     return results
 
+
+def fit_pack_segments(csv_path, wc, segments=(('early', 0.05, 0.35),
+                                               ('late', 0.65, 0.95)),
+                      nperseg=8192, f_lo=0.8, f_hi=15.0, coh_min=0.85,
+                      out_dir='Output metrics', decoder=None, log_index=1):
+    """Fit early/late sections independently; never promote weak fits to a voltage law."""
+    csv_path = prepare_blackbox_input(
+        csv_path, out_dir=out_dir, decoder=decoder, log_index=log_index)
+    df = load_blackbox_csv(csv_path)
+    hdr = read_blackbox_header(csv_path)
+    contract = blackbox_input_contract(df, hdr, require_logged_u=True)
+    wc_a = wc if isinstance(wc, dict) else {axis: wc for axis in AXIS_NAMES}
+    t_all = df['time'].to_numpy(float) * 1e-6
+    span = t_all[-1] - t_all[0]
+    rows = []
+
+    for label, start_fraction, end_fraction in segments:
+        if not (0.0 <= start_fraction < end_fraction <= 1.0):
+            raise ValueError(f'invalid segment {label}: {start_fraction}..{end_fraction}')
+        lo = t_all[0] + start_fraction * span
+        hi = t_all[0] + end_fraction * span
+        part = df[(t_all >= lo) & (t_all <= hi)].reset_index(drop=True)
+        vbat = (float(np.median(part['vbatLatest'].to_numpy(float)))
+                if 'vbatLatest' in part.columns else float('nan'))
+        for axis in AXIS_NAMES:
+            row = dict(segment=label, axis=axis, start_s=lo - t_all[0],
+                       end_s=hi - t_all[0], vbat=vbat,
+                       pid_sum_source=contract['pid_sum_source'])
+            try:
+                t, r, y, u = get_axis_signals(part, axis, hdr)
+                fs = 1.0 / np.median(np.diff(t))
+                f, G, gam, _ = recover_plant_frf(
+                    r, y, u, fs, nperseg=nperseg, method='controller_free')
+                fit = fit_plant_frf(
+                    f, G, gam, f_lo=f_lo, f_hi=f_hi, coh_min=coh_min)
+                value, sd = b0_uncertainty(fit, wc_a[axis])
+                reasons = []
+                if fit['n_bins'] < 12:
+                    reasons.append(f"only {fit['n_bins']} coherent bins")
+                if fit.get('wm_at_bound'):
+                    reasons.append('second pole unresolved')
+                row.update(b0=value, b0_sd=sd, n_bins=fit['n_bins'],
+                           f_valid_hz=fit['f_valid_hz'],
+                           status=('PASS' if not reasons else 'BLOCKED'),
+                           reasons='; '.join(reasons))
+            except (KeyError, ValueError, np.linalg.LinAlgError) as exc:
+                row.update(b0=float('nan'), b0_sd=float('nan'), n_bins=0,
+                           f_valid_hz=float('nan'), status='BLOCKED',
+                           reasons=str(exc))
+            rows.append(row)
+
+    table = pd.DataFrame(rows)
+    print(table.to_string(index=False, float_format=lambda x: f'{x:.3f}'))
+    print('\nPaired early/late discriminator:')
+    for axis in AXIS_NAMES:
+        axis_rows = table[table['axis'] == axis]
+        if len(axis_rows) != 2 or (axis_rows['status'] != 'PASS').any():
+            print(f'  {axis}: BLOCKED -- both segments need independent PASS fits')
+            continue
+        early, late = axis_rows.iloc[0], axis_rows.iloc[1]
+        ratio = late['b0'] / early['b0']
+        rel_sd = np.hypot(early['b0_sd'] / early['b0'],
+                          late['b0_sd'] / late['b0'])
+        z = abs(np.log(ratio)) / max(rel_sd, 1e-12)
+        print(f"  {axis}: late/early b0={ratio:.3f}, fit-only z={z:.2f}; "
+              f"vbat {early['vbat']:.1f}->{late['vbat']:.1f}")
+    return table
+
 def _txt_table(df):
     '''
     Plain-text, fixed-width rendering of a DataFrame with aligned columns
@@ -1120,7 +1428,7 @@ def _txt_table(df):
 def show_fit_summary(csv_path, wc, wo, b0, order=2, nperseg=8192, f_lo=0.8,
                      f_hi=15.0, coh_min=0.85, cross_check=True, use_rpm=True,
                      include_dterm=False, out_dir='Output metrics', results=None,
-                     adrc_flight=True):
+                     adrc_flight=True, decoder=None, log_index=1):
     '''
     Runs fit_plant_from_csv_indirect() (unless a precomputed `results` dict
     is passed in) and displays the b0 and bandwidth summary tables built
@@ -1131,12 +1439,15 @@ def show_fit_summary(csv_path, wc, wo, b0, order=2, nperseg=8192, f_lo=0.8,
 
     Returns (results, b0_table, bw_table).
     '''
+    out_dir = Path(out_dir)
+    csv_path = prepare_blackbox_input(
+        csv_path, out_dir=out_dir, decoder=decoder, log_index=log_index)
     if results is None:
         results = fit_plant_from_csv_indirect(
             csv_path, wo=wo, b0=b0, wc=wc, order=order, nperseg=nperseg,
             f_lo=f_lo, f_hi=f_hi, coh_min=coh_min, cross_check=cross_check,
             use_rpm=use_rpm, include_dterm=include_dterm, out_dir=out_dir,
-            adrc_flight=adrc_flight,
+            adrc_flight=adrc_flight, decoder=decoder, log_index=log_index,
         )
 
     df = load_blackbox_csv(csv_path)
@@ -1224,7 +1535,7 @@ def show_fit_summary(csv_path, wc, wo, b0, order=2, nperseg=8192, f_lo=0.8,
         res = results[axis]
         bw45 = res['bandwidth']
 
-        t, r, y, u = get_axis_signals(df, axis)
+        t, r, y, u = get_axis_signals(df, axis, hdr)
         fs = 1.0 / np.median(np.diff(t))
         bw_fit = res['fit_rpm'] if res.get('fit_rpm') is not None else res
         bw60 = suggest_bandwidth(r, y, fs, bw_fit, wc[axis], wo[axis], b0[axis],
@@ -1244,22 +1555,31 @@ def show_fit_summary(csv_path, wc, wo, b0, order=2, nperseg=8192, f_lo=0.8,
                     if pk == pk else 'n/a')
         vs_wc = f'{wc_cfg:.0f} ({wc_cfg/w3:.1f}x -3dB)' if (f3 == f3 and w3 > 0) else f'{wc_cfg:.0f}'
 
-        def _max_wc(bw):
+        def _max_wc_wo(bw):
+            wc_limit, wo_limit = paired_wc_wo(bw, wc[axis], wo[axis])
             return ('not bounded' if bw['wc_max_at_bound']
-                    else f"{bw['wc_max']:.0f} +/- {bw['wc_max_sd']:.1f} rad/s")
+                    else f"{wc_limit:.0f}/{wo_limit:.0f} "
+                         f"(wc +/- {bw['wc_max_sd']:.1f}) rad/s")
 
         pm_at_wc = (f"{bw45['pm_cfg']:.1f} +/- {bw45['pm_cfg_sd']:.2f} deg"
                     if bw45['pm_cfg'] == bw45['pm_cfg'] else 'n/a')
 
         # CL peak is still computed in suggest_bandwidth and still drives the
         # peaking warning and the console footer; it is just not a column.
-        brow = {'axis': axis, 'achieved -3dB': achieved}
+        brow = {
+            'axis': axis,
+            'final wc/wo/b0': f"{wc[axis]:.0f}/{wo[axis]:.0f}/{b0[axis]:.0f}",
+            'achieved -3dB': achieved,
+        }
         if adrc_flight:
             # the flown wc, with the ratio to the achieved -3dB when there is one
             brow['vs wc'] = vs_wc
-        brow[f"max wc @{bw45['pm_target']:.0f} deg"] = _max_wc(bw45)
-        brow['max wc @60 deg'] = _max_wc(bw60)
-        brow['PM at wc' if adrc_flight else 'PM at proposed wc'] = pm_at_wc
+        brow[f"diagnostic wc/wo @{bw45['pm_target']:.0f} deg"] = _max_wc_wo(bw45)
+        brow['diagnostic wc/wo @60 deg'] = _max_wc_wo(bw60)
+        brow['PM at final wc'] = pm_at_wc
+        gate = res.get('tune_validation') or tune_validation_gate(
+            res, bw45, bw_fit, res.get('b0_estimates'))
+        brow['final tune check'] = 'PASS' if gate['ok'] else 'BLOCKED'
         bw_rows.append(brow)
 
     bw_table = pd.DataFrame(bw_rows)
@@ -1280,6 +1600,11 @@ def show_fit_summary(csv_path, wc, wo, b0, order=2, nperseg=8192, f_lo=0.8,
             flags.append("60 deg ceiling not bounded by this model")
         for fl in flags:
             warn_lines.append(f"[WARNING: {axis:>5}] {fl}")
+        gate = res.get('tune_validation') or {}
+        if not gate.get('ok', False):
+            warn_lines.append(
+                f"[BLOCKED: {axis:>5}] no tune recommendation issued: "
+                + '; '.join(gate.get('reasons', ['final triple was not validated'])))
 
     if warn_lines:
         print()
@@ -1290,7 +1615,7 @@ def show_fit_summary(csv_path, wc, wo, b0, order=2, nperseg=8192, f_lo=0.8,
 
     # --- export both tables as a readable, aligned .txt, alongside the
     # other outputs -----------------------------------------------------
-    out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     base = Path(csv_path).name.split('.')[0]
     out_tables_txt = out_dir / f'{base} Fit summary tables.txt'
     with open(out_tables_txt, 'w') as fh:
