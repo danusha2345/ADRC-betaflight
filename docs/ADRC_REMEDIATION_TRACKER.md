@@ -1374,13 +1374,24 @@ resets PID profiles too.
 
 ## Current tester-build and evidence status
 
-[`adrc-pr15400-b9`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b9)
-(`919116fed`) is the latest published fork tester build. b7 was withdrawn by b8
-after its hold-timer duty-cycle defect; do not treat b7 as current. The
-post-b9 `adrc-blackbox-dterm` branch at `b82a9e16bd` contains the ADRC-029
-logging fix but is not a published b10 release. The clean port and expanded
-observability contract live separately on current PR head as
-`adrc-pr-head-observability` at `aa93b5e680`; it is also not a tester release.
+[`adrc-pr15400-b10`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10)
+(`343572dcba`) is the latest published fork tester build. It merges the b9 +
+ADRC-029 line into Betaflight master `e8580ad977` (2026-08-28, 118 upstream
+commits after the ADRC line's base) and ports the exact observability contract
+from `aa93b5e680`, including the b9 applied-collective gate cause. The integration
+record, migration boundaries, test results and memory margins are in
+[`ADRC_B10_INTEGRATION.md`](ADRC_B10_INTEGRATION.md). The PR author's
+`adrc-toggle` branch remains at `6317fe2aad`; b10 is deliberately fork-side and
+does not silently choose a rebase/merge strategy for the upstream PR.
+Release CI finished with 615 supported board configs built, zero failures, 14
+explicit platform-SDK/output skips and 15 generic builds (630 unique assets).
+
+b7 was withdrawn by b8 after its hold-timer duty-cycle defect; do not treat b7
+as current. b10 intentionally resets PID profiles (PG 13) because current
+upstream's version-12 layout and b9's wrapped-version-0 layout are incompatible.
+It also inherits upstream's API-1.49 per-feature UART migration: released
+Configurator 2026.6.1 predates it, the Ports tab is read-only, and a current
+development Configurator or CLI is required to restore/verify UART assignments.
 
 ADRC remains experimental and opt-in. The current evidence supports a hard
 tester gate rather than a replacement universal default. Reports should carry
@@ -1419,7 +1430,12 @@ boundaries rather than prescribing a new flight matrix.
   consistent with the logs — flight mode itself is not log-verifiable).
 - ~~ADRC-021 doublet flight~~ — **completed and independently repeated on a
   second craft**; the corpus rejects the shipped quadratic law but does not yet
-  select the production replacement. Fitter/input hardening remains open.
+  select the production replacement. Fitter/input hardening is published at
+  `e696c08591`; the LINEAR/SQRT production choice is still waiting for the
+  maintainers/testers' judgment on the existing corpus.
+- Decide with the PR author whether and how to rebase the upstream-scoped ADRC
+  patchset onto current Betaflight. The b10 tester branch is not directly
+  pushable as PR #15400: it also carries fork-only b0-law and release-line work.
 - ADRC-028 mechanism remains open; no universal default is accepted from the
   current high-`wo` corpus. Production protection/automatic derating is
   deliberately deferred and is not part of the observability patch.

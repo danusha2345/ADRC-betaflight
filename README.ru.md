@@ -29,7 +29,7 @@
 > релизы — самым простым способом полетать на ADRC уже сегодня; всё валидированное здесь
 > напрямую попадает в тот PR.
 
-> 📦 **Не хотите компилировать? [Готовые hex — в Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — 16 популярных плат с вшитым конфигом плюс генерик-образы под каждый массовый MCU (F405/F411/F446, F722/F745, G473, серия H7, AT32F435). Прошивка через Configurator → *Load Firmware [Local]*.
+> 📦 **Не хотите компилировать? [Готовые hex — в Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — актуальная матрица ARM-плат собирается с вшитым конфигом, плюс есть генерик-образы под массовые MCU (F405/F411/F446, F722/F745, G474, серия H7, AT32F435). Прошивка через Configurator → *Load Firmware [Local]*.
 
 ---
 
@@ -114,9 +114,23 @@
 
 ## Готовые прошивки (без компиляции)
 
-Каждый релиз на [**странице Releases**](https://github.com/danusha2345/ADRC-betaflight/releases) содержит готовые `.hex`, собранные CI из этого репозитория (со всеми правками):
-- **16 сборок под конкретные платы** (конфиг вшит): DAKEFPV F405, BETAFPV G473 V2/V3, CrazyBee F405, Matek F405TE / F722SE, SpeedyBee F405 V3/V4 / F7 V3, Kakute H7, Mamba F722, GEPRC F722, iFlight Blitz F722, T-Motor F7, Foxeer F722 V4, AxisFlying F7 Pro.
-- **Генерик-образы по MCU** для всего остального — берите hex под процессор вашей платы (`STM32F7X2` для любой F722-платы, `STM32F405`, `STM32H743`, `AT32F435M/G`, …), прошивайте и соглашайтесь на *Apply custom defaults*, когда конфигуратор предложит (та же схема, что у официальных релизов Betaflight).
+Последний тестовый релиз на [**странице Releases**](https://github.com/danusha2345/ADRC-betaflight/releases) содержит готовые `.hex`, собранные CI из точного исходного тега:
+
+- **Сборки под актуальную поддерживаемую матрицу ARM-плат** с вшитым конфигом каждой платы.
+- **Генерик-образы по MCU** для всего остального — берите hex под процессор вашей платы (`STM32F722` для любой F722-платы, `STM32F405`, `STM32G474`, `STM32H743`, `AT32F435M/G`, …), прошивайте и соглашайтесь на *Apply custom defaults*, когда конфигуратор предложит (та же схема, что у официальных релизов Betaflight).
+
+> **b10 — крупный переход базы на Betaflight 2026.12-alpha.** PID-профили
+> намеренно сбрасываются: сохранённые структуры upstream и b9 несовместимы.
+> Старые строки `serial ...` теперь только для чтения: восстанавливайте прежний
+> `diff all` выборочно, затем проверьте per-feature UART-настройки и выбранный
+> вами motor protocol. Релизный Configurator 2026.6.1 появился до firmware API
+> 1.49: используйте актуальный development Configurator (с PR
+> betaflight/betaflight-configurator#5420,
+> betaflight/betaflight-configurator#5451 и
+> betaflight/betaflight-configurator#5452) либо CLI. В API 1.49
+> вкладка Ports намеренно read-only,
+> назначение UART перенесено на вкладку каждой функции. Перед прошивкой
+> прочитайте [release notes b10](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10).
 
 Прошивка: Configurator → Firmware Flasher → *Load Firmware [Local]* → *Flash Firmware* (при первой прошивке — full chip erase). Нужна ваша плата в списке вшитых? Напишите в [issue](https://github.com/danusha2345/ADRC-betaflight/issues).
 

@@ -28,7 +28,7 @@ This repository implements **Active Disturbance Rejection Control (ADRC)** on Be
 > its releases stay the easiest way to fly ADRC today; everything validated here feeds
 > straight into that PR.
 
-> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — 16 popular boards baked-in plus generic images for every mainstream MCU (F405/F411/F446, F722/F745, G473, H7 series, AT32F435). Flash via Configurator → *Load Firmware [Local]*.
+> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — the current ARM board-config matrix is built with the config baked in, plus generic images for mainstream MCUs (F405/F411/F446, F722/F745, G474, H7 series, AT32F435). Flash via Configurator → *Load Firmware [Local]*.
 
 ---
 
@@ -118,9 +118,21 @@ On a 5" (2300 kV, 4S) the round-2 sweet spot came out at **60 / 100 / 200**: cri
 
 ## Prebuilt firmware (no compiling)
 
-Every release on the [**Releases page**](https://github.com/danusha2345/ADRC-betaflight/releases) ships ready-to-flash `.hex` files built by CI from this repo (all fixes included):
-- **16 board-specific builds** (config baked in): DAKEFPV F405, BETAFPV G473 V2/V3, CrazyBee F405, Matek F405TE / F722SE, SpeedyBee F405 V3/V4 / F7 V3, Kakute H7, Mamba F722, GEPRC F722, iFlight Blitz F722, T-Motor F7, Foxeer F722 V4, AxisFlying F7 Pro.
-- **Generic per-MCU images** for everything else — pick the hex matching your board's MCU (`STM32F7X2` for any F722 board, `STM32F405`, `STM32H743`, `AT32F435M/G`, …), flash it, and accept *Apply custom defaults* when the Configurator offers it (same scheme official Betaflight releases use).
+The latest tester release on the [**Releases page**](https://github.com/danusha2345/ADRC-betaflight/releases) ships ready-to-flash `.hex` files built by CI from its exact source tag:
+
+- **Board-specific builds across the current supported ARM config matrix**, with each board's config baked in.
+- **Generic per-MCU images** for everything else — pick the hex matching your board's MCU (`STM32F722` for any F722 board, `STM32F405`, `STM32G474`, `STM32H743`, `AT32F435M/G`, …), flash it, and accept *Apply custom defaults* when the Configurator offers it (same scheme official Betaflight releases use).
+
+> **b10 is a major base upgrade to Betaflight 2026.12-alpha.** PID profiles reset
+> intentionally because the stored upstream and b9 layouts are incompatible. Also,
+> legacy `serial ...` lines are now read-only: restore an old `diff all` selectively,
+> then verify each per-feature UART setting and your chosen motor protocol. Released
+> Configurator 2026.6.1 predates firmware API 1.49; use a current development
+> Configurator (with betaflight/betaflight-configurator#5420,
+> betaflight/betaflight-configurator#5451 and
+> betaflight/betaflight-configurator#5452) or the CLI. On API 1.49 the
+> Ports tab is intentionally read-only and assignments live on each feature's own tab.
+> [Read the b10 release notes](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10) before flashing.
 
 Flash via Configurator → Firmware Flasher → *Load Firmware [Local]* → *Flash Firmware* (full chip erase on the first flash). Want a board added to the baked-in list? Ask in an [issue](https://github.com/danusha2345/ADRC-betaflight/issues).
 
