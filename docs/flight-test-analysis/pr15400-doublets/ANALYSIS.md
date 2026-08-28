@@ -256,6 +256,33 @@ punches (one also reaching the debug clip). Not a controlled A/B against the
 2026-07-14 b4 flights (different punch mix), but the phenomenon clearly
 persists on both tunes.
 
+### Offline z3 schedule-frame replay (`z3_schedule_replay.py`)
+
+Twenty of those 22 events contain a logged schedule release of at least 20%
+(16 p1 + all 4 p2). Freezing the final pre-chop pitch `z3` sample and applying
+only the logged multiplier move (median `3.00→1.00`) gives this state-frame
+comparison in PID-output units:
+
+| policy at the schedule move | median absolute correction change | maximum |
+|---|---:|---:|
+| current: keep absolute `z3` | 65.81 | 106.60 |
+| rescale `z3 *= scale_new/scale_old` | 0.00 | 0.00 |
+| reset `z3 = 0` | 34.25 | 55.00 |
+
+This establishes one narrow result: proportional rescaling is the unique
+bumpless mapping of the stored I-equivalent correction
+`-z3/(b0·scale)` among these three policies. Resetting is not bumpless and
+throws away the learned disturbance state; keeping absolute `z3` produces the
+largest immediate frame change in this corpus. Two of 20 event windows contain
+the legacy z3 telemetry clip.
+
+It does **not** establish that rescaling would reduce the measured gyro rebound.
+This is an algebraic state-frame replay, not a counterfactual closed-loop or
+motor/airframe replay: the logs are decimated, lack the exact alternative
+applied motor command, and cannot evolve a physically different trajectory.
+The candidate is strengthened enough for a host characterization test, not
+enough to change firmware or call ADRC-025 fixed.
+
 ## jmsweng's power-loop "sticking" (z3 rail episodes)
 
 In his converted-stock log, **2.74 % of samples have z3-pitch at the ±524k

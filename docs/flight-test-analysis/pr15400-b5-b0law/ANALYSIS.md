@@ -62,14 +62,14 @@
    identification windows) — but no more FIXED flights should be requested
    on this craft.
 
-**Practical read**: on current loop code, LINEAR is the best compromise
-(near-best accuracy, lowest ring short of quadratic, mid rebound); SQRT
-becomes the right law *if* giving the 26 Hz mode margin works — wc/wo
-shaping is the testable path, the fork's `adrc-dterm-lpf` z2-LPF is a
-separate untested candidate (its effect on stability margin is itself
-unverified). QUADRATIC buys its quiet hover by over-scaling b0 ~×2 at
-35–45 % collective, which the identification and the rebound numbers both
-bill.
+**Dataset-specific practical read**: LINEAR is the compromise candidate in
+this corpus (near-best accuracy, lowest ring short of quadratic, mid rebound),
+while SQRT is the better pooled gain fit and could benefit if the 26 Hz mode
+gets more margin. That tradeoff is input to the tester/maintainer discussion,
+not a production-law decision made by this analysis. QUADRATIC buys its quiet
+hover by over-scaling b0 ~×2 at 35–45 % collective, which the identification
+and the rebound numbers both bill. The fork's `adrc-dterm-lpf` z2-LPF remains
+a separate untested candidate whose stability-margin effect is unverified.
 
 ## Data & provenance
 

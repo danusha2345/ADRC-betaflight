@@ -47,7 +47,9 @@ Current decisions from the PR discussion:
 - keep a separate ADRC gyro tap at design/discussion stage; do not switch the
   controller before simultaneous current/candidate-tap logging exists;
 - keep voltage compensation reduced to the early-pack/late-pack fitter
-  discriminator; no firmware feature is justified by the present corpus.
+  discriminator. The 2026-08-28 fail-closed split of the included chirp log
+  produced no axis with two acceptable segment fits, so the present corpus
+  still justifies no firmware feature.
 
 ## ADRC-029 `z3` scale
 

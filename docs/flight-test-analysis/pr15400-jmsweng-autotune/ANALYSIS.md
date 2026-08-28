@@ -1,6 +1,6 @@
 # ADRC plant fitter/autotune audit
 
-Date: 2026-08-22, refreshed 2026-08-24. Source release comment:
+Date: 2026-08-22, refreshed 2026-08-28. Source release comment:
 [PR #15400 comment 5376183361](https://github.com/betaflight/betaflight/pull/15400#issuecomment-5376183361).
 The initial public audit is
 [comment 5380715005](https://github.com/betaflight/betaflight/pull/15400#issuecomment-5380715005).
@@ -94,11 +94,53 @@ The least ambiguous future tool output would show the paired `wo` beside every
 `wc/wo/b0` triple. This is a tool-output recommendation, not a request for more
 flight testing.
 
+## Fail-closed fork implementation (2026-08-28)
+
+The review changes are implemented on the fork at
+[`e696c08591`](https://github.com/danusha2345/ADRC-betaflight/commit/e696c085912b8764a24a7d5260ead208fda7a4a4),
+branch `codex/adrc-fitter-hardening`, directly on top of the audited
+`be205277` source. This is a reviewable tool branch, not a claim that the
+changes have been accepted by @jmsweng.
+
+The branch adds:
+
+- raw-BBL decoding only through a clean `blackbox-tools@f832acf9cd` checkout,
+  with input/decoder SHA-256 and the exact command written to a sidecar;
+- direct use of future `adrcPidSum[0..2] / adrc_pid_sum_scale`, or an explicit
+  Blackbox Explorer `axisSum[0..2]` contract; `P+I+D+F` reconstruction is
+  rejected;
+- a per-axis `FINAL TUNE CHECK` that suppresses a recommendation for weak
+  excitation, no measured -3 dB point, out-of-band crossover, unbounded or
+  band-limited `wc`, insufficient phase margin, resonant peaking, unresolved
+  actuator/second pole, or independent-method `b0` disagreement beyond fit
+  error;
+- diagnostic ceilings printed as paired `wc/wo`, and the exact final
+  `wc/wo/b0` triple checked separately;
+- pinned Python requirements, seven unit tests, and `fit_pack_segments()` for
+  the early/late-pack discriminator.
+
+The clean original notebook replay still reproduces the same central `b0` and
+`wc` ceiling values. The output now labels all three final example triples
+`BLOCKED`: all axes lack a sustained measured -3 dB point and have a resonant,
+unresolved model; roll/pitch miss 45 degrees at the entered `wc`, yaw is also
+outside the identified band, and pitch/yaw have independent-method `b0`
+disagreement beyond their fit errors. The numeric ceilings remain diagnostics,
+not issued tunes.
+
+The early/late split of the included Air65 chirp log used 5–35% and 65–95% of
+the flight (median pack voltage about 3.56→3.47 V). No axis had two passing
+segment fits: roll was unresolved in both halves, pitch only passed late, and
+yaw only passed early. Therefore this corpus does **not** settle whether fitted
+`b0` tracks voltage. The discriminator now fails closed; a firmware voltage
+feature remains unsupported.
+
 ## Status
 
 - Example execution: **reproducible** at the pinned commit.
 - `b0` recovery on the supplied Air65 wobble log: **closely reproduced with a
   stated derived-input limitation**.
 - Independent `wo` recommendation: **not implemented**.
-- Automatic/fail-closed tune recommendation: **not established**; warnings and
-  input provenance must travel with the numeric tables.
+- Automatic/fail-closed tune recommendation: **implemented and tested on the
+  fork tool branch, not yet merged into the author's source**.
+- Early/late voltage discriminator: **inconclusive on the available exact-input
+  example; no voltage-compensation firmware change justified**.

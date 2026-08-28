@@ -238,10 +238,11 @@ choice interacts with ADRC-024**: the 26 Hz hover ring flares under SQRT
 (29–41 % of hover-band windows vs 0–2 % QUADRATIC, 2–7 % LINEAR under the
 b5 script's stricter gate; 41–58 / 3–12 / 8–15 % under the original
 `ring_sensitivity.py` criterion — same ranking) — the accuracy-optimal law
-removes the over-scaling that was suppressing the ring. Production read:
-LINEAR is the compromise on current loop code; SQRT is right *if* the
-margin hypothesis holds (see ADRC-024). Remaining: the decisive margin
-experiment (the wc/wo 2×2 on SQRT, see ADRC-024); FIXED must not be re-flown on this craft.
+removes the over-scaling that was suppressing the ring. Candidate tradeoff:
+LINEAR was closer to SQRT's gain fit while avoiding that craft's strongest
+ring association; SQRT was the better pooled gain fit. This evidence does not
+select the production law for the group, and the remaining choice is explicitly
+for testers/maintainers to discuss. FIXED must not be re-flown on this craft.
 
 **Bench cross-check (2026-08-03)**: @jmsweng measured static thrust vs
 throttle on an Air65 over a kitchen scale (PR comment 5161126252). Analysis in
@@ -262,7 +263,7 @@ scale cannot see; and the vendor grid's own slope scatters 1.44× over
 result remains one craft at one parameter set — a demonstrated hazard there,
 not a general verdict on exposing a selector.
 
-**Plant fitter status (2026-08-22/24).** @jmsweng published the analysis code
+**Plant fitter status (2026-08-22/28).** @jmsweng published the analysis code
 and an Air65 chirp CSV at commit `be20527781ebb4bd4586bdba2299ad954130dd7c`.
 The pinned example and a later Air65 wobble-log sensitivity replay are audited
 in
@@ -271,11 +272,17 @@ The included example executes reproducibly and no longer emits the earlier
 unsafe yaw `wc=271–281` result. It still reports unresolved model/band warnings,
 large yaw method disagreement and no sustained measured -3 dB point. The tool
 does not estimate `wo`: its `wc_max` sweep holds the supplied `wo/wc` ratio
-fixed. It also requires a Blackbox Explorer-style `axisSum` column, so a pinned
-BBL/export input contract remains open. This is a useful diagnostic fitter,
-not yet a fail-closed automatic tuner. The planned early-pack/late-pack b0
-discriminator remains an offline analysis question, not a supported firmware
-feature.
+fixed. Fork branch `codex/adrc-fitter-hardening` at
+[`e696c08591`](https://github.com/danusha2345/ADRC-betaflight/commit/e696c085912b8764a24a7d5260ead208fda7a4a4)
+now implements the review changes: pinned raw-BBL decoding, direct future
+`adrcPidSum[]`/explicit Explorer `axisSum[]` provenance, rejection of
+`P+I+D+F` reconstruction, paired `wc/wo`, explicit final-triple validation and
+fail-closed suppression on weak/model-extrapolated results. The original
+example therefore reports all three axes `BLOCKED`, while preserving the
+diagnostic numbers. This is a fork proposal, not yet an accepted @jmsweng
+revision. Its early/late split found no axis with two acceptable segment fits,
+so the available exact-input corpus does not establish voltage-tracking `b0`;
+no compensation feature is supported.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
@@ -925,6 +932,18 @@ rebounds — SQRT median 51 / max 114 (n=10), LINEAR 58 / 111 (n=17),
 QUADRATIC 71 / 145 (n=11) deg/s — direction consistent with less
 high-collective over-scaling leaving a smaller stored observer error at the
 chop, not yet conclusive at these n.
+
+**2026-08-28 offline state-frame replay**
+([`z3_schedule_replay.py`](flight-test-analysis/pr15400-doublets/z3_schedule_replay.py)):
+20/22 saved punch→chops have a logged schedule drop of at least 20% (median
+`3.00→1.00`). Freezing the last pre-chop pitch z3, current absolute-z3 carry
+changes its I-equivalent correction by median 65.81 / max 106.60 PID units;
+reset-to-zero changes it by 34.25 / 55.00; proportional
+`z3 *= scale_new/scale_old` is exactly bumpless by construction. This validates
+the coordinate mapping, not the physical counterfactual: Blackbox decimation
+and the missing alternative applied motor/motion trajectory mean the replay
+cannot show that gyro rebound would fall. Keep it as a host-test candidate; no
+firmware patch or ADRC-025 closure follows from this result alone.
 
 **2026-07-25 FIXED/LINEAR pair (data:
 [`pr15400-jm-fixedlinear/`](flight-test-analysis/pr15400-jm-fixedlinear/))**:
