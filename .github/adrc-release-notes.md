@@ -34,10 +34,13 @@ profile and explicitly select `pid_type = ADRC` where intended.
 
 Do not paste an old dump blindly. Upstream replaced the writable `serial ...`
 bitmask with per-feature UART settings; the old `serial ...` command is now a
-read-only synthesized view. Apply the board's custom defaults, then verify the
-Ports tab and the relevant `*_uart`/`*_baud` settings (at least receiver, MSP,
-Blackbox, VTX and GPS where used). Keep and verify the motor protocol you chose;
-b10 does not require DShot.
+read-only synthesized view. Released Configurator 2026.6.1 predates firmware
+API 1.49; use a current development Configurator containing configurator PRs
+#5420/#5451/#5452, or use the CLI. On API 1.49 the Ports tab is deliberately
+read-only and UART assignments live on each feature's own tab. Apply the board's
+custom defaults, then verify the relevant `*_uart`/`*_baud` settings (at least
+receiver, MSP, Blackbox, VTX and GPS where used). Keep and verify the motor
+protocol you chose; b10 does not require DShot.
 
 Other upstream-visible changes include removal of Integrated Yaw, the new
 autopilot/Position Hold/GPS Rescue stack, and generic target renames
@@ -50,7 +53,8 @@ repository layout.
 - `make EXTRA_FLAGS=-Werror checks` and the complete `make
   EXTRA_FLAGS=-Werror test-all` suite pass on the integrated tree.
 - Clean local builds pass for generic `STM32F411`, `MAMBAF722_I2C`, and
-  `BETAFPVG473_V2`; the release CI builds the full target/config matrix.
+  `BETAFPVG473_V2`; the release CI builds the supported ARM target/config
+  matrix and reports configs requiring other platform SDKs separately.
 - Generic F411 is close to full: `FLASH1` is 97.09% (about 14 KiB free).
   Generic F446, which still excludes ADRC, is at 99.62% (about 1.8 KiB free).
   Generic F722 is at 97.75% AXIM flash and 96.48% ITCM (576 bytes free in

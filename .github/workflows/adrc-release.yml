@@ -51,7 +51,7 @@ jobs:
         run: git submodule update --init -- src/config
 
       - name: Cache toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: tools
           key: ${{ runner.os }}-tools-v2-${{ hashFiles('mk/tools.mk', 'src/platform/*/mk/*.mk') }}
@@ -66,14 +66,14 @@ jobs:
         run: make ${{ matrix.target }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: hex-${{ matrix.target }}
           path: obj/*.hex
 
-  # Board-specific builds (config baked in) for EVERY board in the Betaflight config
-  # repo (~600 targets), sharded across parallel jobs. A board that fails to build is
-  # listed in the job summary but does not fail the release.
+  # Board-specific builds (config baked in) for the ARM/hex subset of the Betaflight config
+  # repo (~600 targets), sharded across parallel jobs. A board that fails to build is listed
+  # in the job summary but does not fail the release.
   build-boards:
     name: Boards shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
@@ -94,7 +94,7 @@ jobs:
         run: git submodule update --init -- src/config
 
       - name: Cache toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: tools
           key: ${{ runner.os }}-tools-v2-${{ hashFiles('mk/tools.mk', 'src/platform/*/mk/*.mk') }}
@@ -118,7 +118,8 @@ jobs:
           failed=()
           skipped=()
           for t in "${targets[@]}"; do
-            # Only the ARM SDK is installed here; skip configs needing another toolchain.
+            # Only the ARM/hex release path is installed here; skip configs needing another
+            # platform SDK or output format.
             config_h=$(find src/config/configs -mindepth 2 -maxdepth 3 -type f -path "*/$t/config.h" -print -quit)
             mcu=$(grep -oP 'FC_TARGET_MCU\s+\K\w+' "$config_h" | tr -d '\r' || true)
             case "$mcu" in
@@ -142,7 +143,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: hex-boards-${{ matrix.shard }}
           path: obj/*.hex
@@ -159,7 +160,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: hex
           merge-multiple: true
