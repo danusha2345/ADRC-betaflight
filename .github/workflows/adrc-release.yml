@@ -72,8 +72,8 @@ jobs:
           path: obj/*.hex
 
   # Board-specific builds (config baked in) for the ARM/hex subset of the Betaflight config
-  # repo (~600 targets), sharded across parallel jobs. A board that fails to build is listed
-  # in the job summary but does not fail the release.
+  # repo (~600 targets), sharded across parallel jobs. Explicit non-ARM/output-format skips are
+  # reported; any attempted board build failure stops the release.
   build-boards:
     name: Boards shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
@@ -141,6 +141,9 @@ jobs:
             if [ ${#failed[@]} -gt 0 ]; then printf -- '- FAILED: %s\n' "${failed[@]}"; fi
             if [ ${#skipped[@]} -gt 0 ]; then printf -- '- skipped (non-ARM toolchain): %s\n' "${skipped[@]}"; fi
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ ${#failed[@]} -gt 0 ]; then
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
@@ -171,11 +174,17 @@ jobs:
           TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           ls -la hex/
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "ADRC firmware $TAG — prebuilt hex" \
+              --prerelease \
+              --notes-file .github/adrc-release-notes.md
+          else
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
               --title "ADRC firmware $TAG — prebuilt hex" \
               --prerelease \
               --notes-file .github/adrc-release-notes.md
+          fi
           # Upload one file at a time with throttling: blasting ~600 assets at once
           # trips GitHub's secondary rate limit. Skip assets already uploaded so a
           # re-run of this job resumes instead of starting over.
