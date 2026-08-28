@@ -53,8 +53,10 @@ repository layout.
   `BETAFPVG473_V2`; the release CI builds the full target/config matrix.
 - Generic F411 is close to full: `FLASH1` is 97.09% (about 14 KiB free).
   Generic F446, which still excludes ADRC, is at 99.62% (about 1.8 KiB free).
-  A later upstream addition or a larger board config can overflow either one
-  and must be treated as a build failure, not ignored.
+  Generic F722 is at 97.75% AXIM flash and 96.48% ITCM (576 bytes free in
+  ITCM); `MAMBAF722_I2C` has 512 bytes of ITCM free. A later upstream addition
+  or a larger board config can overflow these regions and must be treated as a
+  build failure, not ignored.
 - ADRC-028's mechanism and a universal production b0 law/default remain open.
   The F411 8 kHz real-hardware DWT timing measurement is also still pending.
 - This merged 2026.12-alpha base has not yet been validated by a new hardware
