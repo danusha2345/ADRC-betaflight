@@ -429,6 +429,94 @@ typedef struct blackboxMainState_s {
 #endif
 } blackboxMainState_t;
 
+#ifdef USE_ADRC
+static void writeAdrcIntraframeFields(blackboxMainState_t *state)
+{
+    blackboxWriteSignedVBArray(state->adrcPidSum, XYZ_AXIS_COUNT);
+    blackboxWriteUnsignedVB(state->adrcCommandedCollective);
+    blackboxWriteUnsignedVB(state->adrcAppliedCollective);
+    blackboxWriteUnsignedVB(state->adrcState);
+    blackboxWriteUnsignedVB(state->adrcGateResetCount);
+}
+
+static void writeAdrcInterframeFields(blackboxMainState_t *current, const blackboxMainState_t *previous)
+{
+    int32_t deltas[XYZ_AXIS_COUNT];
+    arraySubInt32(deltas, current->adrcPidSum, previous->adrcPidSum, XYZ_AXIS_COUNT);
+    blackboxWriteSignedVBArray(deltas, XYZ_AXIS_COUNT);
+    blackboxWriteSignedVB((int32_t)current->adrcCommandedCollective - previous->adrcCommandedCollective);
+    blackboxWriteSignedVB((int32_t)current->adrcAppliedCollective - previous->adrcAppliedCollective);
+    blackboxWriteSignedVB((int32_t)current->adrcState - previous->adrcState);
+    blackboxWriteSignedVB((int32_t)(current->adrcGateResetCount - previous->adrcGateResetCount));
+}
+
+#ifdef UNIT_TEST
+static const blackboxDeltaFieldDefinition_t *blackboxGetAdrcFieldDefinitionForTestPosition(int position)
+{
+    for (unsigned i = 0; i < ARRAYLEN(blackboxMainFields); i++) {
+        if (blackboxMainFields[i].condition == CONDITION(ADRC_DEBUG) && position-- == 0) {
+            return &blackboxMainFields[i];
+        }
+    }
+    return NULL;
+}
+
+int blackboxGetAdrcFieldCountForTest(void)
+{
+    int count = 0;
+    for (unsigned i = 0; i < ARRAYLEN(blackboxMainFields); i++) {
+        if (blackboxMainFields[i].condition == CONDITION(ADRC_DEBUG)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+bool blackboxGetAdrcFieldDefinitionForTest(int position, blackboxAdrcFieldDefinitionTest_t *result)
+{
+    const blackboxDeltaFieldDefinition_t *field = blackboxGetAdrcFieldDefinitionForTestPosition(position);
+    if (!field || !result) {
+        return false;
+    }
+    *result = (blackboxAdrcFieldDefinitionTest_t) {
+        .name = field->name,
+        .fieldNameIndex = field->fieldNameIndex,
+        .isSigned = field->isSigned,
+        .Ipredict = field->Ipredict,
+        .Iencode = field->Iencode,
+        .Ppredict = field->Ppredict,
+        .Pencode = field->Pencode,
+    };
+    return true;
+}
+
+static void blackboxCopyAdrcTestState(blackboxMainState_t *destination, const blackboxAdrcTestState_t *source)
+{
+    memcpy(destination->adrcPidSum, source->pidSum, sizeof(destination->adrcPidSum));
+    destination->adrcCommandedCollective = source->commandedCollective;
+    destination->adrcAppliedCollective = source->appliedCollective;
+    destination->adrcState = source->state;
+    destination->adrcGateResetCount = source->gateResetCount;
+}
+
+void blackboxWriteAdrcIntraframeForTest(const blackboxAdrcTestState_t *state)
+{
+    blackboxMainState_t mainState = {0};
+    blackboxCopyAdrcTestState(&mainState, state);
+    writeAdrcIntraframeFields(&mainState);
+}
+
+void blackboxWriteAdrcInterframeForTest(const blackboxAdrcTestState_t *current, const blackboxAdrcTestState_t *previous)
+{
+    blackboxMainState_t currentMainState = {0};
+    blackboxMainState_t previousMainState = {0};
+    blackboxCopyAdrcTestState(&currentMainState, current);
+    blackboxCopyAdrcTestState(&previousMainState, previous);
+    writeAdrcInterframeFields(&currentMainState, &previousMainState);
+}
+#endif
+#endif
+
 typedef struct blackboxGpsState_s {
     gpsLocation_t GPS_home;
     gpsLocation_t GPS_coord;
@@ -654,6 +742,13 @@ static bool testBlackboxConditionUncached(flightLogFieldCondition_e condition)
     }
 }
 
+#if defined(USE_ADRC) && defined(UNIT_TEST)
+bool blackboxAdrcDebugConditionForTest(void)
+{
+    return testBlackboxConditionUncached(CONDITION(ADRC_DEBUG));
+}
+#endif
+
 static void blackboxBuildConditionCache(void)
 {
     blackboxConditionCache = 0;
@@ -747,11 +842,7 @@ static void writeIntraframe(void)
 
 #ifdef USE_ADRC
     if (testBlackboxCondition(CONDITION(ADRC_DEBUG))) {
-        blackboxWriteSignedVBArray(blackboxCurrent->adrcPidSum, XYZ_AXIS_COUNT);
-        blackboxWriteUnsignedVB(blackboxCurrent->adrcCommandedCollective);
-        blackboxWriteUnsignedVB(blackboxCurrent->adrcAppliedCollective);
-        blackboxWriteUnsignedVB(blackboxCurrent->adrcState);
-        blackboxWriteUnsignedVB(blackboxCurrent->adrcGateResetCount);
+        writeAdrcIntraframeFields(blackboxCurrent);
     }
 #endif
 
@@ -949,12 +1040,7 @@ static void writeInterframe(void)
 
 #ifdef USE_ADRC
     if (testBlackboxCondition(CONDITION(ADRC_DEBUG))) {
-        arraySubInt32(deltas, blackboxCurrent->adrcPidSum, blackboxLast->adrcPidSum, XYZ_AXIS_COUNT);
-        blackboxWriteSignedVBArray(deltas, XYZ_AXIS_COUNT);
-        blackboxWriteSignedVB((int32_t)blackboxCurrent->adrcCommandedCollective - blackboxLast->adrcCommandedCollective);
-        blackboxWriteSignedVB((int32_t)blackboxCurrent->adrcAppliedCollective - blackboxLast->adrcAppliedCollective);
-        blackboxWriteSignedVB((int32_t)blackboxCurrent->adrcState - blackboxLast->adrcState);
-        blackboxWriteSignedVB((int32_t)(blackboxCurrent->adrcGateResetCount - blackboxLast->adrcGateResetCount));
+        writeAdrcInterframeFields(blackboxCurrent, blackboxLast);
     }
 #endif
 
