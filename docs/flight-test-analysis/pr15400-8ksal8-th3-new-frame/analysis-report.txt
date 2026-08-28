@@ -1,0 +1,59 @@
+=== 2s ===
+firmware=Betaflight 2026.6.0-alpha (919116fed) STM32F7X2
+board=BEFH BETAFPVF722 craft=THIII+ Freestyle
+tune wc=110,110,47 wo=150,150,150 b0=4912,2947,1965 law=1
+config hover=50 gyro_lpf=200 motor_limit=100 motor_output=48,2047 dshot_bidir=1 rpm_harmonics=0 motor_kv=1960
+frames=266980 duration_s=264.978295 median_dt_us=992.0
+raw_mode_counts=0:1, 1:266979 feature_airmode=False
+invalid_rx_rows=1
+gate_first_open_s=3.304137 gate_closures=0
+R tracking_med_p90=7.0/24.0 sum_abs_max=191 sum_limit_hits=0 preterminal20ms_sum_abs_max=191 preterminal20ms_limit_hits=0
+P tracking_med_p90=10.0/28.0 sum_abs_max=256 sum_limit_hits=0 preterminal20ms_sum_abs_max=256 preterminal20ms_limit_hits=0
+Y tracking_med_p90=14.0/36.0 sum_abs_max=188 sum_limit_hits=0 preterminal20ms_sum_abs_max=188 preterminal20ms_limit_hits=0
+terminal_limit_event=False frames=0 span_ms=0.000
+motor_upper_rail=1011/266980 share_pct=0.3787 rail_throttle_min_median_max=789/985/1000
+z3_R_rail=1035/266980 share_pct=0.3877
+z3_P_rail=46/266980 share_pct=0.0172
+z3_Y_rail=0/266980 share_pct=0.0000
+neutral_windows=53 neutral_20_100hz_residual_rms_max_RPY=1.0992/1.6167/1.1516 max=1.6167
+vbat_start_min_median_end=8.58/6.69/7.38/7.14
+
+=== 3s ===
+firmware=Betaflight 2026.6.0-alpha (919116fed) STM32F7X2
+board=BEFH BETAFPVF722 craft=THIII+ Freestyle
+tune wc=110,110,47 wo=150,150,150 b0=6560,3936,2624 law=1
+config hover=36 gyro_lpf=200 motor_limit=100 motor_output=48,2047 dshot_bidir=1 rpm_harmonics=0 motor_kv=1960
+frames=287464 duration_s=285.400194 median_dt_us=993.0
+raw_mode_counts=0:10, 1:287454 feature_airmode=False
+invalid_rx_rows=1
+gate_first_open_s=2.301306 gate_closures=0
+R tracking_med_p90=9.0/27.0 sum_abs_max=3642 sum_limit_hits=12 preterminal20ms_sum_abs_max=197 preterminal20ms_limit_hits=0
+P tracking_med_p90=11.0/27.0 sum_abs_max=2980 sum_limit_hits=10 preterminal20ms_sum_abs_max=324 preterminal20ms_limit_hits=0
+Y tracking_med_p90=15.0/38.0 sum_abs_max=1469 sum_limit_hits=6 preterminal20ms_sum_abs_max=184 preterminal20ms_limit_hits=0
+terminal_limit_event=True frames=12 span_ms=11.915
+motor_upper_rail=1264/287464 share_pct=0.4397 rail_throttle_min_median_max=813/1000/1000
+z3_R_rail=1494/287464 share_pct=0.5197
+z3_P_rail=752/287464 share_pct=0.2616
+z3_Y_rail=5/287464 share_pct=0.0017
+neutral_windows=85 neutral_20_100hz_residual_rms_max_RPY=3.2792/1.9757/1.8552 max=3.2792
+vbat_start_min_median_end=12.29/7.98/10.94/7.98
+
+=== 4s ===
+firmware=Betaflight 2026.6.0-alpha (919116fed) STM32F7X2
+board=BEFH BETAFPVF722 craft=THIII+ Freestyle
+tune wc=110,110,47 wo=150,150,150 b0=7832,4699,3133 law=1
+config hover=32 gyro_lpf=200 motor_limit=85 motor_output=48,1747 dshot_bidir=1 rpm_harmonics=0 motor_kv=1960
+frames=312022 duration_s=309.815601 median_dt_us=993.0
+raw_mode_counts=0:1, 1:312021 feature_airmode=False
+invalid_rx_rows=1
+gate_first_open_s=3.057016 gate_closures=0
+R tracking_med_p90=10.0/29.0 sum_abs_max=135 sum_limit_hits=0 preterminal20ms_sum_abs_max=135 preterminal20ms_limit_hits=0
+P tracking_med_p90=11.0/28.0 sum_abs_max=304 sum_limit_hits=0 preterminal20ms_sum_abs_max=304 preterminal20ms_limit_hits=0
+Y tracking_med_p90=16.0/41.0 sum_abs_max=165 sum_limit_hits=0 preterminal20ms_sum_abs_max=165 preterminal20ms_limit_hits=0
+terminal_limit_event=False frames=0 span_ms=0.000
+motor_upper_rail=601/312022 share_pct=0.1926 rail_throttle_min_median_max=926/1000/1000
+z3_R_rail=1622/312022 share_pct=0.5198
+z3_P_rail=430/312022 share_pct=0.1378
+z3_Y_rail=0/312022 share_pct=0.0000
+neutral_windows=69 neutral_20_100hz_residual_rms_max_RPY=2.3435/4.9821/1.7776 max=4.9821
+vbat_start_min_median_end=17.05/12.37/14.88/13.79

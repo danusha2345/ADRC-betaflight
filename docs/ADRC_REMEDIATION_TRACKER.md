@@ -6,6 +6,17 @@ Maintained by @danusha2345; the full internal runbook (bench logs, local build
 matrices, per-craft configs) is kept out of the PR tree — this is the complete
 list of findings, their status, and what remains open.
 
+**Evidence sync: 2026-08-28.** The public evidence tree is current through the
+repeated Air65/Petrel yaw sweeps, the pinned `jmsweng` fitter audit, the Air65
+equal-`wo` working points, the new-frame TH3 flights and the restrained Mamba
+`wo` campaign. Fork release `adrc-pr15400-b7` is withdrawn by b8; b9 is the
+latest published tester build. The post-b9 `adrc-blackbox-dterm` branch contains
+the first ADRC-029 implementation; current-PR-head port
+`adrc-pr-head-observability` at `aa93b5e680` adds the exact ADRC fields below.
+Neither branch has been released as b10. ADRC remains
+experimental and behind a hard tester gate; none of the working tunes below is
+a universal default.
+
 All remediation SHAs in the table below are reachable from the current PR head
 on `bvandevliet:adrc-toggle`. The review baseline was the previous, pre-rebase
 head `a138a5dd19`; the remediation series landed with the force-push to
@@ -251,6 +262,21 @@ scale cannot see; and the vendor grid's own slope scatters 1.44× over
 result remains one craft at one parameter set — a demonstrated hazard there,
 not a general verdict on exposing a selector.
 
+**Plant fitter status (2026-08-22/24).** @jmsweng published the analysis code
+and an Air65 chirp CSV at commit `be20527781ebb4bd4586bdba2299ad954130dd7c`.
+The pinned example and a later Air65 wobble-log sensitivity replay are audited
+in
+[`pr15400-jmsweng-autotune/`](flight-test-analysis/pr15400-jmsweng-autotune/).
+The included example executes reproducibly and no longer emits the earlier
+unsafe yaw `wc=271–281` result. It still reports unresolved model/band warnings,
+large yaw method disagreement and no sustained measured -3 dB point. The tool
+does not estimate `wo`: its `wc_max` sweep holds the supplied `wo/wc` ratio
+fixed. It also requires a Blackbox Explorer-style `axisSum` column, so a pinned
+BBL/export input contract remains open. This is a useful diagnostic fitter,
+not yet a fail-closed automatic tuner. The planned early-pack/late-pack b0
+discriminator remains an offline analysis question, not a supported firmware
+feature.
+
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
 
 Explicit criterion going forward: defaults (`wc/wo/b0`, gate thresholds,
@@ -259,10 +285,12 @@ quad — `pid_type = ADRC` must be a credible, safe drop-in, like classic PID's
 stock tune. The current `60/100/2000` package is a *flight-validated starting
 point* (two crafts), not a final default.
 
-Status: OPEN — blocked on ADRC-021 and multi-craft evidence (≥3 typical 5″,
-same maneuver set; accept: no narrowband limit cycle, low saturation,
-acceptable overshoot/settling, no punch/chop rebound; pick from the lower,
-calm part of the common stable region).
+Status: OPEN — blocked on an ADRC-021 production law selection/fix, unresolved
+arm-time growth (ADRC-028), and multi-craft evidence (≥3 typical 5″, same
+maneuver set; accept: no narrowband limit cycle, low saturation, acceptable
+overshoot/settling, no punch/chop rebound; pick from the lower, calm part of the
+common stable region). The current hard tester gate is intentional; no softer
+replacement default is selected from the existing corpus.
 
 ### ADRC-023 — Decouple P:D (and I:filter) ratio via damping-ratio parameters (raised by @bvandevliet)
 
@@ -494,6 +522,51 @@ much heavier wind (gusts to 23 mph) shows 4 narrow lines / 264 windows at
 nothing self-sustained; raising wc to 125 did not open a margin problem
 on this craft.
 
+**Repeated yaw `wo` corpus and order tracking (2026-08-21/22).** The second
+Air65/Petrel set provides two flights per cell (28 logs total):
+[`pr15400-8ksal8-yaw-repeats/`](flight-test-analysis/pr15400-8ksal8-yaw-repeats/).
+Under the pre-specified 30–80 Hz descriptor, same-`wc` pairs at `wc=50/60`
+move their band argmax downward when `wo` is reduced on both craft. Petrel's
+integrated band shape moves in the same direction; Air65's weak peaks are
+window/time sensitive and its centroid does not follow `wo`. Motor-phase
+regression over four motors and orders 1–6 finds no detectable phase lock
+(best-of-24 median R² `0.0089%`, maximum `0.0332%`; synthetic recovery about
+66–67%). This removes a detected orders-1–6 explanation from the current
+corpus without proving an observer mode. Large Petrel `80/80` whole-log
+amplitude falls to low single-digit RMS in command-neutral segments and is
+manoeuvre/excitation-associated rather than continuously self-sustaining.
+
+**Air65 equal-`wo` working points (2026-08-23/24).** Three Acro logs at
+roll/pitch `wc=84`, common `wo=140`, and yaw `wc=38/40/42` run for 72–126 s
+with a weak ~55–57 Hz yaw descriptor and no ADRC-028-like fast arm-time growth:
+[`pr15400-8ksal8-equal-wo/`](flight-test-analysis/pr15400-8ksal8-equal-wo/).
+This supports a craft-specific working heuristic, not a measured universal
+boundary at yaw `wc = 0.5 ×` roll/pitch `wc`: there is one flight per successful
+cell, no immediately higher cell in the archive, and pack state differs.
+
+**TH3 new-frame 2S/3S/4S working points (2026-08-24).** After moving the
+existing TH3 hardware to a new 2.5-inch frame, @8ksal8 retuned it to common
+`wc=110/110/47`, `wo=150`, and pack-specific `b0`; the pilot calls this the
+best-flying variant by feel so far. One 265–310 s Acro flight per pack is
+present:
+[`pr15400-8ksal8-th3-new-frame/`](flight-test-analysis/pr15400-8ksal8-th3-new-frame/).
+Tracking medians are `7/10/14`, `9/11/15` and `10/11/16 deg/s` on 2S/3S/4S;
+maximum command-neutral 20–100 Hz residual RMS is `1.62/3.28/4.98 deg/s`.
+Upper-motor-rail shares are `0.379/0.440/0.193%`, concentrated at high
+commanded throttle. A 12-frame, 11.915 ms multi-axis transient at the very end
+of 3S is impact/contact-like; excluding the final 20 ms leaves no controller-
+sum limit hits, and the public comment does not annotate the physical event.
+These are clean craft-specific working points consistent with the pilot report,
+not repeatability evidence, a controlled old-frame A/B or a general `wo=150`
+margin.
+
+Current ADRC-024 status: OPEN. Option-E attribution work is complete for the
+published `wo` sweeps and motor orders 1–6, with a mixed/negative result. The
+data justify documenting the verified signal path and filter delay, but do not
+identify the loop element that sets the observed frequency and do not establish
+a universal `wc/wo` rule. The resulting Option-A signal-path and logging guide
+is [`ADRC_FILTERS_AND_OBSERVABILITY.md`](ADRC_FILTERS_AND_OBSERVABILITY.md).
+
 ### ADRC-026 — Ground-constrained excitation can false-open the liftoff gate and drive zero-throttle z3 windup/runaway (from the 2×2 flights)
 
 At wo = 150 (SQRT, b0 = 2000, wc 45 or 60) the craft oscillates at
@@ -553,7 +626,7 @@ commanded, and the gate was reading it. Credit: the mis-attribution was
 caught in adversarial review of the first b6 draft, whose tests had sidestepped
 the direct branch by raising the threshold out of its way.
 
-Status: MITIGATION WRITTEN, UNFLOWN (b6). The defect is that the liftoff
+Historical b6 status (2026-08-04): MITIGATION WRITTEN, UNFLOWN. The defect is that the liftoff
 detector's throttle test reads a collective that includes thrust nobody
 commanded, so any tune whose ground behaviour makes the mixer add headroom
 can arm-and-runaway without the pilot ever raising throttle. The b5 code
@@ -657,10 +730,17 @@ built from the unpatched tree, the spread being two independent setups whose
 absolute sizes also differ by ~70 B, so treat ~+200 B as the figure and the
 exact count as environment-dependent. That is the limit of what replay can
 establish — once the fix changes controller output the recorded gyro trajectory
-is no longer a valid input, so closed-loop physical stability is **not**
-covered. Still required before this is called closed: a bench that reproduces
-the ground oscillation, then a limited props-on arm on the 2×2's oscillation
-profile, then the patched/unpatched A/B.
+is no longer a valid input.
+
+**Current status (2026-08-28): IMPLEMENTED AND FLOWN AS PART OF b8/b9, but not
+isolated by a controlled patched/unpatched physical A/B.** The exact old direct
+branch now reads commanded rather than mixer-raised collective by construction.
+Later fork builds also added and corrected the applied-collective hold path and
+broadened the closed-gate z3-growth inhibit. b9 logs on several craft exercise
+the resulting state machine. They do not close the wider safety question:
+gate-closed P/D-dominated arm-time growth remains under ADRC-028. No additional
+flight matrix is prescribed here; further physical testing is chosen by the
+testers.
 
 Safety guidance until then is unchanged: treat "motors audibly oscillating at
 idle after arming" as an immediate disarm, and do not fly high-wo profiles.
@@ -1028,8 +1108,11 @@ against `wc 60`, ratio 1.67, the best of those tested). Raising `wo` to 150 in
 the 2×2 produced ground failures of its own. So this is a tuning question worth
 asking, not a leading explanation of ADRC-028.
 
-Status: **OPEN, observed once.** One arm on one craft is not a reproduction, and
-the word "reproducible" was wrongly used in the first published version.
+Status: **OPEN.** The original arm was a single event, but the later independent
+b9 report and restrained Mamba `wo` sweep add related cross-craft evidence.
+They do not prove one common mechanism. Production protection/automatic
+derating work is explicitly deferred as of 2026-08-28; the active work item is
+instrumentation that can separate the existing paths without changing control.
 
 **No prop-on hand-triggered reproduction is requested.** 87 ms to the command
 limit and 127 ms to the motor rail are both faster than human reaction, and an
@@ -1137,10 +1220,31 @@ via `blackbox_decode --unit-flags raw`: **every "Airmode switch" arm of both
 corpora contains a mid-arm BOXAIRMODE-active phase**, so the earlier whole-arm
 "feature off" medians were two-regime mixtures (ADRC airmode-off phases sit at
 5.20, near the CLASSIC floor; a correction note now heads the first corpus's
-ANALYSIS.md). Requested next: a yaw wo sweep; on our side: an order-tracking
-pass over the existing logs. Pavo20 companion campaign (tracking metrics, two
+ANALYSIS.md). The requested yaw-`wo` sweep and the order-tracking pass were
+completed later under ADRC-024/Option E. Pavo20 companion campaign (tracking metrics, two
 GPS rescues, the "wobble" log):
 [`pr15400-8ksal8-pavo20/`](flight-test-analysis/pr15400-8ksal8-pavo20/).
+
+**b9 independent report and restrained same-craft sweep (2026-08-23).** The PR
+author reported an almost-immediate props-on `wo=150` arm-time flyaway on b9,
+zero stick and gate-closed conditions. A separate restrained MAMBAF722 campaign
+then changed only `wo` on all axes, using a test-only automatic cutoff before
+the next motor update:
+[`pr15400-mamba-wo-bounded/`](flight-test-analysis/pr15400-mamba-wo-bounded/).
+Across 17 bounded arms, `wo=100` gave six deadline-like quiet endings;
+`wo=125` gave four large but sub-threshold yaw commands; `wo=137` was mixed;
+and all four `wo=150` arms ended cutoff-like after short saved windows, with
+zero setpoint and the gate marker closed. The endpoint was yaw-D dominated.
+
+This is cross-craft evidence that high `wo` can be associated with
+zero-command arm-time controller growth on b9 even while the gate is closed.
+It is not proof that the PR-author event, ADRC-028 and the Mamba onset share one
+mechanism: hardware, filters and timing differ, the initial gyro excitation is
+not separated, and the guard intentionally prevents a physical flyaway. The
+same-craft dose response supports the hard tester gate; it does not define a
+universal safe `wo` or a 125–137 threshold. The Air65 equal-`wo=140` flight
+points above are a direct reminder that `wc`, `wo`, `b0`, filtering and craft
+dynamics interact.
 
 ### ADRC-029 — The `z3` debug field clips in ordinary flight on high-`wo` tunes
 
@@ -1163,6 +1267,19 @@ This is a good flight, not a failure: the tester reports it flying as well as or
 better than the stock PID tune. That is the point — the clipping is not a symptom
 of anything going wrong, it is the field being too narrow for the tune.
 
+The later Air65 post-fit Acro log (`wc=47/47/28`, common `wo=140`) repeats the
+instrumentation limitation: saved-frame rail shares are 6.61% roll, 2.51%
+pitch and 0.72% yaw. It is a 168.5 s flight, so this is again censored logging,
+not by itself a failure classification; see
+[`pr15400-8ksal8-equal-wo/`](flight-test-analysis/pr15400-8ksal8-equal-wo/).
+
+The three new-frame TH3 Acro flights add smaller instances. Saved-frame rail
+shares on 2S/3S/4S are roll `0.3877/0.5197/0.5198%`, pitch
+`0.0172/0.2616/0.1378%`, and yaw `0/0.0017/0%`. Outside the separately noted
+terminal 3S group, no raw controller sum reaches its configured limit. This
+again separates censored telemetry from a control saturation; see
+[`pr15400-8ksal8-th3-new-frame/`](flight-test-analysis/pr15400-8ksal8-th3-new-frame/).
+
 Consequences while it stands: every `z3` figure quoted from such a log is bounded
 above by the field rather than by the estimator, peak-based comparisons between
 tunes are invalid once either side clips, and any offline model fitting that uses
@@ -1170,8 +1287,10 @@ tunes are invalid once either side clips, and any offline model fitting that use
 [PR #15400](https://github.com/betaflight/betaflight/pull/15400) alongside a
 commitment to widen the scaling on the fork side.
 
-Status: **FIXED on `adrc-blackbox-dterm`** (commit `b82a9e16bd`, 2026-08-11),
-ships with the next fork build (b10). The divisor is now profile-derived: the
+Status: **FIXED on `adrc-blackbox-dterm`** (commit `b82a9e16bd`, 2026-08-11)
+and ported onto current PR head `6317fe2a` on branch
+`adrc-pr-head-observability` (commit `aa93b5e680`, 2026-08-28); neither branch
+is a published b10 build. The divisor is now profile-derived: the
 smallest integer whose int16 endpoint covers the controller's own worst-case
 anti-windup bound — `pidsum_limit · b0 · adrc_b0_scale_max`, per axis — in
 every float32 evaluation the runtime can produce (the exact bound and the ceil
@@ -1186,8 +1305,9 @@ plotter `adrc_log_plot.py` reads the key per contained log block (a `.bbl`
 mixing legacy and new logs cannot shift the mapping; `--selftest` covers the
 four mixed cases); the corpus-specific scripts under `pr15400-*` keep their
 fixed 16, correct for the b8/b9 logs they are pinned to.
-Do not confuse this with `ADRC_DEBUG_LIMIT`, which is the separate clamp on what
-the estimator itself may reach.
+Do not confuse the anti-windup bound with `ADRC_DEBUG_LIMIT`: the latter is the
+signed-int16 telemetry clamp. The estimator's internal `z3` bound is the
+profile-dependent anti-windup limit described above.
 
 ## Closed after publication
 
@@ -1233,32 +1353,29 @@ count up to — wrapping to 0 still differs from the stored 15 and therefore
 still forces the profile reset. Every b5 flash over b2–b4 or over the PR head
 resets PID profiles too.
 
-## How to help test
+## Current tester-build and evidence status
 
-Flight-test reports from experienced pilots are welcome, especially on typical
-5″ freestyle builds. Use
-[`adrc-pr15400-b5`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b5)
-(PR head `eda3bb16eb` plus the fork-side `adrc_b0_law` A/B selector) for
-anything touching the b0 throttle law, or
-[`adrc-pr15400-b4`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b4)
-(PR head `79f8b6041d`) when continuing an earlier comparison series — and keep
-the tune unchanged within any one comparison run. Note both flashes reset the
-PID profiles (see the PG lineage under ADRC-020 above): `diff all` first.
+[`adrc-pr15400-b9`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b9)
+(`919116fed`) is the latest published fork tester build. b7 was withdrawn by b8
+after its hold-timer duty-cycle defect; do not treat b7 as current. The
+post-b9 `adrc-blackbox-dterm` branch at `b82a9e16bd` contains the ADRC-029
+logging fix but is not a published b10 release. The clean port and expanded
+observability contract live separately on current PR head as
+`adrc-pr-head-observability` at `aa93b5e680`; it is also not a tester release.
 
-> **Ground-safety warning before you raise `adrc_wo` (ADRC-026).** Under
-> airmode the mixer raises collective to fit the axis mix, and on b5 and
-> earlier the liftoff gate reads that raised value — so a craft that
-> oscillates on the ground can meet `adrc_liftoff_throttle` without the pilot
-> touching the stick. At `wo = 150` the craft oscillated at ~28.5 Hz on the
-> ground at idle and opened the gate **on the ground at 0 % stick throttle**
-> within 0.1–0.4 s of arming, after which z3 wound up and the motors ran to
-> saturation — an uncommanded thrust runaway with the pilot's throttle still
-> down. (Re-decoding in 2026-08 attributes those opens to that throttle test,
-> not to the gyro-only path this warning first blamed; b6 changes which
-> collective the gate reads, but is unflown.) Treat
-> "motors audibly oscillating at idle right after arming" as an immediate
-> disarm, arm props-off first when trying a higher `wo`, and do not fly
-> high-`wo` profiles until ADRC-026 is fixed.
+ADRC remains experimental and opt-in. The current evidence supports a hard
+tester gate rather than a replacement universal default. Reports should carry
+the exact firmware tag/commit, craft/target, `diff all`, flight mode, prop and
+battery context, and the raw Blackbox artifact. The pilot/tester decides what
+additional flying is appropriate; this tracker records evidence and safety
+boundaries rather than prescribing a new flight matrix.
+
+> **Ground-safety warning before raising `adrc_wo` (ADRC-026/028).** Multiple
+> craft have produced zero-command ground growth at high observer bandwidth,
+> through both gate-open z3 windup and gate-closed P/D-dominated paths. There
+> is no universal safe `wo` or simple `wo/wc` threshold in the corpus. Do not
+> use an unrestrained props-on ground arm as a reproduction method. An audible
+> idle oscillation or uncommanded spool-up is an immediate stop condition.
 
 > **Reading your own logs — mode flags are mislabeled by the current
 > Blackbox Explorer release.** Firmware 2026.6.0 added the AUTOPILOT box,
@@ -1268,16 +1385,10 @@ PID profiles (see the PG lineage under ADRC-020 above): `diff all` first.
 > "AIRMODE" is really your BLACKBOX switch, and "3D" is really AIRMODE.
 > Details in `pr15400-8ksal8-hoteltune/ANALYSIS.md`.
 
-The b4 regression re-flight happened on 2026-07-14 (verdicts recorded in
-ADRC-018/019/024/025 above). The immediate priority is now the **ADRC-021
-system-identification protocol**: repeated identical roll/pitch doublets in
-collective bins around 25/35/50/65 %, unchanged tune, `debug_mode = ADRC` —
-plus, as separate checks, controlled punch→chops and hover passes at
-10–30 % throttle. Please attach or link
-the Blackbox log in [PR #15400](https://github.com/betaflight/betaflight/pull/15400)
-with the craft/target, exact firmware tag, `diff all`, flight mode, prop and
-battery setup, and timestamps for the relevant manoeuvres. ADRC remains
-experimental and opt-in; use conservative conditions and leave safety margin.
+> **Reading mode flags.** Firmware stores `rcModeActivationMask` in the legacy
+> Blackbox field named `flightModeFlags`. Current decoders/viewers can attach
+> stale enum labels. Use `blackbox_decode --unit-flags raw` and the firmware's
+> matching `boxId_e` before asserting Angle/Airmode state from a label.
 
 ## External acceptance criteria still pending
 
@@ -1287,5 +1398,13 @@ experimental and opt-in; use conservative conditions and leave safety margin.
   in ADRC-018/019 (always-on over-gain and d7 modulation gone; episodic ring
   → ADRC-024, punch rebound → ADRC-025; the zero-throttle drop report is
   consistent with the logs — flight mode itself is not log-verifiable).
-- ADRC-021 doublet flight (now the primary pending flight evidence).
+- ~~ADRC-021 doublet flight~~ — **completed and independently repeated on a
+  second craft**; the corpus rejects the shipped quadratic law but does not yet
+  select the production replacement. Fitter/input hardening remains open.
+- ADRC-028 mechanism remains open; no universal default is accepted from the
+  current high-`wo` corpus. Production protection/automatic derating is
+  deliberately deferred and is not part of the observability patch.
+- One new-format Blackbox log is eventually needed to validate the on-hardware
+  `adrc_z3_log_scale` and exact observability fields; this is not a prescribed
+  flight programme.
 - F411 8 kHz DWT cycle benchmark on real hardware (ADRC-012).
