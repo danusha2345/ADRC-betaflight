@@ -1593,16 +1593,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
             const float adrcIterm = pidData[axis].I;
             pidData[axis].I = 0.0f;
             adrcClearDisturbanceEstimate(&pidRuntime.adrc, axis);
-#ifdef USE_INTEGRATED_YAW_CONTROL
-            if (axis == FD_YAW && pidRuntime.useIntegratedYaw) {
-                const float integratedYawRelaxFactor = 1.0f
-                    - pidRuntime.integratedYawRelax / 100000.0f * pidRuntime.dT / 0.000125f;
-                pidData[axis].Sum -= adrcIterm * pidRuntime.dT * 100.0f * integratedYawRelaxFactor;
-            } else
-#endif
-            {
-                pidData[axis].Sum -= adrcIterm;
-            }
+            pidData[axis].Sum -= adrcIterm;
 
             const float adrcSumLimit = (axis == FD_YAW) ? pidProfile->pidSumLimitYaw : pidProfile->pidSumLimit;
             adrcSetAppliedOutput(&pidRuntime.adrc, axis, constrainf(pidData[axis].Sum, -adrcSumLimit, adrcSumLimit));

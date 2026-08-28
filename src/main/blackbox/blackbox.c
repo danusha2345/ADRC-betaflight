@@ -121,6 +121,11 @@ STATIC_ASSERT((sizeof(blackboxConfig()->fields_disabled_mask) * 8) >= FLIGHT_LOG
 
 #define BLACKBOX_SHUTDOWN_TIMEOUT_MILLIS 200
 
+#ifdef USE_ADRC
+#define ADRC_PID_SUM_LOG_SCALE 10
+#define ADRC_COLLECTIVE_LOG_SCALE 1000
+#endif
+
 // Some macros to make writing FLIGHT_LOG_FIELD_* constants shorter:
 
 #define PREDICT(x) CONCAT(FLIGHT_LOG_FIELD_PREDICTOR_, x)
@@ -216,6 +221,17 @@ static const blackboxDeltaFieldDefinition_t blackboxMainFields[] = {
     {"axisS",       0, SIGNED,   .Ipredict = PREDICT(0),       .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS),      .Pencode = ENCODING(SIGNED_VB), CONDITION(NONZERO_WING_S_0)},
     {"axisS",       1, SIGNED,   .Ipredict = PREDICT(0),       .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS),      .Pencode = ENCODING(SIGNED_VB), CONDITION(NONZERO_WING_S_1)},
     {"axisS",       2, SIGNED,   .Ipredict = PREDICT(0),       .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS),      .Pencode = ENCODING(SIGNED_VB), CONDITION(NONZERO_WING_S_2)},
+#endif
+#ifdef USE_ADRC
+    // ADRC observability is opt-in with debug_mode=ADRC. adrcPidSum is the controller's final
+    // pidData[].Sum sampled directly (x10), not a reconstruction from separately rounded fields.
+    {"adrcPidSum",              0, SIGNED,   .Ipredict = PREDICT(0), .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
+    {"adrcPidSum",              1, SIGNED,   .Ipredict = PREDICT(0), .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
+    {"adrcPidSum",              2, SIGNED,   .Ipredict = PREDICT(0), .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
+    {"adrcCommandedCollective",-1, UNSIGNED, .Ipredict = PREDICT(0), .Iencode = ENCODING(UNSIGNED_VB), .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
+    {"adrcAppliedCollective",  -1, UNSIGNED, .Ipredict = PREDICT(0), .Iencode = ENCODING(UNSIGNED_VB), .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
+    {"adrcState",              -1, UNSIGNED, .Ipredict = PREDICT(0), .Iencode = ENCODING(UNSIGNED_VB), .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
+    {"adrcGateResetCount",     -1, UNSIGNED, .Ipredict = PREDICT(0), .Iencode = ENCODING(UNSIGNED_VB), .Ppredict = PREDICT(PREVIOUS), .Pencode = ENCODING(SIGNED_VB), CONDITION(ADRC_DEBUG)},
 #endif
     /* rcCommands are encoded together as a group in P-frames: */
     {"rcCommand",   0, SIGNED,   .Ipredict = PREDICT(0),       .Iencode = ENCODING(SIGNED_VB),   .Ppredict = PREDICT(PREVIOUS),      .Pencode = ENCODING(TAG8_4S16), CONDITION(RC_COMMANDS)},
@@ -370,6 +386,14 @@ typedef struct blackboxMainState_s {
     int32_t axisPID_D[XYZ_AXIS_COUNT];
     int32_t axisPID_F[XYZ_AXIS_COUNT];
     int32_t axisPID_S[XYZ_AXIS_COUNT];
+
+#ifdef USE_ADRC
+    int32_t adrcPidSum[XYZ_AXIS_COUNT];
+    uint16_t adrcCommandedCollective;
+    uint16_t adrcAppliedCollective;
+    uint8_t adrcState;
+    uint32_t adrcGateResetCount;
+#endif
 
     int16_t rcCommand[4];
     int16_t setpoint[4];
@@ -615,6 +639,13 @@ static bool testBlackboxConditionUncached(flightLogFieldCondition_e condition)
     case CONDITION(DEBUG_LOG):
         return (debugMode != DEBUG_NONE) && isFieldEnabled(FIELD_SELECT(DEBUG_LOG));
 
+#ifdef USE_ADRC
+    case CONDITION(ADRC_DEBUG):
+        return currentPidProfile->pid_type == PID_TYPE_ADRC
+            && debugMode == DEBUG_ADRC
+            && isFieldEnabled(FIELD_SELECT(DEBUG_LOG));
+#endif
+
     case CONDITION(NEVER):
         return false;
 
@@ -713,6 +744,16 @@ static void writeIntraframe(void)
         }
 #endif
     }
+
+#ifdef USE_ADRC
+    if (testBlackboxCondition(CONDITION(ADRC_DEBUG))) {
+        blackboxWriteSignedVBArray(blackboxCurrent->adrcPidSum, XYZ_AXIS_COUNT);
+        blackboxWriteUnsignedVB(blackboxCurrent->adrcCommandedCollective);
+        blackboxWriteUnsignedVB(blackboxCurrent->adrcAppliedCollective);
+        blackboxWriteUnsignedVB(blackboxCurrent->adrcState);
+        blackboxWriteUnsignedVB(blackboxCurrent->adrcGateResetCount);
+    }
+#endif
 
     if (testBlackboxCondition(CONDITION(RC_COMMANDS))) {
         // Write roll, pitch and yaw first:
@@ -905,6 +946,17 @@ static void writeInterframe(void)
         }
 #endif
     }
+
+#ifdef USE_ADRC
+    if (testBlackboxCondition(CONDITION(ADRC_DEBUG))) {
+        arraySubInt32(deltas, blackboxCurrent->adrcPidSum, blackboxLast->adrcPidSum, XYZ_AXIS_COUNT);
+        blackboxWriteSignedVBArray(deltas, XYZ_AXIS_COUNT);
+        blackboxWriteSignedVB((int32_t)blackboxCurrent->adrcCommandedCollective - blackboxLast->adrcCommandedCollective);
+        blackboxWriteSignedVB((int32_t)blackboxCurrent->adrcAppliedCollective - blackboxLast->adrcAppliedCollective);
+        blackboxWriteSignedVB((int32_t)blackboxCurrent->adrcState - blackboxLast->adrcState);
+        blackboxWriteSignedVB((int32_t)(blackboxCurrent->adrcGateResetCount - blackboxLast->adrcGateResetCount));
+    }
+#endif
 
     /*
      * RC tends to stay the same or fairly small for many frames at a time, so use an encoding that
@@ -1312,6 +1364,19 @@ static void loadMainState(timeUs_t currentTimeUs)
         blackboxCurrent->magADC[i] = lrintf(mag.magADC.v[i]);
 #endif
     }
+#ifdef USE_ADRC
+    if (currentPidProfile->pid_type == PID_TYPE_ADRC && debugMode == DEBUG_ADRC) {
+        for (int i = 0; i < XYZ_AXIS_COUNT; i++) {
+            blackboxCurrent->adrcPidSum[i] = lrintf(pidData[i].Sum * ADRC_PID_SUM_LOG_SCALE);
+        }
+        blackboxCurrent->adrcCommandedCollective = lrintf(
+            pidRuntime.adrc.observedCommandedCollective * ADRC_COLLECTIVE_LOG_SCALE);
+        blackboxCurrent->adrcAppliedCollective = lrintf(
+            pidRuntime.adrc.observedAppliedCollective * ADRC_COLLECTIVE_LOG_SCALE);
+        blackboxCurrent->adrcState = adrcStateFlags(&pidRuntime.adrc);
+        blackboxCurrent->adrcGateResetCount = pidRuntime.adrc.gateResetCount;
+    }
+#endif
 #if defined(USE_ACC) // IMU quaternion
     {
         // write x,y,z of IMU quaternion. Make sure that w is always positive
@@ -1681,6 +1746,10 @@ static bool blackboxWriteSysinfo(void)
                                                                                     &currentPidProfile->adrc,
                                                                                     currentPidProfile->pidSumLimit,
                                                                                     currentPidProfile->pidSumLimitYaw));
+        BLACKBOX_PRINT_HEADER_LINE("adrc_pid_sum_scale", "%d",                  ADRC_PID_SUM_LOG_SCALE);
+        BLACKBOX_PRINT_HEADER_LINE("adrc_collective_scale", "%d",               ADRC_COLLECTIVE_LOG_SCALE);
+        BLACKBOX_PRINT_HEADER_LINE("adrc_state_schema", "%s",                    "liftoff=1,throttle_idle=2,z3_inhibited_rpy=4|8|16,gate_cause_mask=96,gate_cause_shift=5");
+        BLACKBOX_PRINT_HEADER_LINE("adrc_gate_cause_schema", "%s",               "none=0,commanded=1,gyro=2,applied=3");
 #endif
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF1_TYPE, "%d",        currentPidProfile->dterm_lpf1_type);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_DTERM_LPF1_STATIC_HZ, "%d",   currentPidProfile->dterm_lpf1_static_hz);

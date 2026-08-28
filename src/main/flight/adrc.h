@@ -112,6 +112,23 @@ typedef struct adrcProfile_s {
 
 #ifdef USE_ADRC
 
+typedef enum {
+    ADRC_LIFTOFF_CAUSE_NONE = 0,
+    ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE,
+    ADRC_LIFTOFF_CAUSE_GYRO,
+    ADRC_LIFTOFF_CAUSE_APPLIED_COLLECTIVE,
+} adrcLiftoffCause_e;
+
+typedef enum {
+    ADRC_STATE_LIFTOFF = 1 << 0,
+    ADRC_STATE_THROTTLE_AT_IDLE = 1 << 1,
+    ADRC_STATE_Z3_INHIBITED_ROLL = 1 << 2,
+    ADRC_STATE_Z3_INHIBITED_PITCH = 1 << 3,
+    ADRC_STATE_Z3_INHIBITED_YAW = 1 << 4,
+    ADRC_STATE_LIFTOFF_CAUSE_SHIFT = 5,
+    ADRC_STATE_LIFTOFF_CAUSE_MASK = 3 << ADRC_STATE_LIFTOFF_CAUSE_SHIFT,
+} adrcStateFlag_e;
+
 // Precomputed per-axis coefficients derived from adrcProfile_t at profile-load time, so the hot
 // loop doesn't redo wc*wc, 3*wo, wo*wo*wo etc every iteration.
 typedef struct adrcCoefficient_s {
@@ -166,6 +183,14 @@ typedef struct adrcRuntime_s {
     float z3LogScale;       // divisor for the z3 blackbox debug fields, derived from the profile so
                              // the int16 field spans the controller's own z3 anti-windup bound
                              // (ADRC-029); mirrored into the blackbox header as adrc_z3_log_scale
+    float observedCommandedCollective; // finite/clamped gate input consumed this PID iteration;
+                                       // cached before mixTable() publishes the next iteration's value
+    float observedAppliedCollective;   // finite/clamped b0-schedule input consumed this PID iteration
+    uint32_t gateResetCount; // increments on every adrcResetGate() call; deltas expose reset epochs
+                              // even when Blackbox decimation skips the exact PID iteration
+    uint8_t liftoffCause;    // adrcLiftoffCause_e branch that most recently opened the gate
+    uint8_t z3GrowthInhibitMask; // axis bits set only when this iteration actually suppresses the
+                                 // observer-error half of a z3 update, not merely when eligible
 } adrcRuntime_t;
 
 // P/I/D fields are repurposed purely for blackbox/mixer compatibility; they do not carry their
@@ -190,6 +215,9 @@ uint32_t adrcZ3LogScale(const adrcProfile_t *adrcProfile, uint16_t pidSumLimit, 
 // ADRC profile and the pidSum limits. adrcInitConfig() alone leaves the legacy divisor in place.
 void adrcInitZ3LogScale(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adrcProfile,
     uint16_t pidSumLimit, uint16_t pidSumLimitYaw);
+
+// Compact Blackbox state for the same PID iteration as the cached collective inputs above.
+uint8_t adrcStateFlags(const adrcRuntime_t *adrcRuntime);
 
 // Resets ESO/output state for one axis; call on iterm reset and whenever PID control is
 // re-enabled (e.g. on arming) to prevent violent jumps from stale observer state.

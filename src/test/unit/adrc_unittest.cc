@@ -76,6 +76,7 @@ protected:
 
     void SetUp() override
     {
+        runtime = {};
         simulatedThrottle = 0.0f;
         simulatedCommandedThrottle = 0.0f;
         resetGyro();
@@ -884,6 +885,87 @@ TEST_F(AdrcUnittest, Z3LogScaleReachesTheRuntimeThroughItsOwnInit)
 
     adrcInitZ3LogScale(&runtime, &profile, 500, 400);
     EXPECT_FLOAT_EQ(92.0f, runtime.z3LogScale);
+}
+
+TEST_F(AdrcUnittest, ObservabilityCachesTheCollectivesConsumedThisIteration)
+{
+    simulatedThrottle = 0.35f;
+    simulatedCommandedThrottle = 0.10f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+
+    EXPECT_FLOAT_EQ(0.35f, runtime.observedAppliedCollective);
+    EXPECT_FLOAT_EQ(0.10f, runtime.observedCommandedCollective);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_NONE, runtime.liftoffCause);
+    EXPECT_EQ(ADRC_STATE_THROTTLE_AT_IDLE, adrcStateFlags(&runtime));
+}
+
+TEST_F(AdrcUnittest, ObservabilityMarksOnlyAxesWhoseZ3GrowthWasActuallyInhibited)
+{
+    simulatedThrottle = simulatedCommandedThrottle = 0.0f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+
+    adrcApplyControl(&runtime, FD_ROLL, 120.0f, 0.0f, TEST_DT, 500.0f);
+    adrcApplyControl(&runtime, FD_PITCH, 0.0f, 0.0f, TEST_DT, 500.0f);
+
+    EXPECT_EQ(1u << FD_ROLL, runtime.z3GrowthInhibitMask);
+    EXPECT_EQ(ADRC_STATE_THROTTLE_AT_IDLE | ADRC_STATE_Z3_INHIBITED_ROLL,
+        adrcStateFlags(&runtime));
+
+    // ADRC-026b keys the inhibit on the closed gate, not on the idle-stick flag. Preserve that
+    // distinction in the log: above the throttle floor but below liftoff, a suppressed z3 update
+    // must still be reported.
+    simulatedThrottle = simulatedCommandedThrottle = 0.25f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    ASSERT_FALSE(runtime.throttleAtIdle);
+    ASSERT_FALSE(runtime.liftoff);
+    adrcApplyControl(&runtime, FD_YAW, 120.0f, 0.0f, TEST_DT, 500.0f);
+    EXPECT_EQ(1u << FD_YAW, runtime.z3GrowthInhibitMask);
+    EXPECT_EQ(ADRC_STATE_Z3_INHIBITED_YAW, adrcStateFlags(&runtime));
+
+    // The next PID iteration starts with a fresh per-axis event mask.
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    EXPECT_EQ(0u, runtime.z3GrowthInhibitMask);
+}
+
+TEST_F(AdrcUnittest, ObservabilityRecordsGateCauseAndResetEpoch)
+{
+    const uint32_t initialResetCount = runtime.gateResetCount;
+
+    simulatedThrottle = 0.60f;
+    simulatedCommandedThrottle = 0.50f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    ASSERT_TRUE(runtime.liftoff);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE, runtime.liftoffCause);
+    EXPECT_EQ(ADRC_STATE_LIFTOFF
+            | (ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE << ADRC_STATE_LIFTOFF_CAUSE_SHIFT),
+        adrcStateFlags(&runtime));
+
+    adrcResetGate(&runtime);
+    EXPECT_EQ(initialResetCount + 1, runtime.gateResetCount);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_NONE, runtime.liftoffCause);
+
+    simulatedThrottle = 0.10f;
+    simulatedCommandedThrottle = 0.25f;
+    gyro.gyroADCf[FD_ROLL] = 25.0f;
+    for (int i = 0; i < 4; i++) {
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    }
+    ASSERT_TRUE(runtime.liftoff);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_GYRO, runtime.liftoffCause);
+
+    adrcResetGate(&runtime);
+    resetGyro();
+    profile.liftoffThrottlePercent = 30;
+    simulatedThrottle = 0.32f;
+    simulatedCommandedThrottle = 0.20f;
+    for (int i = 0; i < 40; i++) {
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    }
+    ASSERT_TRUE(runtime.liftoff);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_APPLIED_COLLECTIVE, runtime.liftoffCause);
+    EXPECT_EQ(ADRC_STATE_LIFTOFF
+            | (ADRC_LIFTOFF_CAUSE_APPLIED_COLLECTIVE << ADRC_STATE_LIFTOFF_CAUSE_SHIFT),
+        adrcStateFlags(&runtime));
 }
 
 TEST_F(AdrcUnittest, InitConfigCapsCorruptUpperRangeValues)

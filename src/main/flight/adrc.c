@@ -443,6 +443,21 @@ void adrcInitZ3LogScale(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adrcPro
     adrcRuntime->z3LogScale = (float)adrcZ3LogScale(adrcProfile, pidSumLimit, pidSumLimitYaw);
 }
 
+uint8_t adrcStateFlags(const adrcRuntime_t *adrcRuntime)
+{
+    uint8_t flags = 0;
+    if (adrcRuntime->liftoff) {
+        flags |= ADRC_STATE_LIFTOFF;
+    }
+    if (adrcRuntime->throttleAtIdle) {
+        flags |= ADRC_STATE_THROTTLE_AT_IDLE;
+    }
+    flags |= (adrcRuntime->z3GrowthInhibitMask & 0x07u) << 2;
+    flags |= (adrcRuntime->liftoffCause << ADRC_STATE_LIFTOFF_CAUSE_SHIFT)
+        & ADRC_STATE_LIFTOFF_CAUSE_MASK;
+    return flags;
+}
+
 void adrcResetState(adrcRuntime_t *adrcRuntime, int axis)
 {
     const float gyroRate = gyro.gyroADCf[axis];
@@ -466,6 +481,9 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime)
     // control path reads the cached copy at all. Seed it to the grounded-and-idle assumption
     // anyway, so a reader added later cannot pair a closed gate with a stale "stick raised".
     adrcRuntime->throttleAtIdle = true;
+    adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_NONE;
+    adrcRuntime->z3GrowthInhibitMask = 0;
+    adrcRuntime->gateResetCount++;
 }
 
 void adrcResetAll(adrcRuntime_t *adrcRuntime)
@@ -530,6 +548,11 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     const float rawCommandedThrottle = mixerGetAdrcCommandedThrottle();
     const float commandedThrottle = adrcIsFinite(rawCommandedThrottle)
         ? constrainf(rawCommandedThrottle, 0.0f, 1.0f) : 0.0f;
+    // Blackbox runs after mixTable(), which has already published the NEXT iteration's collective.
+    // Cache the values actually consumed here so the log stays aligned with this PID iteration.
+    adrcRuntime->observedAppliedCollective = throttle;
+    adrcRuntime->observedCommandedCollective = commandedThrottle;
+    adrcRuntime->z3GrowthInhibitMask = 0;
     const float finiteDt = (adrcIsFinite(dT) && dT > 0.0f) ? dT : 0.0f;
 
     const float liftoffThrottle = adrcProfile->liftoffThrottlePercent * 0.01f;
@@ -546,10 +569,12 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     if (!adrcRuntime->liftoff) {
         if (commandedThrottle >= liftoffThrottle) {
             adrcRuntime->liftoff = true;
+            adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE;
         } else if (gyroPeak > liftoffGyroDps && !throttleAtIdle) {
             adrcRuntime->gyroActiveS += finiteDt;
             if (adrcRuntime->gyroActiveS >= liftoffHoldS) {
                 adrcRuntime->liftoff = true;
+                adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_GYRO;
             }
         } else {
             // Also clears the hold timer whenever throttle drops back below the floor, so time
@@ -588,6 +613,7 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
                 adrcRuntime->appliedActiveS += finiteDt;
                 if (adrcRuntime->appliedActiveS >= appliedHoldS) {
                     adrcRuntime->liftoff = true;
+                    adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_APPLIED_COLLECTIVE;
                 }
             } else {
                 adrcRuntime->appliedActiveS = 0.0f;
@@ -718,7 +744,11 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // about - an intact airborne estimate blinded by stick position - cannot happen now, because
     // the stick no longer takes part in the decision at all.
     const bool inhibitZ3Growth = !adrcRuntime->liftoff;
-    adrcRuntime->z3[axis] = (inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed)) ? z3Decayed : z3Updated;
+    const bool z3GrowthInhibited = inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed);
+    if (z3GrowthInhibited) {
+        adrcRuntime->z3GrowthInhibitMask |= 1u << axis;
+    }
+    adrcRuntime->z3[axis] = z3GrowthInhibited ? z3Decayed : z3Updated;
 
     if (!adrcIsFinite(adrcRuntime->z1[axis]) || !adrcIsFinite(adrcRuntime->z2[axis])
         || !adrcIsFinite(adrcRuntime->z3[axis])) {
