@@ -155,6 +155,9 @@
 
 // z3 is the lumped rate-plant disturbance [deg/s^3], so its numeric range is much larger than z1
 // [deg/s] or z2 [deg/s^2]. Scale it down to fit the int16 blackbox debug field (fix #12).
+// ADRC-029 replaces the fixed divisor with the smallest per-profile integer whose int16 endpoint
+// covers the controller's own z3 anti-windup bound. The divisor is written into every ADRC log;
+// logs without that header are b9 or earlier and retain the legacy /16 interpretation.
 #define ADRC_Z3_LOG_SCALE 16.0f
 #define ADRC_DEBUG_LIMIT 32767.0f
 
@@ -335,6 +338,58 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
 
     adrcRuntime->b0ThrottleScale = 1.0f;
     adrcRuntime->b0ScaleThrottle = 0.0f;
+    // Isolated-module callers do not know pidSum limits. Production overwrites this from
+    // pidInitConfig() through adrcInitZ3LogScale().
+    adrcRuntime->z3LogScale = ADRC_Z3_LOG_SCALE;
+}
+
+uint32_t adrcZ3LogScale(const adrcProfile_t *adrcProfile, uint16_t pidSumLimit, uint16_t pidSumLimitYaw)
+{
+    const uint32_t maxB0Scale = constrain(adrcProfile->b0ThrottleScaleMax, 1, (uint8_t)ADRC_B0_SCALE_MAX);
+    uint64_t worstZ3 = 0;
+
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        const uint32_t b0 = MAX((uint32_t)adrcProfile->b0[axis], (uint32_t)ADRC_B0_MIN);
+        const uint32_t sumLimit = (axis == FD_YAW) ? pidSumLimitYaw : pidSumLimit;
+        const uint64_t bound = (uint64_t)sumLimit * b0 * maxB0Scale;
+        worstZ3 = MAX(worstZ3, bound);
+    }
+
+    // The runtime clamp is float32. Cover both associations the compiler can produce as well as
+    // the exact integer product; using float32 for ceil itself can return a divisor one too small.
+    const uint64_t worstZ3RoundedOnce = (uint64_t)(float)worstZ3;
+    uint64_t clampCover = MAX(worstZ3, worstZ3RoundedOnce);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        const uint32_t b0 = MAX((uint32_t)adrcProfile->b0[axis], (uint32_t)ADRC_B0_MIN);
+        const uint32_t sumLimit = (axis == FD_YAW) ? pidSumLimitYaw : pidSumLimit;
+        const float roundedTwice = (float)(sumLimit * b0) * (float)maxB0Scale;
+        clampCover = MAX(clampCover, (uint64_t)roundedTwice);
+    }
+
+    const uint64_t debugLimit = (uint64_t)ADRC_DEBUG_LIMIT;
+    const uint64_t needed = (clampCover + debugLimit - 1) / debugLimit;
+    return (needed <= (uint64_t)ADRC_Z3_LOG_SCALE) ? (uint32_t)ADRC_Z3_LOG_SCALE : (uint32_t)needed;
+}
+
+void adrcInitZ3LogScale(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adrcProfile,
+    uint16_t pidSumLimit, uint16_t pidSumLimitYaw)
+{
+    adrcRuntime->z3LogScale = (float)adrcZ3LogScale(adrcProfile, pidSumLimit, pidSumLimitYaw);
+}
+
+uint8_t adrcStateFlags(const adrcRuntime_t *adrcRuntime)
+{
+    uint8_t flags = 0;
+    if (adrcRuntime->liftoff) {
+        flags |= ADRC_STATE_LIFTOFF;
+    }
+    if (adrcRuntime->throttleAtIdle) {
+        flags |= ADRC_STATE_THROTTLE_AT_IDLE;
+    }
+    flags |= (adrcRuntime->z3GrowthInhibitMask & 0x07u) << 2;
+    flags |= (adrcRuntime->liftoffCause << ADRC_STATE_LIFTOFF_CAUSE_SHIFT)
+        & ADRC_STATE_LIFTOFF_CAUSE_MASK;
+    return flags;
 }
 
 void adrcResetState(adrcRuntime_t *adrcRuntime, int axis)
@@ -358,6 +413,9 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime)
     // adrcUpdatePerLoopState() recomputes this before any control step reads it; seed it to the
     // grounded-and-idle assumption anyway so a closed gate never pairs with a stale "stick raised".
     adrcRuntime->throttleAtIdle = true;
+    adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_NONE;
+    adrcRuntime->z3GrowthInhibitMask = 0;
+    adrcRuntime->gateResetCount++;
 }
 
 void adrcResetAll(adrcRuntime_t *adrcRuntime)
@@ -422,6 +480,11 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     const float rawCommandedThrottle = mixerGetAdrcCommandedThrottle();
     const float commandedThrottle = adrcIsFinite(rawCommandedThrottle)
         ? constrainf(rawCommandedThrottle, 0.0f, 1.0f) : 0.0f;
+    // Blackbox runs after mixTable(), which has already published the NEXT iteration's collective.
+    // Cache the values actually consumed here so the log stays aligned with this PID iteration.
+    adrcRuntime->observedAppliedCollective = throttle;
+    adrcRuntime->observedCommandedCollective = commandedThrottle;
+    adrcRuntime->z3GrowthInhibitMask = 0;
     const float finiteDt = (adrcIsFinite(dT) && dT > 0.0f) ? dT : 0.0f;
 
     const float liftoffThrottle = adrcProfile->liftoffThrottlePercent * 0.01f;
@@ -437,10 +500,12 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     if (!adrcRuntime->liftoff) {
         if (commandedThrottle >= liftoffThrottle) {
             adrcRuntime->liftoff = true;
+            adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE;
         } else if (gyroPeak > liftoffGyroDps && !throttleAtIdle) {
             adrcRuntime->gyroActiveS += finiteDt;
             if (adrcRuntime->gyroActiveS >= liftoffHoldS) {
                 adrcRuntime->liftoff = true;
+                adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_GYRO;
             }
         } else {
             // Also clears the hold timer whenever throttle drops back below the floor, so time
@@ -534,7 +599,11 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // drives the runaway if the gate does open. Both conditions are required - see the comment on
     // ADRC_LIFTOFF_GYRO_THROTTLE_FRACTION for why idle alone would reintroduce ADRC-020.
     const bool inhibitZ3Growth = !adrcRuntime->liftoff && adrcRuntime->throttleAtIdle;
-    adrcRuntime->z3[axis] = (inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed)) ? z3Decayed : z3Updated;
+    const bool z3GrowthInhibited = inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed);
+    if (z3GrowthInhibited) {
+        adrcRuntime->z3GrowthInhibitMask |= 1u << axis;
+    }
+    adrcRuntime->z3[axis] = z3GrowthInhibited ? z3Decayed : z3Updated;
 
     if (!adrcIsFinite(adrcRuntime->z1[axis]) || !adrcIsFinite(adrcRuntime->z2[axis])
         || !adrcIsFinite(adrcRuntime->z3[axis])) {
@@ -591,20 +660,21 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // Log all three axes simultaneously (the ported source gates on gyro.gyroDebugAxis, one axis
     // only): roll z1/z2/z3 in [0..2], pitch z1/z2/z3 in [3..5], yaw z3 in [6], throttle-scaled b0
     // multiplier x100 sign-tagged by the liftoff latch (positive = airborne, negative = gated) in
-    // [7]. z3 is logged /ADRC_Z3_LOG_SCALE so the int16 field does not clip as easily. debug[] is
+    // [7]. z3 is divided by the profile-derived adrcRuntime->z3LogScale, written into the log
+    // header as adrc_z3_log_scale (ADRC-029). Logs without the header imply the legacy /16. debug[] is
     // int16_t and DEBUG_SET does not range-check, so an over-range value would otherwise WRAP into
     // garbage instead of reading as an honest off-scale rail (fix #12).
     if (axis == FD_ROLL) {
         DEBUG_SET(DEBUG_ADRC, 0, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
         DEBUG_SET(DEBUG_ADRC, 1, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(adrcRuntime->z3[axis] / ADRC_Z3_LOG_SCALE, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
     } else if (axis == FD_PITCH) {
         DEBUG_SET(DEBUG_ADRC, 3, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
         DEBUG_SET(DEBUG_ADRC, 4, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(adrcRuntime->z3[axis] / ADRC_Z3_LOG_SCALE, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
         DEBUG_SET(DEBUG_ADRC, 7, lrintf((adrcRuntime->liftoff ? 1.0f : -1.0f) * adrcRuntime->b0ThrottleScale * 100.0f));
     } else { // FD_YAW
-        DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(adrcRuntime->z3[axis] / ADRC_Z3_LOG_SCALE, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
     }
 
     return output;

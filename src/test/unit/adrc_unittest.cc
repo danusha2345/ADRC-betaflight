@@ -53,6 +53,8 @@ extern "C" {
 #include "unittest_macros.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
+
 int16_t debug[DEBUG16_VALUE_COUNT];
 uint8_t debugMode;
 
@@ -74,6 +76,7 @@ protected:
 
     void SetUp() override
     {
+        runtime = {};
         simulatedThrottle = 0.0f;
         simulatedCommandedThrottle = 0.0f;
         resetGyro();
@@ -834,6 +837,140 @@ TEST_F(AdrcUnittest, CorruptZeroB0ScaleMaxIsSanitized)
     EXPECT_TRUE(isfinite(out.P));
     EXPECT_TRUE(isfinite(out.I));
     EXPECT_TRUE(isfinite(out.D));
+}
+
+TEST_F(AdrcUnittest, Z3LogScaleSpansTheProfilesOwnAntiWindupBound)
+{
+    // Shipped defaults: 500 * 2000 * 3 = 3,000,000 -> ceil(/32767) = 92.
+    EXPECT_EQ(92u, adrcZ3LogScale(&profile, 500, 400));
+
+    // The flown Air65 profile that motivated ADRC-029: roll is the worst axis.
+    profile.b0[FD_ROLL] = 7007;
+    profile.b0[FD_PITCH] = 4312;
+    profile.b0[FD_YAW] = 5848;
+    EXPECT_EQ(321u, adrcZ3LogScale(&profile, 500, 400));
+
+    // Small bounds keep the legacy /16 floor.
+    profile.b0[FD_ROLL] = 100;
+    profile.b0[FD_PITCH] = 100;
+    profile.b0[FD_YAW] = 100;
+    profile.b0ThrottleScaleMax = 1;
+    EXPECT_EQ(16u, adrcZ3LogScale(&profile, 500, 400));
+
+    // Float32 ceil counterexample: the exact covering divisor is one larger than the rounded
+    // float32 quotient suggests.
+    profile.b0[FD_ROLL] = 28508;
+    profile.b0ThrottleScaleMax = 48;
+    EXPECT_EQ(16079u, adrcZ3LogScale(&profile, 385, 400));
+
+    // Runtime float32 clamp rounds above the exact integer product here.
+    profile.b0[FD_ROLL] = 40721;
+    profile.b0ThrottleScaleMax = 49;
+    EXPECT_EQ(59434u, adrcZ3LogScale(&profile, 976, 400));
+
+    // Exact legacy endpoint: 151 * 217 * 16 = 524272 = 32767 * 16.
+    profile.b0[FD_ROLL] = 217;
+    profile.b0[FD_PITCH] = 100;
+    profile.b0[FD_YAW] = 100;
+    profile.b0ThrottleScaleMax = 16;
+    EXPECT_EQ(16u, adrcZ3LogScale(&profile, 151, 151));
+}
+
+TEST_F(AdrcUnittest, Z3LogScaleEndpointAlwaysCoversTheRuntimeClamp)
+{
+    uint32_t seed = 0x029A5EED;
+    for (int i = 0; i < 20000; i++) {
+        seed = seed * 1664525u + 1013904223u;
+        const uint16_t limit = 100 + (seed >> 8) % 901;
+        seed = seed * 1664525u + 1013904223u;
+        const uint16_t b0 = 100 + (seed >> 8) % 65436;
+        seed = seed * 1664525u + 1013904223u;
+        const uint8_t scaleMax = 1 + (seed >> 8) % 50;
+
+        profile.b0[FD_ROLL] = b0;
+        profile.b0[FD_PITCH] = 100;
+        profile.b0[FD_YAW] = 100;
+        profile.b0ThrottleScaleMax = scaleMax;
+
+        const uint64_t exactBound = (uint64_t)limit * b0 * scaleMax;
+        const float clampA = (float)limit * ((float)b0 * (float)scaleMax);
+        const float clampB = ((float)limit * (float)b0) * (float)scaleMax;
+        const uint64_t cover = std::max({exactBound, (uint64_t)clampA, (uint64_t)clampB});
+        const uint32_t divisor = adrcZ3LogScale(&profile, limit, limit);
+        const uint64_t endpoint = (uint64_t)divisor * 32767u;
+
+        ASSERT_GE(endpoint, cover) << "limit=" << limit << " b0=" << b0
+                                   << " scaleMax=" << (int)scaleMax;
+        if (divisor > 16u) {
+            ASSERT_LT((uint64_t)(divisor - 1) * 32767u, cover)
+                << "limit=" << limit << " b0=" << b0 << " scaleMax=" << (int)scaleMax;
+        }
+    }
+}
+
+TEST_F(AdrcUnittest, Z3LogScaleReachesTheRuntimeThroughItsOwnInit)
+{
+    adrcInitConfig(&profile, &runtime, 0.000125f);
+    EXPECT_FLOAT_EQ(16.0f, runtime.z3LogScale);
+
+    adrcInitZ3LogScale(&runtime, &profile, 500, 400);
+    EXPECT_FLOAT_EQ(92.0f, runtime.z3LogScale);
+}
+
+TEST_F(AdrcUnittest, ObservabilityCachesTheCollectivesConsumedThisIteration)
+{
+    simulatedThrottle = 0.35f;
+    simulatedCommandedThrottle = 0.10f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+
+    EXPECT_FLOAT_EQ(0.35f, runtime.observedAppliedCollective);
+    EXPECT_FLOAT_EQ(0.10f, runtime.observedCommandedCollective);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_NONE, runtime.liftoffCause);
+    EXPECT_EQ(ADRC_STATE_THROTTLE_AT_IDLE, adrcStateFlags(&runtime));
+}
+
+TEST_F(AdrcUnittest, ObservabilityMarksOnlyAxesWhoseZ3GrowthWasActuallyInhibited)
+{
+    simulatedThrottle = simulatedCommandedThrottle = 0.0f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+
+    adrcApplyControl(&runtime, FD_ROLL, 120.0f, 0.0f, TEST_DT, 500.0f);
+    adrcApplyControl(&runtime, FD_PITCH, 0.0f, 0.0f, TEST_DT, 500.0f);
+
+    EXPECT_EQ(1u << FD_ROLL, runtime.z3GrowthInhibitMask);
+    EXPECT_EQ(ADRC_STATE_THROTTLE_AT_IDLE | ADRC_STATE_Z3_INHIBITED_ROLL,
+        adrcStateFlags(&runtime));
+
+    // The next PID iteration starts with a fresh per-axis event mask.
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    EXPECT_EQ(0u, runtime.z3GrowthInhibitMask);
+}
+
+TEST_F(AdrcUnittest, ObservabilityRecordsGateCauseAndResetEpoch)
+{
+    const uint32_t initialResetCount = runtime.gateResetCount;
+
+    simulatedThrottle = 0.60f;
+    simulatedCommandedThrottle = 0.50f;
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    ASSERT_TRUE(runtime.liftoff);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE, runtime.liftoffCause);
+    EXPECT_EQ(ADRC_STATE_LIFTOFF
+            | (ADRC_LIFTOFF_CAUSE_COMMANDED_COLLECTIVE << ADRC_STATE_LIFTOFF_CAUSE_SHIFT),
+        adrcStateFlags(&runtime));
+
+    adrcResetGate(&runtime);
+    EXPECT_EQ(initialResetCount + 1, runtime.gateResetCount);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_NONE, runtime.liftoffCause);
+
+    simulatedThrottle = 0.10f;
+    simulatedCommandedThrottle = 0.25f;
+    gyro.gyroADCf[FD_ROLL] = 25.0f;
+    for (int i = 0; i < 4; i++) {
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    }
+    ASSERT_TRUE(runtime.liftoff);
+    EXPECT_EQ(ADRC_LIFTOFF_CAUSE_GYRO, runtime.liftoffCause);
 }
 
 TEST_F(AdrcUnittest, NonFiniteRuntimeStateRecoversToFiniteOutput)
