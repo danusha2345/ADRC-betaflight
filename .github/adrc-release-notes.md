@@ -35,8 +35,10 @@ profile and explicitly select `pid_type = ADRC` where intended.
 Do not paste an old dump blindly. Upstream replaced the writable `serial ...`
 bitmask with per-feature UART settings; the old `serial ...` command is now a
 read-only synthesized view. Released Configurator 2026.6.1 predates firmware
-API 1.49; use a current development Configurator containing configurator PRs
-#5420/#5451/#5452, or use the CLI. On API 1.49 the Ports tab is deliberately
+API 1.49; use a current development Configurator containing
+betaflight/betaflight-configurator#5420, betaflight/betaflight-configurator#5451
+and betaflight/betaflight-configurator#5452, or use the CLI. On API
+1.49 the Ports tab is deliberately
 read-only and UART assignments live on each feature's own tab. Apply the board's
 custom defaults, then verify the relevant `*_uart`/`*_baud` settings (at least
 receiver, MSP, Blackbox, VTX and GPS where used). Keep and verify the motor
