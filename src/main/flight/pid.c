@@ -120,21 +120,10 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 #define IS_AXIS_IN_ANGLE_MODE(i) false
 #endif // USE_ACC
 
-// 14: adrc_liftoff_idle_hold_ms 500 -> 0 (mid-air re-arm now opt-in) and adrc_b0_scale_max 9 -> 3.
-// The layout is unchanged, but a version-match memcpy would keep the old stored values - and 500
-// specifically re-creates the mid-air gate closures the new default exists to prevent, on every
-// config saved from a prior build. Flight safety over stored-profile continuity: force the reset.
-// 15: adrc_liftoff_idle_throttle and adrc_liftoff_idle_hold_ms removed entirely (ADRC-020: the
-// opt-in mid-air re-arm heuristic was deleted rather than kept - it cannot distinguish a landing
-// from a calm mid-air float, and the arm-epoch fix already covers the ground-rep use case it
-// existed for). This changes adrcProfile_t's layout - gatedZ3DecayRate/b0ThrottleScaleMax shift to
-// earlier offsets - so, per the ADRC-006 precedent, force the reset rather than let a version-match
-// memcpy reinterpret an old blob's trailing bytes at the wrong fields.
-// 0 (wrapped): adrc.b0Law appended (ADRC-021 A/B selector, fork-side b5 build only). The PG
-// version field is 4 bits (see PGR_PGN_MASK / pgVersion() in pg.h) so 15 wraps to 0, not 16;
-// pgLoad() checks equality, and no firmware in this lineage ever shipped version 0 (upstream
-// master is at 11, PR builds went 12/14/15), so the wrap still forces the reset everywhere.
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 0);
+// Current upstream uses version 12 without adrcProfile_t. The b9/ADRC-029 line uses wrapped
+// version 0 with the ADRC fields. Version 13 is intentionally new to both lineages so an upgrade
+// resets PID profiles instead of copying either incompatible layout into this merged structure.
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 13);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -196,8 +185,6 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .launchControlAngleLimit = 0,
         .launchControlGain = 40,
         .launchControlAllowTriggerReset = true,
-        .use_integrated_yaw = false,
-        .integrated_yaw_relax = 200,
         .thrustLinearization = 0,
         .d_max = D_MAX_DEFAULT,
         .d_max_gain = 0,
@@ -1594,16 +1581,7 @@ void FAST_CODE pidController(const pidProfile_t *pidProfile, timeUs_t currentTim
         applySpa(axis, pidProfile);
 
         // calculating the PID sum
-        const float pidSum = pidData[axis].P + pidData[axis].I + pidData[axis].D + pidData[axis].F + pidData[axis].S;
-#ifdef USE_INTEGRATED_YAW_CONTROL
-        if (axis == FD_YAW && pidRuntime.useIntegratedYaw) {
-            pidData[axis].Sum += pidSum * pidRuntime.dT * 100.0f;
-            pidData[axis].Sum -= pidData[axis].Sum * pidRuntime.integratedYawRelax / 100000.0f * pidRuntime.dT / 0.000125f;
-        } else
-#endif
-        {
-            pidData[axis].Sum = pidSum;
-        }
+        pidData[axis].Sum = pidData[axis].P + pidData[axis].I + pidData[axis].D + pidData[axis].F + pidData[axis].S;
     }
 
 #if defined(USE_ADRC) && defined(USE_ACC)

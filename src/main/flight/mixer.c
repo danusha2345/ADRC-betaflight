@@ -701,7 +701,7 @@ static float applyMixerAdjustment(float *motorMix, const float motorMixMin, cons
     return motorMixNormalizationFactor;
 }
 
-FAST_CODE_NOINLINE void mixTable(timeUs_t currentTimeUs)
+FAST_CODE_NOINLINE_CRITICAL void mixTable(timeUs_t currentTimeUs)
 {
     const bool launchControlActive = isLaunchControlActive();
     const bool airmodeEnabled = isAirmodeEnabled() || launchControlActive;
