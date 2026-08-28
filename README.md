@@ -28,7 +28,7 @@ This repository implements **Active Disturbance Rejection Control (ADRC)** on Be
 > its releases stay the easiest way to fly ADRC today; everything validated here feeds
 > straight into that PR.
 
-> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — b10 contains 615 supported ARM/hex board configs plus 15 generic images; 14 configs needing another SDK/output path are listed as skips. F446 images are classic-PID-only because ADRC does not fit in their flash budget. Flash via Configurator → *Load Firmware [Local]*.
+> 📦 **Don't want to compile? [Prebuilt hex files are in Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — b10.1 contains 615 supported ARM/hex board configs plus 15 generic images; 14 configs needing another SDK/output path are listed as skips. F446 images are classic-PID-only because ADRC does not fit in their flash budget. Flash via Configurator → *Load Firmware [Local]*.
 
 ---
 
@@ -125,8 +125,9 @@ The latest tester release on the [**Releases page**](https://github.com/danusha2
 
 > **F446 exception:** the F446 board and generic images are working classic-PID firmware, but do not contain ADRC. `set pid_type = ADRC` is intentionally unavailable on F446 because its 512 KiB flash region is already almost full.
 
-> **b10 is a major base upgrade to Betaflight 2026.12-alpha.** PID profiles reset
-> intentionally because the stored upstream and b9 layouts are incompatible. Also,
+> **b10.1 is a maintenance rebuild of b10's major base upgrade to Betaflight
+> 2026.12-alpha.** Upgrading from b10 preserves PID profiles. Upgrading from b9
+> intentionally resets them because the stored layouts are incompatible. Also,
 > legacy `serial ...` lines are now read-only: restore an old `diff all` selectively,
 > then verify each per-feature UART setting and your chosen motor protocol. Released
 > Configurator 2026.6.1 predates firmware API 1.49; use a current development
@@ -134,7 +135,7 @@ The latest tester release on the [**Releases page**](https://github.com/danusha2
 > betaflight/betaflight-configurator#5451 and
 > betaflight/betaflight-configurator#5452) or the CLI. On API 1.49 the
 > Ports tab is intentionally read-only and assignments live on each feature's own tab.
-> [Read the b10 release notes](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10) before flashing.
+> [Read the b10.1 release notes](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10.1) before flashing.
 
 Flash via Configurator → Firmware Flasher → *Load Firmware [Local]* → *Flash Firmware* (full chip erase on the first flash). Want a board added to the baked-in list? Ask in an [issue](https://github.com/danusha2345/ADRC-betaflight/issues).
 

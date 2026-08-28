@@ -29,7 +29,7 @@
 > релизы — самым простым способом полетать на ADRC уже сегодня; всё валидированное здесь
 > напрямую попадает в тот PR.
 
-> 📦 **Не хотите компилировать? [Готовые hex — в Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — b10 содержит 615 поддерживаемых ARM/hex-конфигураций плат и 15 generic-образов; 14 конфигураций с отдельным SDK или форматом вывода указаны как skips. Образы F446 содержат только classic PID: ADRC не помещается в их flash budget. Прошивка через Configurator → *Load Firmware [Local]*.
+> 📦 **Не хотите компилировать? [Готовые hex — в Releases](https://github.com/danusha2345/ADRC-betaflight/releases)** — b10.1 содержит 615 поддерживаемых ARM/hex-конфигураций плат и 15 generic-образов; 14 конфигураций с отдельным SDK или форматом вывода указаны как skips. Образы F446 содержат только classic PID: ADRC не помещается в их flash budget. Прошивка через Configurator → *Load Firmware [Local]*.
 
 ---
 
@@ -121,8 +121,9 @@
 
 > **Исключение F446:** сборки под платы F446 и generic F446 — это рабочая прошивка с classic PID, но без ADRC. `set pid_type = ADRC` на F446 намеренно недоступен: регион flash 512 KiB уже почти заполнен.
 
-> **b10 — крупный переход базы на Betaflight 2026.12-alpha.** PID-профили
-> намеренно сбрасываются: сохранённые структуры upstream и b9 несовместимы.
+> **b10.1 — maintenance-пересборка b10 на базе Betaflight
+> 2026.12-alpha.** При переходе с b10 PID-профили сохраняются. При
+> переходе с b9 они намеренно сбрасываются: хранимые структуры несовместимы.
 > Старые строки `serial ...` теперь только для чтения: восстанавливайте прежний
 > `diff all` выборочно, затем проверьте per-feature UART-настройки и выбранный
 > вами motor protocol. Релизный Configurator 2026.6.1 появился до firmware API
@@ -132,7 +133,7 @@
 > betaflight/betaflight-configurator#5452) либо CLI. В API 1.49
 > вкладка Ports намеренно read-only,
 > назначение UART перенесено на вкладку каждой функции. Перед прошивкой
-> прочитайте [release notes b10](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10).
+> прочитайте [release notes b10.1](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10.1).
 
 Прошивка: Configurator → Firmware Flasher → *Load Firmware [Local]* → *Flash Firmware* (при первой прошивке — full chip erase). Нужна ваша плата в списке вшитых? Напишите в [issue](https://github.com/danusha2345/ADRC-betaflight/issues).
 

@@ -118,7 +118,42 @@ metadata-only поправки: уточнена граница supported ARM/he
 границу миграции. Код прошивки, revision и хеши артефактов не
 менялись.
 
-## Явно не входит в b10
+## b10.1: maintenance-пересборка
+
+`adrc-pr15400-b10.1` указывает на `923932bdee`. Control law, defaults,
+PG 13, Blackbox wire schema и границы эксперимента не менялись.
+Переход b10 -> b10.1 не сбрасывает PID-профили; предупреждения
+для b9 и более старых баз остаются в силе.
+
+Эта версия закрывает только release-integrity пробелы:
+
+- добавлены regression tests имён/порядка семи ADRC fields, условия
+  `pid_type = ADRC` + `debug_mode = ADRC` + enabled debug field и I/P encoding;
+- production writers и тесты используют общие малые helpers; test-only
+  entry points в firmware ELF отсутствуют;
+- release matrix теперь fail-closed: любой attempted board `FAIL` блокирует
+  release, а 14 заранее определённых SDK/output skips отчитываются
+  отдельно;
+- повторный release run обновляет notes и title из точного тега.
+
+[GitHub Actions run 33183093739](https://github.com/danusha2345/ADRC-betaflight/actions/runs/33183093739)
+повторил матрицу b10: 615 board configs и 15 generic images собраны,
+`0 FAIL`, 14 platform-SDK/output configs явно пропущены. В релизе 630
+уникальных assets.
+
+Четыре hex скачаны обратно из опубликованного release и
+преобразованы в binary. Все четыре содержат revision `923932bde`;
+F411, MAMBAF722_I2C и BETAFPVG473_V2 содержат новые ADRC
+observability fields/schema, F446 — нет.
+
+| asset | SHA-256 binary | ADRC observability |
+|---|---|---|
+| generic STM32F411 | `ed06474e5524cc0ae02f41416d1b6452209f02446eea27d069ce3c992237c177` | да |
+| generic STM32F446 | `48ec9ae2fd8d7fc14e23467e57a2d8327d8f8692e5bfae3d9134b0f988bd0bf0` | нет |
+| MAMBAF722_I2C | `906df8fcb19f1cbbd1e5582289d33d5f255586d76fdb9f810195a5487975d750` | да |
+| BETAFPVG473_V2 | `50c0730d16e72b7a7a67d505c337d6e1258427b1b48c6dd59bf4a219ccc23ebb` | да |
+
+## Явно не входит в b10/b10.1
 
 - выбор production/default между LINEAR и SQRT для b0 law;
 - автоматическое понижение настроек при самовозбуждении — защита отложена;

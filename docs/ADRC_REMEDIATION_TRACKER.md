@@ -9,11 +9,10 @@ list of findings, their status, and what remains open.
 **Evidence sync: 2026-08-28.** The public evidence tree is current through the
 repeated Air65/Petrel yaw sweeps, the pinned `jmsweng` fitter audit, the Air65
 equal-`wo` working points, the new-frame TH3 flights and the restrained Mamba
-`wo` campaign. Fork release `adrc-pr15400-b7` is withdrawn by b8; b9 is the
-latest published tester build. The post-b9 `adrc-blackbox-dterm` branch contains
-the first ADRC-029 implementation; current-PR-head port
-`adrc-pr-head-observability` at `aa93b5e680` adds the exact ADRC fields below.
-Neither branch has been released as b10. ADRC remains
+`wo` campaign. Fork release `adrc-pr15400-b7` is withdrawn by b8; b10.1 is the
+latest published tester build. It carries b9, ADRC-029 and the exact
+observability port on current Betaflight master, plus release-integrity tests
+and fail-closed packaging. ADRC remains
 experimental and behind a hard tester gate; none of the working tunes below is
 a universal default.
 
@@ -1308,8 +1307,9 @@ commitment to widen the scaling on the fork side.
 
 Status: **FIXED on `adrc-blackbox-dterm`** (commit `b82a9e16bd`, 2026-08-11)
 and ported onto current PR head `6317fe2a` on branch
-`adrc-pr-head-observability` (commit `aa93b5e680`, 2026-08-28); neither branch
-is a published b10 build. The divisor is now profile-derived: the
+`adrc-pr-head-observability` (commit `aa93b5e680`, 2026-08-28). Those source
+branches are not release tags; their implementation is integrated into the
+published b10/b10.1 tester line. The divisor is now profile-derived: the
 smallest integer whose int16 endpoint covers the controller's own worst-case
 anti-windup bound — `pidsum_limit · b0 · adrc_b0_scale_max`, per axis — in
 every float32 evaluation the runtime can produce (the exact bound and the ceil
@@ -1374,12 +1374,15 @@ resets PID profiles too.
 
 ## Current tester-build and evidence status
 
-[`adrc-pr15400-b10`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10)
-(`343572dcba`) is the latest published fork tester build. It merges the b9 +
-ADRC-029 line into Betaflight master `e8580ad977` (2026-08-28, 118 upstream
-commits after the ADRC line's base) and ports the exact observability contract
-from `aa93b5e680`, including the b9 applied-collective gate cause. The integration
-record, migration boundaries, test results and memory margins are in
+[`adrc-pr15400-b10.1`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10.1)
+(`923932bdee`) is the latest published fork tester build. It is a maintenance
+rebuild of b10: the control law, defaults, PG 13 and Blackbox wire schema are
+unchanged. b10 merged the b9 + ADRC-029 line into Betaflight master
+`e8580ad977` (2026-08-28, 118 upstream commits after the ADRC line's base) and
+ported the exact observability contract from `aa93b5e680`, including the b9
+applied-collective gate cause. b10.1 adds schema/wire regression tests and makes
+the release workflow fail closed on attempted board-build failures. The
+integration record, migration boundaries, test results and memory margins are in
 [`ADRC_B10_INTEGRATION.md`](ADRC_B10_INTEGRATION.md). The PR author's
 `adrc-toggle` branch remains at `6317fe2aad`; b10 is deliberately fork-side and
 does not silently choose a rebase/merge strategy for the upstream PR.
@@ -1387,7 +1390,8 @@ Release CI finished with 615 supported board configs built, zero failures, 14
 explicit platform-SDK/output skips and 15 generic builds (630 unique assets).
 
 b7 was withdrawn by b8 after its hold-timer duty-cycle defect; do not treat b7
-as current. b10 intentionally resets PID profiles (PG 13) because current
+as current. b10 -> b10.1 preserves PID profiles. Moving from b9 to b10.1
+intentionally resets them (PG 13) because current
 upstream's version-12 layout and b9's wrapped-version-0 layout are incompatible.
 It also inherits upstream's API-1.49 per-feature UART migration: released
 Configurator 2026.6.1 predates it, the Ports tab is read-only, and a current
@@ -1432,9 +1436,13 @@ boundaries rather than prescribing a new flight matrix.
   second craft**; the corpus rejects the shipped quadratic law but does not yet
   select the production replacement. Fitter/input hardening is published at
   `e696c08591`; the LINEAR/SQRT production choice is still waiting for the
-  maintainers/testers' judgment on the existing corpus.
+  maintainers/testers' judgment on the existing corpus. @8ksal8's 2026-08-28
+  reply prefers SQRT from accumulated working-tune experience, but explicitly
+  says it is too early to select a law and that LINEAR might tune equally well;
+  this supports retaining the experimental selector rather than declaring a
+  default.
 - Decide with the PR author whether and how to rebase the upstream-scoped ADRC
-  patchset onto current Betaflight. The b10 tester branch is not directly
+  patchset onto current Betaflight. The b10/b10.1 tester branch is not directly
   pushable as PR #15400: it also carries fork-only b0-law and release-line work.
 - ADRC-028 mechanism remains open; no universal default is accepted from the
   current high-`wo` corpus. Production protection/automatic derating is
