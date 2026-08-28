@@ -2,6 +2,36 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## b10.1 — release-integrity maintenance rebuild
+
+b10.1 keeps the b10 control law, defaults, PID-profile layout and Blackbox wire
+schema unchanged. It does not choose LINEAR versus SQRT, add automatic
+derating/protection, touch ELRS, or prescribe a new flight programme.
+
+This patch release closes the publication gaps found in the post-b10 review:
+
+- the seven exact ADRC observability fields now have regression tests covering
+  their names/order, ADRC/debug/field-mask condition, and I/P-frame encoding;
+- board build failures now stop the release instead of producing a silently
+  partial matrix; explicit platform-SDK/output-format skips remain reported;
+- re-running a release updates its title and notes from the tagged source
+  instead of retaining stale metadata;
+- the public documentation distinguishes the 615 supported board configs, 14
+  explicit skips and 15 generic images, and states prominently that F446 images
+  are classic-PID-only because ADRC does not fit their flash budget.
+
+The production writer now shares the same small I/P-field helpers exercised by
+the tests; this is a testability refactor, not an intended flight-control or log
+format change. `make EXTRA_FLAGS=-Werror checks`, the complete 74-suite
+`test-all`, and clean `STM32F411`, `STM32F446` and `MAMBAF722_I2C` builds pass.
+The Blackbox unit suite is now 10/10. Test-only entry points are absent from the
+firmware ELF files.
+
+Upgrading **from b10 to b10.1 preserves PID profiles**: both use PG version 13
+and the same stored layout. The b10 first-boot reset and API-1.49 UART migration
+warning below still apply when upgrading from b9 or another older base. F446
+still does not contain ADRC.
+
 ## b10 — current Betaflight master, exact ADRC observability
 
 b10 merges the b9 tester line plus ADRC-029 into Betaflight master
