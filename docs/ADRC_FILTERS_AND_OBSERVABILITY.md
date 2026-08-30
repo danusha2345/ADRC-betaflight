@@ -1,10 +1,11 @@
 # ADRC filters and Blackbox observability
 
-Evidence and source scope: PR #15400 through head `6317fe2a`, fork tester build
-`adrc-pr15400-b9` (`919116fed`), and the published Air65/Petrel filter and yaw
-sweeps through 2026-08-24. ADRC is experimental and remains behind a hard
-tester gate. This document describes the current signal path and logging
-contract; it does not select a universal tune or prescribe a flight programme.
+Evidence and source scope: PR #15400 through head `6317fe2a`, fork tester builds
+`adrc-pr15400-b9` (`919116fed`) and `adrc-pr15400-b10.1` (`923932bdee`), the
+published Air65/Petrel filter and yaw sweeps, and the short Air65 check through
+2026-08-30. ADRC is experimental and remains behind a hard tester gate. This
+document describes the current signal path and logging contract; it does not
+select a universal tune or prescribe a flight programme.
 
 ## Which filters act on ADRC
 
@@ -50,6 +51,38 @@ Current decisions from the PR discussion:
   discriminator. The 2026-08-28 fail-closed split of the included chirp log
   produced no axis with two acceptable segment fits, so the present corpus
   still justifies no firmware feature.
+
+## 2026-08-30 Air65 short check: ADRC PT2 disabled
+
+@8ksal8 posted one indoor-hover log with throttle pumps in
+[PR #15400 comment 5466417130](https://github.com/betaflight/betaflight/pull/15400#issuecomment-5466417130).
+The attached archive `adrc_gyro_lpf_hz_0_BF_filters_on_btfl_001.zip` has
+SHA-256 `3244ee15b63a6148355f95113c085d81f61a8d83e99ae087d14868a9f81047a0`;
+its single BBL has SHA-256
+`9a7ffcd0a1b0680974ede5794c42f1eecd540612cbb24856a7a2078642e0d249`.
+
+The BBL header, rather than the accompanying statement that this craft was
+still on b9, identifies exact b10.1 revision `923932bde`, target
+`BETAFPVG473_V2`, and craft name `AIR65 R`. The logged ADRC tune is
+`wc=110/110/47`, `wo=150/150/150`, `b0=8964/5378/3586`, SQRT law, and hover
+anchor 29%. The dedicated ADRC stage is disabled with
+`adrc_gyro_lpf_hz=0`, while the upstream Betaflight gyro chain remains active:
+gyro LPF2 at 375 Hz, the 400/300 Hz static notch, three dynamic notches over
+110--500 Hz, and one RPM-filter harmonic with a 185 Hz minimum. The classic
+D-term filters are disabled.
+
+Pinned `blackbox_decode` commit `f832acf9cd9dbe5ad8220de1a5f4eb4021523d72`
+decodes the 91.485 s log with zero failed frames, eight unreadable loop
+iterations, and a clean-end event. The pilot described the result as looking
+clean. This is a useful existence check that one Air65 can complete a short
+hover/throttle-pump session with the ADRC PT2 bypassed while the Betaflight
+gyro chain remains enabled. It is not a matched filter A/B, an aggressive
+flight, or cross-craft evidence, and therefore does not establish
+`adrc_gyro_lpf_hz=0` as a default or a universal filter recipe.
+
+The same comment mentions difficulty configuring serial ports on a different
+b10.1 craft, but gives no target, CLI dump, or failure mode. Keep that as a
+separate unresolved usability report; this BBL cannot explain it.
 
 ## ADRC-029 `z3` scale
 
