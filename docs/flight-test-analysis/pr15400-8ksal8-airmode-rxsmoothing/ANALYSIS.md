@@ -116,3 +116,44 @@ MOTOR_STOP off).
   oscillates with the gate closed; z3 is not the driver. Airmode on a switch after takeoff
   avoids the arm/throttle-up window. No firmware or default change is proposed from these
   arms alone.
+
+## Addendum 2026-09-04: @jmsweng's single-axis arm flyaway (PR comment 5532698449)
+
+Archive `BTFL_BLACKBOX_LOG_20260903_172741_BETAFPVG473_V2.zip`, SHA-256
+`89ee5244dbe0fffa7f9d3db3f29e7edd3e6be77f695e09a20833da0f5e676bff`; the BBL is included
+gzipped in `jmsweng_flyaway_20260903/` (SHA256SUMS). Header: b10.1 `923932bde`,
+BETAFPVG473_V2 (tester: stock Air65 II Freestyle, BMI270), `pid_at_min_throttle = ON`,
+AIRMODE feature on, link 250 Hz with smoothing cutoffs 93/93 (healthy). ADRC per axis:
+roll `wc/wo = 40/70`, **pitch `103/140`** (8ksal8's values, applied to one axis as an
+experiment), yaw `40/70`; `b0 = 3700/2500/2430` (tester: 75 % of his chirp-fit values),
+`adrc_b0_law = 2` (LINEAR), hover 27 %, liftoff 40 %, ADRC gyro LPF 150 Hz plus the stock
+gyro chain (LPF1 250 dyn, LPF2 500, 3 dynamic notches, 3 RPM harmonics), D-term LPF 75.
+
+The arm lasts 1.91 s with the stick at 1000 and commanded collective 0 % throughout;
+`adrcState` is 30 (gate closed, idle, z3 inhibit on all axes) in every frame and z3 = 0.
+
+| t | roll gyro peak | pitch gyro peak | applied collective | mean motor | frames with a motor at 100 % |
+|---|---:|---:|---:|---:|---|
+| 0.3–0.9 s | 31 → 124 °/s, 15.1 Hz (94 % of roll energy in 10–25 Hz) | 6 → 22 °/s | 7 → 18 % | 7 → 18 % | none |
+| 1.0 s | 270 | 283 | 44 % | 44 % | from here: 75.5 % of frames |
+| 1.1–1.9 s | 237 → 15 | 293 → 219, 19.3 Hz (99 % in 10–25 Hz) | 43–50 % | 43–50 % | |
+
+The roll axis (40/70) starts a ~15 Hz wobble first and grows for 0.6 s while pitch stays
+below 22 °/s; the airmode headroom follows the roll demand (applied 7 → 18 % at 0 %
+commanded). At 1.0 s the pitch loop (103/140) breaks into a 19.3 Hz oscillation with its
+sum clipped at `pidsum_limit` (logged |sum| up to 2043 against the 500 limit), the mixer
+fills the axis demand with collective, mean motor reaches 44–50 % against a 27 % hover,
+and the craft lifts with no throttle command; roll decays while pitch persists until
+disarm. With the stick at idle none of the three gate paths can open (commanded ≥ 40 %;
+gyro/applied paths locked by the idle interlock at < 20 % commanded), so nothing in the
+controller ends the event.
+
+What this adds: a healthy link, `ON`, the full stock filter chain plus the ADRC LPF, and a
+second tester's craft reproduce the arm-time lift with the gate closed and z3 = 0; the
+oscillation frequencies (15 / 19 Hz) are lower than 8ksal8's 23–28 Hz on the unfiltered
+chain. The tester's reading — too high `wo` picking up sensor noise — is not what the log
+shows on the mechanism side (coherent 15–40 Hz loop energy, not broadband), and the corpus
+does not isolate `wo`: 8ksal8's 30 Aug arms at `110/150` were quiet during the arm phase
+with a different filter chain, mode and liftoff threshold. Every arm-time event so far is
+at `wo ≥ 140`; no counterexample exists at 40–70. Suggested controls: the same one-axis
+change on roll instead of pitch, and pitch at `103/140` with the ADRC LPF at 0.
