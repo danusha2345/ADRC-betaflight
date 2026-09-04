@@ -157,3 +157,47 @@ does not isolate `wo`: 8ksal8's 30 Aug arms at `110/150` were quiet during the a
 with a different filter chain, mode and liftoff threshold. Every arm-time event so far is
 at `wo ≥ 140`; no counterexample exists at 40–70. Suggested controls: the same one-axis
 change on roll instead of pitch, and pitch at `103/140` with the ADRC LPF at 0.
+
+## Addendum 2026-09-04 (2): @jmsweng's four single-axis arms; @8ksal8's `40/70` vs `92/120`
+
+**jmsweng** — archive `BTFL_BLACKBOX_LOG_20260904_073102_BETAFPVG473_V2.zip`, SHA-256
+`1ba731446bb93d87a568aaa288b221651e9435f7dccc6b43e567bc378953ce90`, one BBL with four logs
+(gzipped in `jmsweng_axis_arms_20260904/`). Same craft/build/filters as the 2026-09-03
+addendum, `pid_at_min_throttle = ON`, AIRMODE feature on, LINEAR, `b0 = 3700/2500/2430`.
+Per-log tune (header `adrcWC/adrcWO`): log 1 roll `103/140`; logs 2–3 yaw `103/140`; log 4
+roll+yaw `103/140`; every other axis `40/70`.
+
+| log | hot axis | span | gyro peaks R/P/Y (°/s) | dominant Hz R/P/Y | applied max | mean motor > hover from | frames with a motor at 100 % |
+|---|---|---:|---|---|---:|---:|---:|
+| 1 | roll | 0.97 s | 357/244/27 | 19.3/14.2/– | 53 % | 0.17 s | 65 % |
+| 2 | yaw | 0.89 s | 2550/1032/381 | 15.4/14.3/40.7 | 70 % | 0.08 s | 28 % |
+| 3 | yaw | 0.92 s | 182/184/149 | 15.1/14.0/41.0 | 64 % | 0.10 s | 35 % |
+| 4 | roll+yaw | 0.80 s | 236/392/144 | 19.5/13.4/40.2 | 65 % | 0.09 s | 81 % |
+
+All four: stick 1000 and commanded collective 0 % throughout, `adrcState` = 30 (gate closed,
+idle, z3 inhibit) in every frame, z3 = 0. The hot axis sets its own frequency (roll
+`103/140` → 19 Hz, yaw `103/140` → 41 Hz; pitch → 19 Hz on 09-03), but the `40/70` axes
+oscillate at 14–15 Hz in every arm — in the yaw-only arms roll/pitch reach 180–2550 °/s
+against 150–380 on yaw. Lift is faster than the 09-03 pitch case (≤ 0.2 s vs 1.0 s).
+
+**8ksal8** — `jmsweng_tune_btfl_001.zip` (`2edebd11…0cd1`) and `40_70_btfl_001.zip`
+(`7d1764b4…397a`) contain the same BBL (SHA-256 `0223e35e…961d`); `92_120_btfl_014.zip`
+(`d0a8a09a…07b5`). Both flights gzipped in `8ksal8_tune_compare_20260904/`. b10.1,
+`pid_at_min_throttle = OFF`, airmode by switch, ADRC LPF 0, gyro LPF1 200 + 3 dynamic
+notches + 1 RPM harmonic, link 250 Hz / cutoffs 62.
+
+| | `40/70`, b0 3700/2500/2430 | `92/120`, b0 8964/5378/3586 |
+|---|---|---|
+| span, vbat | 165 s, 2.46–4.30 V (5.7 % of samples < 3.0 V, last 5 s median 2.76 V) | 148 s, 2.84–4.37 V |
+| tracking-error median / p90 R/P/Y | 8/5/7, 34/22/29 °/s | 6/3/3, 17/10/10 °/s |
+| overshoot proxy A (share of |setpoint| > 150 samples with gyro > 120 % of setpoint, same sign) | 20/14/13 % | 4/2/0 % |
+| overshoot proxy B (per step > 200 °/s: peak gyro / peak setpoint; share > 1.2; n) | 1.14/1.08/1.06; 20/8/8 %; n = 10/12/12 | 1.14/1.06/1.08; 0/0/0 %; n = 4/11/1 |
+| per-motor RMS 50–75 Hz / 15–25 Hz | 0.25 % / 0.7–1.0 % (15–25 Hz line in all 2-s windows) | 3.9 % (51–61 Hz line in 50 of 72 windows; weak in the yaw mix) / 0.6–0.8 % |
+| error band 30–80 Hz RMS R/P/Y | 1.50/1.16/1.40 | 1.39/1.31/3.46 (yaw line 61 Hz) |
+| motor-rail frames | 0.6 % | 1.6 % |
+
+`40/70` tracks looser with more overshoot (roll most by both proxies; yaw is not the worst
+axis here and the `92/120` flight has one large yaw step); `92/120` tracks tightly and
+carries a ~58 Hz line on all four motors. The line sits where the earlier sweeps put the
+`wo`-tracking peak (`wo` 80 → 47–53 Hz, 120 → 58–61 Hz, 140 → 77 Hz on the unfiltered
+flight) — observation, not mechanism. The `40/70` log ends on a sagging pack.
