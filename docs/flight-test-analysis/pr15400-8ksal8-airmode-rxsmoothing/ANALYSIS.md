@@ -201,3 +201,36 @@ axis here and the `92/120` flight has one large yaw step); `92/120` tracks tight
 carries a ~58 Hz line on all four motors. The line sits where the earlier sweeps put the
 `wo`-tracking peak (`wo` 80 → 47–53 Hz, 120 → 58–61 Hz, 140 → 77 Hz on the unfiltered
 flight) — observation, not mechanism. The `40/70` log ends on a sagging pack.
+
+## Addendum 2026-09-05: @8ksal8's `wc/wo` sweep and ESC PWM sweep (PR comment 5545438021)
+
+Archives `wc_wo_sweep.zip` (SHA-256 `bc64d222b9473c843c4c063817fcb5f3d7ec9c53de1032560b20b46e00f1e0dd`) and
+`ESC_PWM_sweep.zip` (`8c523c89302948be211ce2ac2cad42d5314a56c22bf117b4884d350345715b8a`); the eight BBLs
+are gzipped in `8ksal8_sweeps_20260904/`. All b10.1 on the Air65 R, `b0 = 8964/5378/3586`, SQRT,
+ADRC LPF 0, gyro LPF1 200 + 3 dynamic notches + 1 RPM harmonic, bidirectional DShot, airmode by
+switch, link 250 Hz / cutoffs 62. `pid_at_min_throttle` differs across logs (OFF in 70/80, 88/100,
+97/110; ON in 79/90, 106/120 and the three PWM logs) — irrelevant in flight, a confound in the set.
+The ESC PWM frequency is not in the Blackbox header; those three logs are labelled by file name only.
+
+Metrics: whole flight after the gate opened; motor line = strongest 40–80 Hz peak of one motor,
+RMS averaged over four motors; overshoot = share of |setpoint| > 150 samples with gyro > 120 % of
+setpoint (same sign); yaw-error line = 40–80 Hz peak prominence over the 10–150 Hz median.
+
+| wc/wo | pamt | span | vbat med/min | err median R/P/Y | p90 | overshoot R/P/Y | motor line | line RMS/motor | yaw-err line f / prom | rail frames |
+|---|---|---:|---|---|---|---|---:|---:|---|---:|
+| 70/80 | OFF | 56 s | 3.89/3.32 | 10/5/5 | 40/22/32 | 67/22/17 % | 46.1 Hz | 0.37 % | 48.2 Hz / 11 | 0.8 % |
+| 79/90 | ON | 50 s | 3.65/3.15 | 9/5/5 | 40/24/35 | 41/35/6 % | 41.9 Hz | 0.49 % | 51.5 Hz / 9 | 2.0 % |
+| 88/100 | OFF | 57 s | 3.49/3.05 | 7/4/4 | 23/17/16 | 17/7/5 % | 54.0 Hz | 1.05 % | 54.2 Hz / 30 | 2.1 % |
+| 97/110 | OFF | 65 s | 3.89/3.32 | 8/5/5 | 29/18/18 | 9/7/17 % | 58.3 Hz | 1.95 % | 58.3 Hz / 134 | 2.0 % |
+| 106/120 | ON | 64 s | 3.54/3.08 | 6/4/6 | 25/16/34 | 12/7/13 % | 60.6 Hz | **16.2 %** | 60.6 Hz / 26128 | 3.1 % |
+| 88/100, ESC 24 kHz | ON | 72 s | 3.58/3.08 | 9/5/5 | 36/19/30 | 20/12/19 % | 52.9 Hz | 0.74 % | 57.7 Hz / 13 | 1.2 % |
+| 88/100, ESC 48 kHz | ON | 71 s | 3.81/3.54 | 11/6/6 | 34/21/25 | 19/13/15 % | 58.2 Hz | 0.90 % | 59.8 Hz / 32 | 0.0 % |
+| 88/100, ESC 96 kHz | ON | 91 s | 3.91/3.67 | 10/5/5 | 31/16/27 | 13/13/15 % | 62.5 Hz | 0.74 % | 62.5 Hz / 20 | 0.0 % |
+
+Overshoot falls with `wc`; the motor line grows slowly to 97/110 and by ×8 at 106/120, where the
+60.6 Hz line is present in every 2-s window (5-s windows 3–28 % relative RMS, gyro peaks 640–715 °/s
+at 38–48 s). Its frequency follows `wo` (≈ 0.5–0.55 × `wo`: 46/42/54/58/61 Hz for 80/90/100/110/120),
+consistent with the August sweeps and the 77 Hz at `wo` 140. ESC PWM 24/48/96 kHz at 88/100 does
+not change the line amplitude beyond flight-to-flight scatter (0.74–0.90 % vs 1.05 % in the sweep's
+own 88/100 flight); the 53 → 62 Hz peak drift across the three is unexplained (one flight per
+setting). Packs 3.05–3.67 V minimum throughout.
