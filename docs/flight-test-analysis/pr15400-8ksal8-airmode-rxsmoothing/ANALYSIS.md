@@ -234,3 +234,52 @@ consistent with the August sweeps and the 77 Hz at `wo` 140. ESC PWM 24/48/96 kH
 not change the line amplitude beyond flight-to-flight scatter (0.74–0.90 % vs 1.05 % in the sweep's
 own 88/100 flight); the 53 → 62 Hz peak drift across the three is unexplained (one flight per
 setting). Packs 3.05–3.67 V minimum throughout.
+
+## Addendum 2026-09-05b: @8ksal8's `adrc_sigma_decay 0` + `adrc_b0_scale_max` 4 vs 5 pair (PR comment 5552521564)
+
+Archive `sigma_decay_0_b0_scale_4_5_btfl_002.zip` (SHA-256
+`3d94459c0266aec34ae929748f2a438260c332f46c70f9f2ed73fd3efeba0a15`); the two BBLs are gzipped in
+`8ksal8_sigma_b0scale_20260905/`. Both b10.1 (`923932bde`) on the Air65 R at 99/110, `b0 = 8964/5378/3586`,
+SQRT law, hover 29, ADRC LPF 0, same gyro chain as the sweep, `pid_at_min_throttle` OFF. Header diff to
+the sweep's 97/110 flight: `adrc_sigma_decay` 3 → 0, `adrc_b0_scale_max` 3 → 4/5, `wc` 97 → 99 (and the
+`simplified_dterm_filter` UI flag, inert under ADRC). Same metric definitions as addendum 2026-09-05;
+"calm" = |setpoint| < 30 °/s, "active" = |setpoint| > 150 °/s.
+
+| | scale_max 4 (001) | scale_max 5 (002) | sweep 97/110 (ref) |
+|---|---:|---:|---:|
+| span after gate | 200 s | 178 s | 63 s |
+| active-stick share R/P/Y | 2.6/4.7/4.1 % | 3.8/3.5/5.6 % | 5.6/7.5/4.4 % |
+| vbat median / min | 3.62 / 2.96 V | 3.51 / 2.49 V | 3.88 / 3.32 V |
+| frames < 3.0 V | 0.06 % | 1.2 % | 0 |
+| current median / p95 | 3.4 / 7.6 A | 3.3 / 7.4 A | 4.2 / 10.1 A |
+| err median R/P/Y (whole) | 4/2/3 | 4/3/3 | 8/5/5 |
+| err median, calm | 4/2/3 | 3/2/2 | 8/4/4 |
+| err median, active | 19/14/4 | 19/17/4 | 21/12/23 |
+| overshoot R/P/Y | 4/3/2 % | 8/5/0 % | 9/7/17 % |
+| motor line / RMS per motor | 60.0 Hz / 1.07 % | 60.5 Hz / 0.94 % | 58.5 Hz / 2.19 % |
+| 5-s window line RMS min/med/max | 0.4/0.8/2.4 % | 0.3/0.6/4.0 % | 1.0/1.4/5.4 % |
+| rail frames | 1.4 % | 2.2 % | 2.1 % |
+| b0 throttle scale median / max | 1.14 / 1.75 | 1.14 / 1.75 | 1.14 / 1.76 |
+| max \|z3\| R/P/Y (×10³) | 1121/1038/1066 | 2841/1440/1379 | 2375/1429/672 |
+| z3 pitch trim, 30-s medians (×10³) | −253…−200 | −291…−216 | −310…−189 |
+
+Findings:
+
+- **`adrc_b0_scale_max` 4 vs 5 did not act.** In b10.1 `adrc.c` the SQRT law is
+  `scale = clamp(sqrt(throttle_lpf / hover), 1, scale_max)`; with hover 29 % the unclamped value is
+  1.86 at 100 % throttle, and the logs (debug[7]) show 1.72–1.75 at full stick. Any cap ≥ 2 is the same
+  setting on this craft; 3, 4 and 5 are identical in flight. The z3 anti-windup bound is
+  `pidsum_limit · b0 · live scale` (≥ 5.1 M on roll here), untouched by the cap and not reached (max 2.8 M).
+  The only header field that moved with the cap is `adrc_z3_log_scale` (548 vs 684).
+- **The "hotter pack" on scale_max 5 is the pack.** Flight 002 started lower (3.27 V min in the first
+  20 s vs 3.49 V), sagged to 2.49 V at ~7 A, and spent 1.2 % of frames under 3.0 V against 0.06 %; the
+  median current is the same. The higher rail share and the single 5-s window at 4.0 % line RMS in that
+  flight coincide with the sag.
+- **`adrc_sigma_decay` 0 vs 3 is not resolvable in flight.** Steady-state error left by a leak of 0.3/s
+  against a constant disturbance is `decay · z3 / wo³`; at `wo` 110 and the pitch trim z3 ≈ 250 k
+  that is ≈ 0.06 °/s. The better tracking in the pair (calm median 4/2/3 vs 8/4/4) goes with the
+  gentler flying (active share roughly halved) and cannot be attributed to the setting. z3 stays well
+  inside its bound and the pitch trim is unchanged, so nothing argues against 0 either.
+- 99/110 with this filter chain holds the motor line at 0.94–1.07 % (60 Hz ≈ 0.55 × `wo` again), against
+  2.19 % in the sweep's own 97/110 flight and 0.71–1.05 % across the four 88/100 flights — inside the
+  flight-to-flight scatter, well below the 106/120 knee.
