@@ -283,3 +283,39 @@ Findings:
 - 99/110 with this filter chain holds the motor line at 0.94–1.07 % (60 Hz ≈ 0.55 × `wo` again), against
   2.19 % in the sweep's own 97/110 flight and 0.71–1.05 % across the four 88/100 flights — inside the
   flight-to-flight scatter, well below the 106/120 knee.
+
+## Addendum 2026-09-06: @8ksal8's b0-law pair, law sweeps with throttle pumps, PID baseline (PR comments 5553626089, 5553723483)
+
+Archives `b0_F_L_btfl_002.zip` (SHA-256 `f3a859a72172b2d39ef45db6ec035cac296a8ce665a6994940a03497de4f0de2`),
+`b0_law_sweeps_w_throttle_pumps.zip` (`2908b2587a04c6e53486019b142e54541ef3bad34f4d2848752def666c49d330`) and the
+settings dump `Air65_BF_settings_.zip` (`2bcb33068b18a422773f860c9033fd3d4322ec87080dbe2a65a7030d217c8f48`);
+the eight BBLs are gzipped in `8ksal8_b0laws_20260905/`. ADRC logs: b10.1, Air65 R, 99/110, `b0 = 8964/5378/3586`,
+hover 29, `sigma_decay` 0, `scale_max` 4, ADRC LPF 0; `pid_at_min_throttle` ON in LINEAR/QUADRATIC, OFF in
+FIXED/SQRT. `CLASSIC_btfl_001` is a classic-PID flight (38/54/26, debug 19) on the same craft.
+
+Pump = throttle rising ≥ 15 % within 0.3 s from below 30 %; chop = the reverse; peak |setpoint − gyro| in the
+0.8 s after each; scale = debug[7] at the pump; z3 swing = largest peak-to-peak of any axis's z3 in that window.
+Motor line as in the earlier addenda, windowed 2 s, split by the window's median throttle.
+
+| log | law | span | pumps | peak err R/P pump | chop | scale at pump | z3 swing | line RMS thr<35 % / >45 % | vbat min |
+|---|---|---:|---:|---|---|---:|---:|---|---:|
+| CLASSIC_001 | PID | 87 s | 15 | 18 / 21 | 17 / 20 | — | — | 0.3 % / — | — |
+| FIXED_003 | FIXED | 57 s | 17 | 34 / 29 | 33 / 27 | 1.00 | 390 k | 6.0 % / 2.8 % | 3.07 V |
+| FIXED2_002 | FIXED | 48 s | 15 | 32 / 33 | 30 / 30 | 1.00 | — | 4.5 % / 2.8 % | 3.04 V |
+| SQRT_001 | SQRT | 48 s | 16 | 42 / 46 | 40 / 42 | 1.56 | 580 k | 1.7 % / — | 3.40 V |
+| LINEAR_002 | LINEAR | 42 s | 12 | 93 / 96 | 88 / 94 | 2.58 | 1 100 k | 3.1 % / — | 3.24 V |
+| QUADRATIC_001 | QUAD | 46 s | 18 | 122 / 160 | 122 / 156 | 4.00 (cap, 7.2 % of frames) | 2 290 k | 0.9 % / — | 3.31 V |
+| b0_FIXED_001 | FIXED | 199 s | 20 | 38 / 28 | 29 / 26 | 1.00 | 530 k | 1.3 % / 1.0 % | 2.80 V |
+| b0_LINEAR_002 | LINEAR | 178 s | 17 | 49 / 45 | 51 / 42 | 1.62 | 770 k | 0.8 % / 0.2 % | 2.94 V |
+
+Findings:
+
+- **Pump error is monotone in the scale the law reaches at the top of the pump.** Each step up in scale is a
+  step down in controller gain (`kp/b0`, `kd/b0`); the observer sees the gap as a disturbance, z3 swings to fill
+  it and swings back on the chop. FIXED never leaves 1.00 and is flattest; QUADRATIC at hover 29 hits the cap.
+- **Below hover the four laws are the same code path** (scale clamped to ≥ 1), so the "strange 0–20 %" feel is
+  the return from the pump, not the low range itself. Raising `adrc_hover_throttle` moves every non-FIXED law
+  toward FIXED.
+- **PID baseline** does the same pumps at 18–21 °/s against 30–38 for ADRC FIXED.
+- Motor line 59–60 Hz (0.55 × `wo`) in every ADRC log; 1.7–6 % in the short pump flights, 0.7–1.7 % in the long
+  ones, no ordering by law that survives the pump content. PID 0.3 %.
