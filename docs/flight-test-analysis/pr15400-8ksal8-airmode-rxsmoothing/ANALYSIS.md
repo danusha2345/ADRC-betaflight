@@ -319,3 +319,27 @@ Findings:
 - **PID baseline** does the same pumps at 18–21 °/s against 30–38 for ADRC FIXED.
 - Motor line 59–60 Hz (0.55 × `wo`) in every ADRC log; 1.7–6 % in the short pump flights, 0.7–1.7 % in the long
   ones, no ordering by law that survives the pump content. PID 0.3 %.
+
+## Addendum 2026-09-06b: @8ksal8's FIXED-law `wc/wo` sweep at hover 5 (PR comment 5559979730)
+
+Archive `FIXED_hover_throttle_5_.zip` (SHA-256 `3732cd75099306af30aa8e624e81dd2e3dbafc0d5e9c82ce5b17078cb54c788d`);
+six BBLs gzipped in `8ksal8_fixed_hover5_20260906/`. b10.1, Air65 R, FIXED, `adrc_hover_throttle` 5, `sigma_decay` 0,
+`b0 = 8964/5378/3586`, `pid_at_min_throttle` ON, filter chain as before.
+
+**`adrc_hover_throttle` is inert under FIXED.** In b10.1 `adrc.c` the only consumer of `hoverThrottlePercent` is the
+b0 throttle schedule (`adrcUpdatePerLoopState()`, line 676); FIXED returns `rawScale = 1` regardless, and debug[7]
+reads 1.00 on every frame of all six logs, as in the hover-29 FIXED flights. The tester's perceived hover effect on
+FIXED therefore has no firmware cause. Same metrics as the earlier addenda.
+
+| wc/wo | span | err median R/P/Y | p90 | overshoot R/P/Y | motor line | line RMS/motor | 5-s windows min/med/max | rail | vbat min |
+|---|---:|---|---|---|---:|---:|---|---:|---:|
+| 90/100 | 63 s | 5/3/3 | 20/11/9 | 9/7/0 % | 55.5 Hz | 0.73 % | 0.5/0.8/0.9 % | 2.7 % | 3.21 V |
+| 92/102 | 64 s | 5/3/3 | 19/13/8 | 6/7/0 % | 55.5 Hz | 0.85 % | 0.6/0.9/1.0 % | 3.0 % | 3.14 V |
+| 94/104 | 66 s | 6/3/3 | 22/14/11 | 3/8/0 % | 55.5 Hz | 1.21 % | 0.9/1.3/1.7 % | 3.1 % | 3.06 V |
+| 95/106 | 65 s | 5/3/3 | 18/12/9 | 5/4/0 % | 58.0 Hz | 1.32 % | 0.5/1.2/1.9 % | 2.9 % | 3.32 V |
+| 97/108 | 61 s | 4/3/3 | 16/11/9 | 4/4/0 % | 58.5 Hz | 2.95 % | 2.1/3.0/3.7 % | 3.7 % | 3.15 V |
+| 99/110 | 62 s | 5/3/4 | 19/13/16 | 5/7/2 % | 59.0 Hz | **8.66 %** | 3.3/6.7/19.1 % | 3.1 % | 3.10 V |
+
+Tracking is flat across the sweep; the motor line rises 0.7 → 1.3 % to 95/106, 3 % at 97/108, 8.7 % at 99/110. On
+FIXED the knee sits ≈ 10 `wo` below the SQRT sweep's (2 % at 97/110, ×8 at 106/120): SQRT lowered the loop gain by up
+to 1.75× above hover, FIXED does not. Line frequency 0.54–0.55 × `wo`.
