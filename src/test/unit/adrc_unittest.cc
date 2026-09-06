@@ -1182,8 +1182,8 @@ TEST_F(AdrcUnittest, NonFiniteRuntimeStateRecoversToFiniteOutput)
 // once the gate opens. Off by default, in which case the control law must be bit-identical.
 TEST_F(AdrcUnittest, GroundWcDisabledByDefaultLeavesGainsUntouched)
 {
-    ASSERT_EQ(0, profile.groundWc);
     ASSERT_FALSE(runtime.liftoff);
+    EXPECT_FLOAT_EQ(runtime.coefficient[FD_ROLL].wc, runtime.coefficient[FD_ROLL].groundWc);
     // vRef == setpoint (TD off), z1 == 0: P = wc^2 * setpoint / b0 = 60^2 * 100 / 2000 = 180.
     const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f);
     EXPECT_FLOAT_EQ(180.0f, out.P);
@@ -1191,9 +1191,8 @@ TEST_F(AdrcUnittest, GroundWcDisabledByDefaultLeavesGainsUntouched)
 
 TEST_F(AdrcUnittest, GroundWcAppliesWhileGateClosedAndRampsAfterLiftoff)
 {
-    profile.groundWc = 40;
-    profile.wcRampMs = 200;
     adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetGroundWc(&runtime, 40, 200);
     adrcResetGate(&runtime);
 
     // Gate closed: wc = 40 -> P = 40^2 * 100 / 2000 = 80.
@@ -1224,18 +1223,37 @@ TEST_F(AdrcUnittest, GroundWcAppliesWhileGateClosedAndRampsAfterLiftoff)
 
 TEST_F(AdrcUnittest, GroundWcIsCappedAtFlightWcAndRampZeroSwitches)
 {
-    profile.groundWc = 250; // above wc 60: must not raise the ground gain
-    profile.wcRampMs = 0;
     adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetGroundWc(&runtime, 250, 0); // above wc 60: must not raise the ground gain
     adrcResetGate(&runtime);
     adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
     EXPECT_FLOAT_EQ(180.0f, adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P);
 
-    profile.groundWc = 40;
     adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetGroundWc(&runtime, 40, 0);
     adrcResetGate(&runtime);
     runtime.liftoff = true;
     adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
     EXPECT_FLOAT_EQ(1.0f, runtime.wcBlend);
     EXPECT_FLOAT_EQ(180.0f, adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P);
+}
+
+TEST_F(AdrcUnittest, SameTypeReinitPreservesActiveGroundWcRamp)
+{
+    // An AUX adjustment re-runs pidInitConfig() -> adrcInitConfig() + adrcSetGroundWc() while armed;
+    // that must not finish (or restart) a ramp that is in progress.
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetGroundWc(&runtime, 40, 200);
+    adrcResetGate(&runtime);
+    runtime.liftoff = true;
+    for (int i = 0; i < 12; i++) {
+        adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    }
+    const float blendBefore = runtime.wcBlend;
+    ASSERT_NEAR(0.48f, blendBefore, 0.001f);
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetGroundWc(&runtime, 40, 200);
+    EXPECT_FLOAT_EQ(blendBefore, runtime.wcBlend);
+    EXPECT_NEAR(49.6f * 49.6f * 100.0f / 2000.0f,
+        adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P, 0.5f);
 }

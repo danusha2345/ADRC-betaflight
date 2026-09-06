@@ -1826,8 +1826,8 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GATED_Z3_DECAY, "%d",        currentPidProfile->adrc.gatedZ3DecayRate);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_B0_SCALE_MAX, "%d",          currentPidProfile->adrc.b0ThrottleScaleMax);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_B0_LAW, "%d",                currentPidProfile->adrc.b0Law);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GROUND_WC, "%d",             currentPidProfile->adrc.groundWc);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_WC_RAMP_MS, "%d",            currentPidProfile->adrc.wcRampMs);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GROUND_WC, "%d",             currentPidProfile->adrc_ground_wc);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_WC_RAMP_MS, "%d",            currentPidProfile->adrc_wc_ramp_ms);
         // ADRC-029: the decode key for the z3 debug fields (debug[2]/[5]/[6] = z3 / this value).
         // Logs without this line are b9 or earlier and imply 16.
         BLACKBOX_PRINT_HEADER_LINE("adrc_z3_log_scale", "%lu",                  (unsigned long)adrcZ3LogScale(

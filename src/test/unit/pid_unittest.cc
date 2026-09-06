@@ -1655,3 +1655,12 @@ TEST(pidControllerTest, testAdrcAppliedOutputRejectsInvalidScaleAndClassicProfil
         EXPECT_FLOAT_EQ(42.0f, pidRuntime.adrc.lastOutput[axis]);
     }
 }
+
+// ADRC-030: the ground-wc fields must stay the trailing bytes of pidProfile_t so a PG version 13
+// blob saved by b10.1 loads with every earlier field in place (pgLoad() is a size-limited memcpy).
+TEST(pidProfileLayoutTest, AdrcGroundWcFieldsAreAppendedAtTheEnd)
+{
+    EXPECT_GT(offsetof(pidProfile_t, adrc_ground_wc), offsetof(pidProfile_t, chirp_time_seconds));
+    EXPECT_GT(offsetof(pidProfile_t, adrc_wc_ramp_ms), offsetof(pidProfile_t, adrc_ground_wc));
+    EXPECT_LE(sizeof(pidProfile_t) - offsetof(pidProfile_t, adrc_ground_wc), 4u);
+}

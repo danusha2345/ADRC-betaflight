@@ -324,12 +324,6 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // ADRC-021 A/B selector (see adrcB0Law_e). Quadratic = the shipped behavior, kept as default
     // so a profile reset flies exactly like b4; set sqrt/linear/fixed per PID profile to compare.
     adrcProfile->b0Law = ADRC_B0_LAW_QUADRATIC;
-    // ADRC-030 (experimental, off): the arm-time lift with airmode on is a loop through the grounded
-    // airframe whose gain is set by wc (P ~ wc^2/b0, D ~ 2*wc*wo/b0 at the observer's derivative
-    // peak); a tester arm at wc 40 / wo 110 did not lift where 99/110 did. This lets a low wc apply
-    // only while the liftoff gate is closed, then ramp to the flight value once it opens.
-    adrcProfile->groundWc = 0;
-    adrcProfile->wcRampMs = 300;
 }
 
 void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime, float dT)
@@ -350,7 +344,7 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         c->b0 = fmaxf(adrcProfile->b0[axis], ADRC_B0_MIN);
         c->kp = c->wc * c->wc;
         c->kd = 2.0f * c->wc;
-        c->groundWc = (adrcProfile->groundWc > 0) ? fminf(adrcProfile->groundWc, c->wc) : c->wc;
+        c->groundWc = c->wc; // ADRC-030 off until adrcSetGroundWc() lowers it
         c->beta1 = 3.0f * c->wo;
         c->beta2 = 3.0f * c->wo * c->wo;
         c->beta3 = c->wo * c->wo * c->wo;
@@ -390,8 +384,9 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
     // isolation) keep the b9-era divisor; production overwrites this one line below via
     // adrcInitZ3LogScale(), which pidInitConfig() calls with the real limits.
     adrcRuntime->z3LogScale = ADRC_Z3_LOG_SCALE;
-    adrcRuntime->wcRampPerS = (adrcProfile->wcRampMs > 0) ? 1000.0f / adrcProfile->wcRampMs : 0.0f;
-    adrcRuntime->wcBlend = adrcRuntime->liftoff ? 1.0f : 0.0f;
+    adrcRuntime->wcRampPerS = 0.0f; // ADRC-030: no ramp until adrcSetGroundWc(); wcBlend is gate
+                                    // state and is deliberately left alone here - a same-type
+                                    // re-init mid-ramp (AUX adjustment) must not finish the ramp
 }
 
 uint32_t adrcZ3LogScale(const adrcProfile_t *adrcProfile, uint16_t pidSumLimit, uint16_t pidSumLimitYaw)
@@ -465,6 +460,19 @@ uint8_t adrcStateFlags(const adrcRuntime_t *adrcRuntime)
     flags |= (adrcRuntime->liftoffCause << ADRC_STATE_LIFTOFF_CAUSE_SHIFT)
         & ADRC_STATE_LIFTOFF_CAUSE_MASK;
     return flags;
+}
+
+void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs)
+{
+    // ADRC-030 (experimental, off by default): the arm-time lift with airmode on is a loop through the
+    // grounded airframe whose gain is set by wc (P ~ wc^2/b0, D ~ 2*wc*wo/b0 at the observer's
+    // derivative peak); a tester arm at wc 40 / wo 110 did not lift where 99/110 did. This lets a low
+    // wc apply only while the liftoff gate is closed, then ramp to the flight value once it opens.
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adrcCoefficient_t *c = &adrcRuntime->coefficient[axis];
+        c->groundWc = (groundWc > 0) ? fminf(groundWc, c->wc) : c->wc;
+    }
+    adrcRuntime->wcRampPerS = (rampMs > 0) ? 1000.0f / rampMs : 0.0f;
 }
 
 void adrcResetState(adrcRuntime_t *adrcRuntime, int axis)

@@ -108,12 +108,11 @@ typedef struct adrcProfile_s {
                                 // hoverThrottlePercent above); scaling is never applied below 1x
     uint8_t b0Law;              // adrcB0Law_e: which throttle->b0 schedule shape to apply (ADRC-021
                                 // A/B selector, not per-axis)
-    uint8_t groundWc;           // EXPERIMENTAL (ADRC-030): controller bandwidth [rad/s] used while the
-                                // liftoff gate is closed, on every axis (capped at that axis's wc);
-                                // 0 = disabled (wc is the same on the ground and in the air)
-    uint16_t wcRampMs;          // time over which wc ramps linearly from groundWc to wc once the gate
-                                // opens; 0 = switch on the first open loop
 } adrcProfile_t;
+// ADRC-030 (experimental) ground wc lives in pidProfile_t (adrc_ground_wc / adrc_wc_ramp_ms), appended
+// at its END rather than here: pgLoad() restores a same-version blob by size-limited memcpy, so any
+// new byte inside adrcProfile_t would shift every pidProfile_t field after it and silently corrupt
+// PID profiles saved by b10.1. Values reach the runtime via adrcSetGroundWc().
 
 #ifdef USE_ADRC
 
@@ -142,7 +141,7 @@ typedef struct adrcCoefficient_s {
     float b0;      // control-input gain estimate [deg/s^3 per PID output]
     float kp;      // = wc*wc (virtual PD control law proportional gain)
     float kd;      // = 2*wc (virtual PD control law derivative gain)
-    float groundWc; // wc while the gate is closed; == wc when adrcProfile->groundWc is 0 (ADRC-030)
+    float groundWc; // wc while the gate is closed; == wc unless adrcSetGroundWc() lowered it (ADRC-030)
     float beta1;   // = 3*wo (ESO observer gain)
     float beta2;   // = 3*wo*wo (ESO observer gain)
     float beta3;   // = wo*wo*wo (ESO observer gain)
@@ -182,7 +181,7 @@ typedef struct adrcRuntime_s {
                              // the raw value) - see ADRC_B0_SCALE_THROTTLE_LPF_HZ in adrc.c
     float wcBlend;          // 0 = groundWc, 1 = wc; held at 0 while the gate is closed and ramped
                              // to 1 over wcRampMs after it opens (ADRC-030)
-    float wcRampPerS;       // 1 / (wcRampMs * 0.001); 0 = no ramp (blend jumps to 1)
+    float wcRampPerS;       // 1 / (adrc_wc_ramp_ms * 0.001); 0 = no ramp (blend jumps to 1)
 #ifdef USE_YAW_SPIN_RECOVERY
     bool yawSpinActivePreviousLoop; // holds disturbance I at zero for the first loop after yaw-spin
                                      // recovery clears; see adrcLatchYawSpinRecovery()
@@ -213,6 +212,10 @@ typedef struct adrcOutput_s {
 void adrcResetProfile(adrcProfile_t *adrcProfile);
 
 void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime, float dT);
+// ADRC-030: wc used while the liftoff gate is closed (0 = off, i.e. the flight wc) and the ramp back
+// to the flight wc after it opens (0 ms = switch). Call after adrcInitConfig(); does not touch the
+// live ramp progress (wcBlend), which belongs to the gate: adrcResetGate() restarts it.
+void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs);
 
 // The z3 blackbox divisor implied by this profile: the smallest integer whose int16 endpoint
 // covers the worst-case z3 anti-windup bound (pidSumLimit * b0 * b0ThrottleScaleMax, per axis)

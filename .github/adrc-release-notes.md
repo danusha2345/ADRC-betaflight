@@ -2,7 +2,7 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
-## b11-exp1 — ADRC-030 ground wc experiment (opt-in, off by default)
+## b11-exp2 — ADRC-030 ground wc experiment (opt-in, off by default)
 
 Same control law, defaults and Blackbox wire schema as b10.1. Adds two PID-profile
 settings for the arm-time lift investigation in betaflight/betaflight#15400:
@@ -21,6 +21,15 @@ This lets that low wc apply only on the ground. Both values are written to the
 Blackbox header (`adrc_ground_wc`, `adrc_wc_ramp_ms`); the gate state is already in
 `adrcState` bit 0, so the effective wc per frame is reconstructible offline. Not a
 fix: a diagnostic switch for A/B arms with airmode on and props on.
+
+exp2 replaces the withdrawn exp1 (`629f6b6b`, never released) after review:
+
+- the two fields are appended at the end of `pidProfile_t`, PG version stays 13, so
+  **saved b10.1 PID profiles load unchanged** (exp1 inserted them inside the ADRC
+  block and would have shifted every later profile field on upgrade);
+- a same-type re-init (AUX adjustment) no longer finishes an in-progress wc ramp;
+- the hex release workflow checks out the named tag in every job and refuses to
+  publish when the tag and the built commit differ.
 
 ## b10.1 — release-integrity maintenance rebuild
 

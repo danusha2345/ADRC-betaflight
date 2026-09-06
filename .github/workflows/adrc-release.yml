@@ -1,7 +1,8 @@
 # Builds ready-to-flash ADRC hex files — generic per-MCU targets plus every board
 # config in the Betaflight config repo (~600 boards) — and attaches them to a
 # GitHub Release, so testers don't have to compile the firmware themselves.
-# Trigger manually (Actions -> ADRC hex release -> Run workflow) or push an 'adrc-v*' tag.
+# Push an 'adrc-v*' / 'adrc-pr*' tag, or trigger manually (Actions -> Run workflow) naming an
+# EXISTING tag: every job checks out that tag and the release step refuses a SHA mismatch.
 
 name: ADRC hex release
 
@@ -46,6 +47,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          # Build the tagged source, never the dispatching branch (manual runs name an existing tag)
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Init config submodule
         run: git submodule update --init -- src/config
@@ -89,6 +93,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          # Build the tagged source, never the dispatching branch (manual runs name an existing tag)
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Init config submodule
         run: git submodule update --init -- src/config
@@ -161,6 +168,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          # Build the tagged source, never the dispatching branch (manual runs name an existing tag)
+          ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Download artifacts
         uses: actions/download-artifact@v5
@@ -174,13 +184,21 @@ jobs:
           TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           ls -la hex/
+          # The release must describe the source it was built from: the tag has to exist and point
+          # at the checked-out commit (a manual run with a foreign or missing tag stops here).
+          git fetch --no-tags origin "+refs/tags/$TAG:refs/tags/$TAG"
+          tag_sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+          head_sha=$(git rev-parse HEAD)
+          if [ "$tag_sha" != "$head_sha" ]; then
+            echo "tag $TAG is at $tag_sha but the build is $head_sha - refusing to publish"; exit 1
+          fi
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
               --title "ADRC firmware $TAG — prebuilt hex" \
               --prerelease \
               --notes-file .github/adrc-release-notes.md
           else
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
               --title "ADRC firmware $TAG — prebuilt hex" \
               --prerelease \
               --notes-file .github/adrc-release-notes.md
