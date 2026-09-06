@@ -108,6 +108,11 @@ typedef struct adrcProfile_s {
                                 // hoverThrottlePercent above); scaling is never applied below 1x
     uint8_t b0Law;              // adrcB0Law_e: which throttle->b0 schedule shape to apply (ADRC-021
                                 // A/B selector, not per-axis)
+    uint8_t groundWc;           // EXPERIMENTAL (ADRC-030): controller bandwidth [rad/s] used while the
+                                // liftoff gate is closed, on every axis (capped at that axis's wc);
+                                // 0 = disabled (wc is the same on the ground and in the air)
+    uint16_t wcRampMs;          // time over which wc ramps linearly from groundWc to wc once the gate
+                                // opens; 0 = switch on the first open loop
 } adrcProfile_t;
 
 #ifdef USE_ADRC
@@ -137,6 +142,7 @@ typedef struct adrcCoefficient_s {
     float b0;      // control-input gain estimate [deg/s^3 per PID output]
     float kp;      // = wc*wc (virtual PD control law proportional gain)
     float kd;      // = 2*wc (virtual PD control law derivative gain)
+    float groundWc; // wc while the gate is closed; == wc when adrcProfile->groundWc is 0 (ADRC-030)
     float beta1;   // = 3*wo (ESO observer gain)
     float beta2;   // = 3*wo*wo (ESO observer gain)
     float beta3;   // = wo*wo*wo (ESO observer gain)
@@ -174,6 +180,9 @@ typedef struct adrcRuntime_s {
                              // updated once per loop, applied per-axis in adrcApplyControl()
     float b0ScaleThrottle;  // low-passed collective feeding the b0 schedule above (the gate reads
                              // the raw value) - see ADRC_B0_SCALE_THROTTLE_LPF_HZ in adrc.c
+    float wcBlend;          // 0 = groundWc, 1 = wc; held at 0 while the gate is closed and ramped
+                             // to 1 over wcRampMs after it opens (ADRC-030)
+    float wcRampPerS;       // 1 / (wcRampMs * 0.001); 0 = no ramp (blend jumps to 1)
 #ifdef USE_YAW_SPIN_RECOVERY
     bool yawSpinActivePreviousLoop; // holds disturbance I at zero for the first loop after yaw-spin
                                      // recovery clears; see adrcLatchYawSpinRecovery()

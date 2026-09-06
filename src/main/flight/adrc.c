@@ -324,6 +324,12 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // ADRC-021 A/B selector (see adrcB0Law_e). Quadratic = the shipped behavior, kept as default
     // so a profile reset flies exactly like b4; set sqrt/linear/fixed per PID profile to compare.
     adrcProfile->b0Law = ADRC_B0_LAW_QUADRATIC;
+    // ADRC-030 (experimental, off): the arm-time lift with airmode on is a loop through the grounded
+    // airframe whose gain is set by wc (P ~ wc^2/b0, D ~ 2*wc*wo/b0 at the observer's derivative
+    // peak); a tester arm at wc 40 / wo 110 did not lift where 99/110 did. This lets a low wc apply
+    // only while the liftoff gate is closed, then ramp to the flight value once it opens.
+    adrcProfile->groundWc = 0;
+    adrcProfile->wcRampMs = 300;
 }
 
 void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime, float dT)
@@ -344,6 +350,7 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         c->b0 = fmaxf(adrcProfile->b0[axis], ADRC_B0_MIN);
         c->kp = c->wc * c->wc;
         c->kd = 2.0f * c->wc;
+        c->groundWc = (adrcProfile->groundWc > 0) ? fminf(adrcProfile->groundWc, c->wc) : c->wc;
         c->beta1 = 3.0f * c->wo;
         c->beta2 = 3.0f * c->wo * c->wo;
         c->beta3 = c->wo * c->wo * c->wo;
@@ -383,6 +390,8 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
     // isolation) keep the b9-era divisor; production overwrites this one line below via
     // adrcInitZ3LogScale(), which pidInitConfig() calls with the real limits.
     adrcRuntime->z3LogScale = ADRC_Z3_LOG_SCALE;
+    adrcRuntime->wcRampPerS = (adrcProfile->wcRampMs > 0) ? 1000.0f / adrcProfile->wcRampMs : 0.0f;
+    adrcRuntime->wcBlend = adrcRuntime->liftoff ? 1.0f : 0.0f;
 }
 
 uint32_t adrcZ3LogScale(const adrcProfile_t *adrcProfile, uint16_t pidSumLimit, uint16_t pidSumLimitYaw)
@@ -483,6 +492,7 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime)
     adrcRuntime->throttleAtIdle = true;
     adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_NONE;
     adrcRuntime->z3GrowthInhibitMask = 0;
+    adrcRuntime->wcBlend = 0.0f;
     adrcRuntime->gateResetCount++;
 }
 
@@ -632,6 +642,16 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
         for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
             adrcRuntime->lastOutput[axis] = 0.0f;
         }
+    }
+
+    // ADRC-030: wc sits at groundWc while the gate is closed and ramps to the flight value after it
+    // opens; the blend is per-runtime because the gate is shared across axes.
+    if (!adrcRuntime->liftoff) {
+        adrcRuntime->wcBlend = 0.0f;
+    } else if (adrcRuntime->wcRampPerS > 0.0f) {
+        adrcRuntime->wcBlend = fminf(1.0f, adrcRuntime->wcBlend + finiteDt * adrcRuntime->wcRampPerS);
+    } else {
+        adrcRuntime->wcBlend = 1.0f;
     }
 
     // Motor authority ~ throttle^2, so a hover-tuned b0 is wrong away from hover; scale only UP
@@ -790,9 +810,14 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // exceeds pidSumLimit while an opposing D partially cancels it, and clamping both cuts the
     // net drive severalfold mid-snap - which is exactly the regime the community-validated tunes
     // were flown in without them.
+    // ADRC-030: effective wc = groundWc on the ground, ramping to wc after the gate opens. Equals
+    // c->wc (so kp == c->kp, kd == c->kd) whenever the feature is off.
+    const float wcEff = c->groundWc + (c->wc - c->groundWc) * adrcRuntime->wcBlend;
+    const float kp = wcEff * wcEff;
+    const float kd = 2.0f * wcEff;
     adrcOutput_t output = {
-        .P = (c->kp * (adrcRuntime->vRef[axis] - adrcRuntime->z1[axis])) / b0,
-        .D = (-c->kd * adrcRuntime->z2[axis]) / b0,
+        .P = (kp * (adrcRuntime->vRef[axis] - adrcRuntime->z1[axis])) / b0,
+        .D = (-kd * adrcRuntime->z2[axis]) / b0,
         .I = (-adrcRuntime->z3[axis]) / b0,
     };
     if (!adrcIsFinite(output.P) || !adrcIsFinite(output.I) || !adrcIsFinite(output.D)) {

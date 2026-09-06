@@ -1483,6 +1483,8 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_ADRC_GATED_Z3_DECAY,        VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 2000 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc.gatedZ3DecayRate) },
     { PARAM_NAME_ADRC_B0_SCALE_MAX,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 1, 50 },    PG_PID_PROFILE, offsetof(pidProfile_t, adrc.b0ThrottleScaleMax) },
     { PARAM_NAME_ADRC_B0_LAW,                VAR_UINT8  | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_ADRC_B0_LAW }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc.b0Law) },
+    { PARAM_NAME_ADRC_GROUND_WC,             VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 255 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc.groundWc) },
+    { PARAM_NAME_ADRC_WC_RAMP_MS,            VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 5000 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc.wcRampMs) },
 #endif
 
 // PG_TELEMETRY_CONFIG
