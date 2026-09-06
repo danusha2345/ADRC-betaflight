@@ -2,14 +2,14 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
-## b11-exp2 — ADRC-030 ground wc experiment (opt-in, off by default)
+## b11-exp3 — ADRC-030 ground wc experiment (opt-in, off by default)
 
 Same control law, defaults and Blackbox wire schema as b10.1. Adds two PID-profile
 settings for the arm-time lift investigation in betaflight/betaflight#15400:
 
 - `adrc_ground_wc` (0–255 rad/s, default 0 = off): controller bandwidth used on every
   axis while the liftoff gate is closed, capped at that axis's `adrc_wc_*`;
-- `adrc_wc_ramp_ms` (0–5000, default 300): linear ramp from the ground wc to the
+- `adrc_wc_ramp_ms` (0–5000, default 100): linear ramp from the ground wc to the
   flight wc after the gate opens (0 = switch on the first open loop).
 
 Rationale: the grounded observer is a well-damped linear pair (poles of
@@ -22,7 +22,10 @@ Blackbox header (`adrc_ground_wc`, `adrc_wc_ramp_ms`); the gate state is already
 `adrcState` bit 0, so the effective wc per frame is reconstructible offline. Not a
 fix: a diagnostic switch for A/B arms with airmode on and props on.
 
-exp2 replaces the withdrawn exp1 (`629f6b6b`, never released) after review:
+exp3 only lowers the default `adrc_wc_ramp_ms` from 300 to 100 ms after the first
+ground test on an Air65 (the 300 ms hand-over was perceptible, 50–100 ms was not).
+
+exp2 replaced the withdrawn exp1 (`629f6b6b`, never released) after review:
 
 - the two fields are appended at the end of `pidProfile_t`, PG version stays 13, so
   **saved b10.1 PID profiles load unchanged** (exp1 inserted them inside the ADRC

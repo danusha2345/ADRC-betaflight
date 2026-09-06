@@ -261,7 +261,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
         .adrc_ground_wc = 0,
-        .adrc_wc_ramp_ms = 300,
+        .adrc_wc_ramp_ms = 100,
     );
 #ifdef USE_ADRC
     adrcResetProfile(&pidProfile->adrc);
