@@ -384,3 +384,29 @@ exp3 arms: airmode arm 3.1 s on the ground and angle + airmode arm 3.8 s, no gyr
 
 Line at 0.68–0.71 × `wo` on this frame. 4S has the most overshoot; `b0` steps 1.34× / 1.19× against pack-voltage
 steps 1.48× / 1.34×, so 4S roll `b0` ≈ 8.8 k would follow the voltage.
+
+### Addendum 2026-09-07b: ground wc 20 on the same axis, and the closed-gate D-gain ordering (PR comment 5570613494)
+
+`wc_g = 20.zip` (SHA-256 `983c3b62bff00b0748f7ed273a26e5cf6d24b647dbbe7a0a67d6487e8ffe4ef3`, exp2 `33004f5c`), two BBLs
+gzipped in `b11_tests_20260907/g20/`. 103/140 pitch, `b0` 2500, ground wc 20: three taps 472–632 °/s, each burst
+0.41–0.59 s, a motor at 2047 in every burst (applied collective to 546, commanded 0), gate closed. The second log is
+40/70 all axes with `b0 = 8964/5378/3586` (8ksal8's values under jmsweng's wc/wo): 8.7 s hover, error medians
+23/27/7 °/s, p90 58/87/30, 2 Hz wallow, no rail, motor line 0.2 % — under-controlled (loop gain halved by the
+doubled `b0`), not unstable.
+
+Ground tests ordered by the closed-gate loop gains, P = `wc_g²/b0`, D = `2·wc_g·wo/b0` (PID output per °/s):
+
+| craft / axis | wc_g | wo | b0 | P | D | outcome |
+|---|---:|---:|---:|---:|---:|---|
+| jmsweng 103/140 pitch | 40 | 140 | 2500 | 0.64 | 4.48 | 14 s rock, rails |
+| jmsweng 103/140 pitch | 20 | 140 | 2500 | 0.16 | 2.24 | settles 0.4–0.6 s, rails |
+| jmsweng 103/140 pitch | 5 | 140 | 2500 | 0.01 | 0.56 | settles ≈ 1 s, no rail |
+| jmsweng 99/110 all | 40 | 110 | 5378 | 0.30 | 1.64 | settles 0.3–0.4 s, rails |
+| jmsweng 99/110 all | 5 | 110 | 5378 | 0.005 | 0.20 | settles 0.3–0.6 s, no rail |
+| 8ksal8 TH3+ pitch | 40 | 90 | 3936 | 0.41 | 1.83 | clean arms (no taps) |
+| flyaway arms, flight wc | 103 | 140 | 2500 | 4.2 | 11.5 | lifts |
+| flyaway arms, flight wc | 99 | 110 | 5378 | 1.8 | 4.0 | lifts |
+
+The D column orders every outcome (≥ 4 self-sustaining, 1.6–2.2 settles but rails, ≤ 0.6 clean); P is small
+wherever it settles. Implemented as ADRC-030b (`adrc_ground_dgain`, exp4 `0aac46b8`): the ground wc is additionally
+capped at `dgain · b0 / (2·wo)` per axis, default 1.0.
