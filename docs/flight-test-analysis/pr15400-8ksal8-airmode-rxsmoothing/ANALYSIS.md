@@ -343,3 +343,44 @@ FIXED therefore has no firmware cause. Same metrics as the earlier addenda.
 Tracking is flat across the sweep; the motor line rises 0.7 → 1.3 % to 95/106, 3 % at 97/108, 8.7 % at 99/110. On
 FIXED the knee sits ≈ 10 `wo` below the SQRT sweep's (2 % at 97/110, ×8 at 106/120): SQRT lowered the loop gain by up
 to 1.75× above hover, FIXED does not. Line frequency 0.54–0.55 × `wo`.
+
+## Addendum 2026-09-07: first ground-wc (ADRC-030) tests — jmsweng tap tests on the Air65, 8ksal8 TH3+ 2.5" arms and packs (PR comments 5562538603, 5563565563)
+
+Archives: `b11 tests.zip` (`8cc1d2869967b2c596b17ad5f54a9f123b30c5f6a0bda712bd1420e06cace4be`, exp2 `33004f5c`,
+`adrc_wc_ramp_ms` 100 set by hand), `US_81_90_2s_3s_b9_btfl_001.zip` (`ef7a7aa0fbe9786f1d8dd9bc3d57a336add31cf7dc0e8a45d3288112b798c4d3`),
+`US_81_90_4s_b9_btfl_001.zip` (`94f6a16d8b1cf1c60f99f264af063993bcc796c9dfa4082d30bf21c8cf75bc5b`),
+`b11_exp3_Air_Angle_Arm_btfl_001.zip` (`d2ad5cb0c0688de6225d3466716a74965f760f958a23bc855b41278cd649f34e`, exp3 `83a12fc3`).
+Ten BBLs gzipped in `b11_tests_20260907/`. Scripts: `ground.py` (per-arm ground segments, bursts with |gyro| > 30 °/s
+while the gate is closed), `burst.py` (per-second envelope, motor max, applied/commanded collective, spectrum).
+
+### jmsweng, Air65, tap tests (props on, airmode on, stick at idle)
+
+| log | wc/wo | b0 | ground wc | bursts | peak | motors | settles | gate |
+|---|---|---|---:|---|---:|---|---|---|
+| 103/140 single axis (pitch) | 40,103,40 / 70,140,70 | 3700/2500/2430 | 40 | 3rd tap at 3.4 s → continuous | 520–1365 °/s every second for 14 s | 2047 every second, mean 550–650 | never (disarmed) | closed throughout; applied collective 600–730 vs commanded 0 |
+| same | same | same | 5 | 3 taps | 394–566 °/s | peak 901, no rail | ≈ 1 s each | closed |
+| 99/110 all axes | 99/110 | 8964/5378/3586 | 40 | 3 taps | 582–682 °/s | 2047 during bursts | 0.26–0.44 s | closed until the flight at 9.4 s |
+| 99/110 all axes | 99/110 | same | 5 | 3 taps | 473–951 °/s | no rail | 0.3–0.6 s | closed |
+
+The 103/140 run at ground wc 40 is a 4 Hz rock (harmonics 8/14/16 Hz), not the 15–19 Hz ring of the 3 Sep arms:
+the airmode headroom re-kicks a grounded craft rail-to-idle and the gyro path cannot open the gate with the stick at
+idle (ADRC-026), so it rocks instead of lifting and walked off the couch. What separates it from the 99/110 run at
+the same ground wc is the ground loop gain, `wc²/b0` (P) and `2·wc·wo/b0` (D): with `b0` 2500 and `wo` 140 against
+5378 and 110 the P gain is 2.15× and the D gain 2.74× higher. A bare-`wc` default therefore cannot be right for every
+`b0`; the acceptance test is the tap (three taps: each burst dead within ≈ 1 s, no motor at 2047).
+
+### 8ksal8, TH3+ Freestyle 2.5", F722, FIXED, 81/90, hover 5, sigma 0, per-pack b0
+
+exp3 arms: airmode arm 3.1 s on the ground and angle + airmode arm 3.8 s, no gyro activity above 30 °/s, motors
+≈ 360 mean / 720 peak, gate opened on the throttle. Flights (same metrics as before):
+
+| log | span | err median R/P/Y | p90 | overshoot | motor line | line RMS/motor | rail | vbat min |
+|---|---:|---|---|---|---:|---:|---:|---:|
+| exp3 airmode arm (3S, 6560/3936/2624) | 46 s | 3/2/2 | 9/7/7 | 7/9/0 % | 63.0 Hz | 0.65 % | 0 | 10.26 V |
+| exp3 angle + airmode arm (3S) | 188 s | 2/2/2 | 8/6/6 | 5/11/0 % | 63.3 Hz | 0.61 % | 0.2 % | 9.05 V |
+| b9 2S (4912/2947/1965) | 290 s | 3/2/2 | 11/7/8 | 10/10/0 % | 61.0 Hz | 0.31 % | 1.0 % | 6.57 V |
+| b9 3S (6560/3936/2624) | 282 s | 3/2/2 | 9/6/7 | 6/7/0 % | 63.5 Hz | 0.47 % | 0 | 9.27 V |
+| b9 4S (7832/4699/3133) | 284 s | 3/3/2 | 11/8/8 | 7/10/1 % | 61.5 Hz | 0.40 % | 0 | 12.03 V |
+
+Line at 0.68–0.71 × `wo` on this frame. 4S has the most overshoot; `b0` steps 1.34× / 1.19× against pack-voltage
+steps 1.48× / 1.34×, so 4S roll `b0` ≈ 8.8 k would follow the voltage.
