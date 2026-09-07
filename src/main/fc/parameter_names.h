@@ -267,6 +267,7 @@
 #define PARAM_NAME_ADRC_B0_LAW "adrc_b0_law"
 #define PARAM_NAME_ADRC_GROUND_WC "adrc_ground_wc"
 #define PARAM_NAME_ADRC_WC_RAMP_MS "adrc_wc_ramp_ms"
+#define PARAM_NAME_ADRC_GROUND_DGAIN "adrc_ground_dgain"
 
 #define PARAM_NAME_HORIZON_LEVEL_STRENGTH "horizon_level_strength"
 #define PARAM_NAME_HORIZON_LIMIT_DEGREES "horizon_limit_degrees"

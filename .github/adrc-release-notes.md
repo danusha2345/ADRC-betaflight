@@ -2,7 +2,7 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
-## b11-exp3 — ADRC-030 ground wc experiment (opt-in, off by default)
+## b11-exp4 — ADRC-030 ground wc experiment (opt-in, off by default)
 
 Same control law, defaults and Blackbox wire schema as b10.1. Adds two PID-profile
 settings for the arm-time lift investigation in betaflight/betaflight#15400:
@@ -10,7 +10,15 @@ settings for the arm-time lift investigation in betaflight/betaflight#15400:
 - `adrc_ground_wc` (0–255 rad/s, default 0 = off): controller bandwidth used on every
   axis while the liftoff gate is closed, capped at that axis's `adrc_wc_*`;
 - `adrc_wc_ramp_ms` (0–5000, default 100): linear ramp from the ground wc to the
-  flight wc after the gate opens (0 = switch on the first open loop).
+  flight wc after the gate opens (0 = switch on the first open loop);
+- `adrc_ground_dgain` (0–100, ×0.1, default 10 = 1.0): additionally caps the ground wc
+  per axis at `dgain · b0 / (2 · wo)`, i.e. bounds the closed-gate D-path gain
+  `2·wc·wo/b0`. Tap tests on two tunes ordered every outcome by that gain (≥ 4
+  self-sustaining rock, 1.6–2.2 settles but rails the motors, ≤ 0.6 settles clean)
+  and not by wc alone, because `b0` differs per tune. 0 = cap off (exp3 behaviour).
+
+Acceptance test for any ground-wc setting: props on, airmode on, stick at idle, three
+taps — each burst must die within about a second and no motor may reach 2047.
 
 Rationale: the grounded observer is a well-damped linear pair (poles of
 `s² + 3·wo·s + 3·wo²`, ζ ≈ 0.87) that cannot ring by itself; the loop that lifts the
@@ -22,7 +30,7 @@ Blackbox header (`adrc_ground_wc`, `adrc_wc_ramp_ms`); the gate state is already
 `adrcState` bit 0, so the effective wc per frame is reconstructible offline. Not a
 fix: a diagnostic switch for A/B arms with airmode on and props on.
 
-exp3 only lowers the default `adrc_wc_ramp_ms` from 300 to 100 ms after the first
+exp4 adds `adrc_ground_dgain` (above); no other change. exp3 only lowered the default `adrc_wc_ramp_ms` from 300 to 100 ms after the first
 ground test on an Air65 (the 300 ms hand-over was perceptible, 50–100 ms was not).
 
 exp2 replaced the withdrawn exp1 (`629f6b6b`, never released) after review:

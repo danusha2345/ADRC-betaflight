@@ -215,7 +215,11 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
 // ADRC-030: wc used while the liftoff gate is closed (0 = off, i.e. the flight wc) and the ramp back
 // to the flight wc after it opens (0 ms = switch). Call after adrcInitConfig(); does not touch the
 // live ramp progress (wcBlend), which belongs to the gate: adrcResetGate() restarts it.
-void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs);
+// ADRC-030b: dGainTenths (x0.1, 0 = off) additionally caps the ground wc per axis at
+// dGain * b0 / (2 * wo), i.e. bounds the closed-gate D-path gain 2*wc*wo/b0 [PID output per deg/s]:
+// tap tests ordered every outcome by that gain (>= 4 self-sustaining, 1.6-2.2 settles but rails the
+// motors, <= 0.6 settles clean), not by wc alone, because b0 differs per tune.
+void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs, uint8_t dGainTenths);
 
 // The z3 blackbox divisor implied by this profile: the smallest integer whose int16 endpoint
 // covers the worst-case z3 anti-windup bound (pidSumLimit * b0 * b0ThrottleScaleMax, per axis)

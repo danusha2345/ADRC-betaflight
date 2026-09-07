@@ -339,6 +339,7 @@ typedef struct pidProfile_s {
     // earlier would shift the fields after it. Keep new fields below this line.
     uint8_t adrc_ground_wc;                 // wc [rad/s] while the liftoff gate is closed, all axes, capped at adrc_wc_*; 0 = off
     uint16_t adrc_wc_ramp_ms;               // ramp from adrc_ground_wc to adrc_wc_* after the gate opens; 0 = switch
+    uint8_t adrc_ground_dgain;              // x0.1: also cap the ground wc at dgain * b0 / (2 * wo) per axis; 0 = off
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);

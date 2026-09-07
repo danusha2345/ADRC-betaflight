@@ -1662,5 +1662,6 @@ TEST(pidProfileLayoutTest, AdrcGroundWcFieldsAreAppendedAtTheEnd)
 {
     EXPECT_GT(offsetof(pidProfile_t, adrc_ground_wc), offsetof(pidProfile_t, chirp_time_seconds));
     EXPECT_GT(offsetof(pidProfile_t, adrc_wc_ramp_ms), offsetof(pidProfile_t, adrc_ground_wc));
-    EXPECT_LE(sizeof(pidProfile_t) - offsetof(pidProfile_t, adrc_ground_wc), 4u);
+    EXPECT_GT(offsetof(pidProfile_t, adrc_ground_dgain), offsetof(pidProfile_t, adrc_wc_ramp_ms));
+    EXPECT_LE(sizeof(pidProfile_t) - offsetof(pidProfile_t, adrc_ground_wc), 6u);
 }

@@ -462,7 +462,7 @@ uint8_t adrcStateFlags(const adrcRuntime_t *adrcRuntime)
     return flags;
 }
 
-void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs)
+void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs, uint8_t dGainTenths)
 {
     // ADRC-030 (experimental, off by default): the arm-time lift with airmode on is a loop through the
     // grounded airframe whose gain is set by wc (P ~ wc^2/b0, D ~ 2*wc*wo/b0 at the observer's
@@ -471,6 +471,10 @@ void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t ramp
     for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
         adrcCoefficient_t *c = &adrcRuntime->coefficient[axis];
         c->groundWc = (groundWc > 0) ? fminf(groundWc, c->wc) : c->wc;
+        if (groundWc > 0 && dGainTenths > 0) {
+            // ADRC-030b: bound the closed-gate D gain 2*wc*wo/b0 (see adrc.h)
+            c->groundWc = fminf(c->groundWc, dGainTenths * 0.1f * c->b0 / (2.0f * c->wo));
+        }
     }
     adrcRuntime->wcRampPerS = (rampMs > 0) ? 1000.0f / rampMs : 0.0f;
 }

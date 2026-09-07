@@ -1192,7 +1192,7 @@ TEST_F(AdrcUnittest, GroundWcDisabledByDefaultLeavesGainsUntouched)
 TEST_F(AdrcUnittest, GroundWcAppliesWhileGateClosedAndRampsAfterLiftoff)
 {
     adrcInitConfig(&profile, &runtime, TEST_DT);
-    adrcSetGroundWc(&runtime, 40, 200);
+    adrcSetGroundWc(&runtime, 40, 200, 0);
     adrcResetGate(&runtime);
 
     // Gate closed: wc = 40 -> P = 40^2 * 100 / 2000 = 80.
@@ -1224,13 +1224,13 @@ TEST_F(AdrcUnittest, GroundWcAppliesWhileGateClosedAndRampsAfterLiftoff)
 TEST_F(AdrcUnittest, GroundWcIsCappedAtFlightWcAndRampZeroSwitches)
 {
     adrcInitConfig(&profile, &runtime, TEST_DT);
-    adrcSetGroundWc(&runtime, 250, 0); // above wc 60: must not raise the ground gain
+    adrcSetGroundWc(&runtime, 250, 0, 0); // above wc 60: must not raise the ground gain
     adrcResetGate(&runtime);
     adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
     EXPECT_FLOAT_EQ(180.0f, adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P);
 
     adrcInitConfig(&profile, &runtime, TEST_DT);
-    adrcSetGroundWc(&runtime, 40, 0);
+    adrcSetGroundWc(&runtime, 40, 0, 0);
     adrcResetGate(&runtime);
     runtime.liftoff = true;
     adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
@@ -1243,7 +1243,7 @@ TEST_F(AdrcUnittest, SameTypeReinitPreservesActiveGroundWcRamp)
     // An AUX adjustment re-runs pidInitConfig() -> adrcInitConfig() + adrcSetGroundWc() while armed;
     // that must not finish (or restart) a ramp that is in progress.
     adrcInitConfig(&profile, &runtime, TEST_DT);
-    adrcSetGroundWc(&runtime, 40, 200);
+    adrcSetGroundWc(&runtime, 40, 200, 0);
     adrcResetGate(&runtime);
     runtime.liftoff = true;
     for (int i = 0; i < 12; i++) {
@@ -1252,8 +1252,33 @@ TEST_F(AdrcUnittest, SameTypeReinitPreservesActiveGroundWcRamp)
     const float blendBefore = runtime.wcBlend;
     ASSERT_NEAR(0.48f, blendBefore, 0.001f);
     adrcInitConfig(&profile, &runtime, TEST_DT);
-    adrcSetGroundWc(&runtime, 40, 200);
+    adrcSetGroundWc(&runtime, 40, 200, 0);
     EXPECT_FLOAT_EQ(blendBefore, runtime.wcBlend);
     EXPECT_NEAR(49.6f * 49.6f * 100.0f / 2000.0f,
         adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P, 0.5f);
+}
+
+TEST_F(AdrcUnittest, GroundDgainCapsGroundWcPerAxis)
+{
+    // dgain 1.0 -> cap = b0 / (2 wo) per axis, using the runtime wo (capped against TEST_DT) and b0;
+    // with the defaults (b0 2000, wo <= 62.5 at 8 ms) that is 16, well below the requested 40.
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetGroundWc(&runtime, 40, 0, 10);
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        const adrcCoefficient_t &c = runtime.coefficient[axis];
+        EXPECT_NEAR(c.b0 / (2.0f * c.wo), c.groundWc, 1e-3f);
+        EXPECT_LT(c.groundWc, 40.0f);
+    }
+    adrcResetGate(&runtime);
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    // P = groundWc^2 * 100 / b0 on the ground.
+    const adrcCoefficient_t &cr = runtime.coefficient[FD_ROLL];
+    EXPECT_NEAR(cr.groundWc * cr.groundWc * 100.0f / cr.b0,
+        adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P, 1e-2f);
+
+    // A large dgain leaves the plain ground wc in charge; dgain without ground wc does nothing.
+    adrcSetGroundWc(&runtime, 40, 0, 100);
+    EXPECT_FLOAT_EQ(40.0f, runtime.coefficient[FD_ROLL].groundWc);
+    adrcSetGroundWc(&runtime, 0, 0, 10);
+    EXPECT_FLOAT_EQ(60.0f, runtime.coefficient[FD_ROLL].groundWc);
 }

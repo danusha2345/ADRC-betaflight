@@ -377,7 +377,8 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     }
 #ifdef USE_ADRC
     adrcInitConfig(&pidProfile->adrc, &pidRuntime.adrc, pidRuntime.dT);
-    adrcSetGroundWc(&pidRuntime.adrc, pidProfile->adrc_ground_wc, pidProfile->adrc_wc_ramp_ms);
+    adrcSetGroundWc(&pidRuntime.adrc, pidProfile->adrc_ground_wc, pidProfile->adrc_wc_ramp_ms,
+        pidProfile->adrc_ground_dgain);
     adrcInitZ3LogScale(&pidRuntime.adrc, &pidProfile->adrc,
         pidProfile->pidSumLimit, pidProfile->pidSumLimitYaw);
 
