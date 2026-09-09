@@ -2,6 +2,19 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## b11-exp5 — ADRC-031 b0 schedule below hover (opt-in, off by default)
+
+Adds `adrc_b0_scale_min` (20–100 %, default 100 = b10.1 behaviour). The throttle→b0
+schedule (`adrc_b0_law` QUADRATIC/SQRT/LINEAR) may now go *below* 1 under hover, down to
+this floor; FIXED is unaffected, above hover nothing changes. Rationale: below hover the
+plant gain is lower than at hover (thrust ∝ rpm²), so a b0 pinned at the hover value
+under-gains the loop there — that is the low-throttle wobble testers have been curing
+with `thrust_linear` (a global ×1.9 gain at TL 95, see the AOS 3.5 sweep) or with
+`adrc_hover_throttle` 5. This lets the observer see the true plant instead. The clamp
+was introduced with fix #10a after a 26 Hz gain modulation through the mixer constrain
+at low throttle; that is the failure mode to watch for when lowering the floor — start
+at 70, check the motor line below hover, then 50. PG version stays 13 (field appended).
+
 ## b11-exp4 — ADRC-030 ground wc experiment (opt-in, off by default)
 
 Same control law, defaults and Blackbox wire schema as b10.1. Adds two PID-profile

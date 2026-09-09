@@ -1486,6 +1486,7 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_ADRC_GROUND_WC,             VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 255 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc_ground_wc) },
     { PARAM_NAME_ADRC_WC_RAMP_MS,            VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 5000 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc_wc_ramp_ms) },
     { PARAM_NAME_ADRC_GROUND_DGAIN,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 100 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc_ground_dgain) },
+    { PARAM_NAME_ADRC_B0_SCALE_MIN,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 20, 100 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc_b0_scale_min) },
 #endif
 
 // PG_TELEMETRY_CONFIG

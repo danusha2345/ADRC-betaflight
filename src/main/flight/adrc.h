@@ -177,6 +177,8 @@ typedef struct adrcRuntime_s {
                              // for anything that wants the per-loop decision after the fact
     float b0ThrottleScale;  // scale selected by b0Law, clamped to [1, max] (quadratic by default) -
                              // updated once per loop, applied per-axis in adrcApplyControl()
+    float b0ScaleMin;       // ADRC-031: floor of the b0 schedule below hover, 1.0 = classic "scale only
+                             // up"; set from adrc_b0_scale_min via adrcSetB0ScaleMin()
     float b0ScaleThrottle;  // low-passed collective feeding the b0 schedule above (the gate reads
                              // the raw value) - see ADRC_B0_SCALE_THROTTLE_LPF_HZ in adrc.c
     float wcBlend;          // 0 = groundWc, 1 = wc; held at 0 while the gate is closed and ramped
@@ -220,6 +222,12 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
 // tap tests ordered every outcome by that gain (>= 4 self-sustaining, 1.6-2.2 settles but rails the
 // motors, <= 0.6 settles clean), not by wc alone, because b0 differs per tune.
 void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs, uint8_t dGainTenths);
+// ADRC-031 (experimental): lets the throttle->b0 schedule go BELOW 1 under hover, down to minPercent/100
+// (100 = off, the b10.1 "scale only up" clamp). Below hover the plant gain is lower than at hover
+// (thrust ~ rpm^2), so a b0 pinned at the hover value under-gains the loop there; testers have been
+// covering that with thrust_linear (a global gain multiplier) or hover 5. FIXED law is unaffected.
+// Call after adrcInitConfig().
+void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent);
 
 // The z3 blackbox divisor implied by this profile: the smallest integer whose int16 endpoint
 // covers the worst-case z3 anti-windup bound (pidSumLimit * b0 * b0ThrottleScaleMax, per axis)

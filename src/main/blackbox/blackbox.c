@@ -1829,6 +1829,7 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GROUND_WC, "%d",             currentPidProfile->adrc_ground_wc);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_WC_RAMP_MS, "%d",            currentPidProfile->adrc_wc_ramp_ms);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GROUND_DGAIN, "%d",          currentPidProfile->adrc_ground_dgain);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_B0_SCALE_MIN, "%d",          currentPidProfile->adrc_b0_scale_min);
         // ADRC-029: the decode key for the z3 debug fields (debug[2]/[5]/[6] = z3 / this value).
         // Logs without this line are b9 or earlier and imply 16.
         BLACKBOX_PRINT_HEADER_LINE("adrc_z3_log_scale", "%lu",                  (unsigned long)adrcZ3LogScale(

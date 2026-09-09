@@ -57,6 +57,7 @@
 #define ADRC_B0_MIN 100.0f
 #define ADRC_SIGMA_DECAY_MAX 100.0f
 #define ADRC_GATED_Z3_DECAY_MAX 2000.0f
+#define ADRC_B0_SCALE_MIN_FLOOR 0.2f // ADRC-031: b0 never scheduled below 20 % of the hover value
 #define ADRC_B0_SCALE_MAX 50.0f
 
 // Liftoff-gate mechanism (thresholds now live in adrcProfile_t - see adrc.h - ported as tunable
@@ -379,6 +380,7 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
     }
 
     adrcRuntime->b0ThrottleScale = 1.0f;
+    adrcRuntime->b0ScaleMin = 1.0f; // ADRC-031 off until adrcSetB0ScaleMin()
     adrcRuntime->b0ScaleThrottle = 0.0f;
     // Callers that never learn the pidSum limits (unit-test SetUp paths init the ADRC module in
     // isolation) keep the b9-era divisor; production overwrites this one line below via
@@ -699,7 +701,13 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
         rawScale = throttleRatio * throttleRatio;
         break;
     }
-    adrcRuntime->b0ThrottleScale = constrainf(rawScale, 1.0f, maxB0Scale);
+    // ADRC-031: the low-side policy is b0ScaleMin (1.0 unless adrc_b0_scale_min lowers it).
+    adrcRuntime->b0ThrottleScale = constrainf(rawScale, adrcRuntime->b0ScaleMin, maxB0Scale);
+}
+
+void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent)
+{
+    adrcRuntime->b0ScaleMin = constrainf(minPercent * 0.01f, ADRC_B0_SCALE_MIN_FLOOR, 1.0f);
 }
 
 adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRate, float currentPidSetpoint,
@@ -714,8 +722,12 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     if (!adrcAxisStateIsFinite(adrcRuntime, axis)) {
         adrcResetAxisState(adrcRuntime, axis, finiteGyroRate);
     }
-    if (!adrcIsFinite(adrcRuntime->b0ThrottleScale) || adrcRuntime->b0ThrottleScale < 1.0f) {
-        adrcRuntime->b0ThrottleScale = 1.0f;
+    if (!adrcIsFinite(adrcRuntime->b0ScaleMin) || adrcRuntime->b0ScaleMin < ADRC_B0_SCALE_MIN_FLOOR
+        || adrcRuntime->b0ScaleMin > 1.0f) {
+        adrcRuntime->b0ScaleMin = 1.0f;
+    }
+    if (!adrcIsFinite(adrcRuntime->b0ThrottleScale) || adrcRuntime->b0ThrottleScale < adrcRuntime->b0ScaleMin) {
+        adrcRuntime->b0ThrottleScale = adrcRuntime->b0ScaleMin;
     } else if (adrcRuntime->b0ThrottleScale > ADRC_B0_SCALE_MAX) {
         adrcRuntime->b0ThrottleScale = ADRC_B0_SCALE_MAX;
     }

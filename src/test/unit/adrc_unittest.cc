@@ -1282,3 +1282,55 @@ TEST_F(AdrcUnittest, GroundDgainCapsGroundWcPerAxis)
     adrcSetGroundWc(&runtime, 0, 0, 10);
     EXPECT_FLOAT_EQ(60.0f, runtime.coefficient[FD_ROLL].groundWc);
 }
+
+// ADRC-031: adrc_b0_scale_min lets the schedule go below 1 under hover; 100 (default) keeps the
+// b10.1 "scale only up" behaviour exactly, FIXED is unaffected, and the floor is 20 %.
+TEST_F(AdrcUnittest, B0ScaleMinDefaultKeepsScaleOnlyUp)
+{
+    profile.hoverThrottlePercent = 35;
+    profile.b0Law = ADRC_B0_LAW_SQRT;
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetB0ScaleMin(&runtime, 100);
+    simulatedThrottle = 0.10f;
+    settleB0ThrottleScale();
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
+}
+
+TEST_F(AdrcUnittest, B0ScaleMinLetsScheduleGoBelowHoverDownToTheFloor)
+{
+    profile.hoverThrottlePercent = 35;
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetB0ScaleMin(&runtime, 50);
+    simulatedThrottle = 0.10f; // ratio 0.2857
+
+    profile.b0Law = ADRC_B0_LAW_SQRT; // sqrt(0.2857) = 0.535 > 0.5 -> unclamped
+    settleB0ThrottleScale();
+    EXPECT_NEAR(0.5345f, runtime.b0ThrottleScale, 2e-3f);
+
+    profile.b0Law = ADRC_B0_LAW_QUADRATIC; // 0.0816 -> clamped to 0.5
+    settleB0ThrottleScale();
+    EXPECT_NEAR(0.5f, runtime.b0ThrottleScale, 1e-4f);
+
+    profile.b0Law = ADRC_B0_LAW_FIXED;
+    settleB0ThrottleScale();
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
+
+    // Above hover nothing changes: LINEAR at ratio 2 -> 2.
+    profile.b0Law = ADRC_B0_LAW_LINEAR;
+    simulatedThrottle = 0.70f;
+    settleB0ThrottleScale();
+    EXPECT_NEAR(2.0f, runtime.b0ThrottleScale, 1e-3f);
+
+    // The control law sees the scheduled b0: at scale 0.5 the P output doubles (kp * 100 / (b0 * 0.5)).
+    profile.b0Law = ADRC_B0_LAW_QUADRATIC;
+    simulatedThrottle = 0.10f;
+    settleB0ThrottleScale();
+    adrcResetGate(&runtime);
+    const float pFull = runtime.coefficient[FD_ROLL].kp * 100.0f / runtime.coefficient[FD_ROLL].b0;
+    EXPECT_NEAR(2.0f * pFull, adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P, 1e-2f);
+
+    // Floor: 5 % requested -> 20 %.
+    adrcSetB0ScaleMin(&runtime, 5);
+    settleB0ThrottleScale();
+    EXPECT_NEAR(0.2f, runtime.b0ThrottleScale, 1e-4f);
+}

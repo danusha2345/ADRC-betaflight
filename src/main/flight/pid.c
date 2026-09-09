@@ -263,6 +263,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .adrc_ground_wc = 0,
         .adrc_wc_ramp_ms = 100,
         .adrc_ground_dgain = 10,
+        .adrc_b0_scale_min = 100,
     );
 #ifdef USE_ADRC
     adrcResetProfile(&pidProfile->adrc);
