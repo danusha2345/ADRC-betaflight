@@ -410,3 +410,36 @@ Ground tests ordered by the closed-gate loop gains, P = `wc_g²/b0`, D = `2·wc_
 The D column orders every outcome (≥ 4 self-sustaining, 1.6–2.2 settles but rails, ≤ 0.6 clean); P is small
 wherever it settles. Implemented as ADRC-030b (`adrc_ground_dgain`, exp4 `0aac46b8`): the ground wc is additionally
 capped at `dgain · b0 / (2·wo)` per axis, default 1.0.
+
+## Addendum 2026-09-09: @8ksal8's AOS 3.5 V5 — thrust_linear sweep under ADRC (PR comment 5591248669)
+
+Archives `Thrust Linear_sweep_.zip` (`13f584aa51e26d9294e7ffdc63a2855e210ab234054b61243c66ff98f8408af2`),
+`Thrust_linear_sweep_dyn_idle_random_.zip` (`3fc9e009720030c4e2afc27c579d36d4abf1c268a3c4526bd859bc5d16986e2b`),
+`AOS35_v5_btfl_001.zip` (`0697810f73b9e69feb171573c6ba8eb4fe983b1956bfe4e89510f4fb4963d3eb`); eleven BBLs gzipped in
+`8ksal8_aos35_20260908/` (the 125/43 log is 1 s and skipped). AOS 3.5 V5, F405, 1504/3100KV, 4S, exp3 `83a12fc3`,
+90/100, `b0 = 7010/4206/2804`, FIXED, hover 5, ground wc 40 / ramp 100, `pid_at_min_throttle` ON. Script `tl.py`
+(2-s windows split by median throttle).
+
+`thrust_linear` applies `c(x) = x·(1 + e·(1−x)·(1 + e·(1−2x)))` to the final motor output (`pid.c`
+`pidApplyThrustLinearization`). Hover sits at motor ≈ 0.34 after the curve in every log, so the pre-curve operating
+point and the slope there (the multiplier every controller output receives) depend on `e`:
+
+| TL | x before curve | gain × at hover | × at 20 % motor | line f | line RMS/motor | overshoot R/P | err p90 R/P | vbat min |
+|---:|---:|---:|---:|---:|---:|---|---|---:|
+| 10 | 0.318 | 1.03 | 1.06 | 48.3 Hz | 0.84 % | 22/14 % | 11/9 | 14.77 V |
+| 25 | 0.284 | 1.09 | 1.18 | 57.5 Hz | 0.76 % | 19/10 % | 12/9 | 14.47 V |
+| 60 | 0.207 | 1.36 | 1.61 | 65.5 Hz | 1.53 % | 12/9 % | 9/7 | 13.89 V |
+| 75 (dyn idle 111, 292 s) | 0.178 | 1.55 | 1.88 | 64.5 Hz | 3.63 % | 5/7 % | 7/6 | 12.46 V |
+| 80 | 0.168 | 1.63 | 1.98 | 65.5 Hz | 5.72 % | 5/8 % | 9/7 | 13.39 V |
+| 90 | 0.152 | 1.81 | 2.20 | 65.5 Hz | 7.97 % | 7/9 % | 9/8 | 13.30 V |
+| 90 (dyn idle 60, 285 s) | 0.152 | 1.81 | 2.20 | 64.5 Hz | 7.11 % | 6/7 % | 7/5 | 12.15 V |
+| 95 | 0.144 | 1.91 | 2.32 | 65.0 Hz | 9.63 % | 6/5 % | 9/7 | 13.20 V |
+| 95 (AOS35_v5, 282 s) | 0.144 | 1.91 | 2.32 | 64.5 Hz | 8.46 % | 3/4 % | 6/5 | 13.06 V |
+| 100 (dyn idle 43, 125 s) | 0.136 | 2.02 | 2.44 | 64.5 Hz | 11.5 % | 6/9 % | 7/7 | 13.03 V |
+
+Error medians are 2/2 °/s in every log. The line grows ×10 across the sweep with the hover gain multiplier (90/100
+at TL 95 ≈ 125/140 without TL, the Air65's over-the-knee region) while overshoot falls 22 → 5 %. The low-throttle
+instability the tester reported without TL is the under-gain below hover: the b0 schedule only scales up (FIXED not
+at all) while the plant gain at 20 % motor is ≈ half of hover's; TL supplies ×1.6–2.3 there. Dynamic idle 43/60/111
+is not separable at equal TL. Candidate ADRC-031: allow the b0 schedule below 1 under hover. Tuning rule: TL is a
+gain — fit `b0` with the intended TL, or leave TL off.
