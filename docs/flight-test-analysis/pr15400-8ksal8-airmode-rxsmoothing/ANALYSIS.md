@@ -443,3 +443,28 @@ instability the tester reported without TL is the under-gain below hover: the b0
 at all) while the plant gain at 20 % motor is ≈ half of hover's; TL supplies ×1.6–2.3 there. Dynamic idle 43/60/111
 is not separable at equal TL. Candidate ADRC-031: allow the b0 schedule below 1 under hover. Tuning rule: TL is a
 gain — fit `b0` with the intended TL, or leave TL off.
+
+## Addendum 2026-09-09b: AOS 3.5 — taking the TL gain back out, and the roll/pitch b0 split (PR comment 5605089162)
+
+Archives `wc_wo_b0_compare.zip` (`b0be5992f02416cdffaf99c080accae455cc7be417e03d317aee370c8f7885da`) and `b0_allocation.zip`
+(`9121100a8b85a2d0555789ce52a70e1a7e71ac355279d1beeec9a55abf2dcb74`); five BBLs gzipped in `8ksal8_aos35_20260909/`.
+Same craft/build as addendum 7. Script `ov.py`: per-axis peak gyro / peak setpoint on moves above 200 °/s and the
+error-to-setpoint ratio on samples above 150 °/s (the flights are gentle — |setpoint| p90 30–65 °/s, two large moves
+per log — so the overshoot share alone rests on few samples).
+
+| flight | wc/wo | b0 R/P/Y | TL | line | line RMS/motor | overshoot R/P | roll peak ratio / err ratio | pitch peak ratio / err ratio | vbat med/min |
+|---|---|---|---:|---:|---:|---|---|---|---:|
+| sweep ref. (add. 7) | 90/100 | 7010/4206/2804 | 95 | 65 Hz | 9.63 % | 6/5 % | 1.14 / 0.04 | 1.08 / 0.04 | 14.88/13.20 |
+| Higher_b0 | 90/100 | 13319/7991/5328 | 95 | 52.5 Hz | 0.70 % | 19/5 % | 1.35 / 0.14 | 1.18 / 0.08 | 16.46/15.03 |
+| Lower_wc_wo | 64/72 | 7010/4206/2804 | 95 | 49.3 Hz | 0.75 % | 17/11 % | 1.29 / 0.11 | 1.15 / 0.06 | 15.94/14.35 |
+| TL_60 | 90/100 | 7010/4206/2804 | 60 | 65 Hz | 1.04 % | 9/8 % | 1.20 / 0.05 | 1.14 / 0.06 | 15.44/14.43 |
+| allocation 55/25/20 | 90/100 | 7711/3505/2804 | 60 | 65 Hz | 2.02 % | 9/9 % | 1.20 / 0.08 | 1.10 / 0.05 | 15.11/13.80 |
+| allocation 60/20/20 | 90/100 | 8412/2804/2804 | 60 | 66.5 Hz | 0.98 % | 16/7 % | 1.28 / 0.11 | 1.08 / 0.04 | 16.42/14.97 |
+
+Removing the ×1.9 either way (b0 ×1.9, or 64/72) drops the line 9.6 → 0.7 % at unchanged tracking; higher b0 keeps
+the observer at 100 and costs roll overshoot, lower wc/wo slows the observer (line 49 Hz) and costs both axes; TL 60
+with the fitted b0 is the balance (1.0 %, 9/8). Roll exceeds pitch on both ratios in every flight; both ratios rise
+when the loop gain drops and fall when it rises (under-gain = bounce-back). +20 % roll b0 moves roll 1.20 → 1.28 /
+0.05 → 0.11 while pitch (less b0) improves 1.14 → 1.08 — consistent with roll wanting a lower b0 than the 50 % split
+(squished X: arm ∝ d, roll inertia ∝ d²), low N. The 2 % line of the 55/25/20 flight coincides with the lowest pack
+of the set (15.1 V median vs 16.4 V).
