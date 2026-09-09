@@ -226,7 +226,8 @@ void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t ramp
 // (100 = off, the b10.1 "scale only up" clamp). Below hover the plant gain is lower than at hover
 // (thrust ~ rpm^2), so a b0 pinned at the hover value under-gains the loop there; testers have been
 // covering that with thrust_linear (a global gain multiplier) or hover 5. FIXED law is unaffected.
-// Call after adrcInitConfig().
+// Applies only while the liftoff gate is open: on the ground the schedule stays >= 1 so the
+// closed-gate loop gain bounded by ADRC-030/030b is not multiplied. Call after adrcInitConfig().
 void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent);
 
 // The z3 blackbox divisor implied by this profile: the smallest integer whose int16 endpoint

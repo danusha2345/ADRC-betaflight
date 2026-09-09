@@ -1301,6 +1301,7 @@ TEST_F(AdrcUnittest, B0ScaleMinLetsScheduleGoBelowHoverDownToTheFloor)
     profile.hoverThrottlePercent = 35;
     adrcInitConfig(&profile, &runtime, TEST_DT);
     adrcSetB0ScaleMin(&runtime, 50);
+    runtime.liftoff = true; // the floor only acts airborne (see the gate test below)
     simulatedThrottle = 0.10f; // ratio 0.2857
 
     profile.b0Law = ADRC_B0_LAW_SQRT; // sqrt(0.2857) = 0.535 > 0.5 -> unclamped
@@ -1329,8 +1330,30 @@ TEST_F(AdrcUnittest, B0ScaleMinLetsScheduleGoBelowHoverDownToTheFloor)
     const float pFull = runtime.coefficient[FD_ROLL].kp * 100.0f / runtime.coefficient[FD_ROLL].b0;
     EXPECT_NEAR(2.0f * pFull, adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f).P, 1e-2f);
 
-    // Floor: 5 % requested -> 20 %.
+    // Floor: 5 % requested -> 20 % (airborne again after the gate reset above).
     adrcSetB0ScaleMin(&runtime, 5);
+    runtime.liftoff = true;
     settleB0ThrottleScale();
     EXPECT_NEAR(0.2f, runtime.b0ThrottleScale, 1e-4f);
+}
+
+TEST_F(AdrcUnittest, B0ScaleMinDoesNotApplyWhileGateIsClosed)
+{
+    // On the ground the stick is below hover, so the floor would divide the P/D b0 by up to 5 and
+    // multiply the closed-gate loop gain; the schedule must stay >= 1 until liftoff.
+    profile.hoverThrottlePercent = 35;
+    profile.b0Law = ADRC_B0_LAW_QUADRATIC;
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcSetB0ScaleMin(&runtime, 20);
+    adrcResetGate(&runtime);
+    simulatedThrottle = 0.10f;
+    settleB0ThrottleScale();
+    ASSERT_FALSE(runtime.liftoff);
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
+    runtime.liftoff = true;
+    settleB0ThrottleScale();
+    EXPECT_NEAR(0.2f, runtime.b0ThrottleScale, 1e-4f);
+    adrcResetGate(&runtime);
+    settleB0ThrottleScale();
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
 }

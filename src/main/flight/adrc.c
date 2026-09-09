@@ -701,8 +701,12 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
         rawScale = throttleRatio * throttleRatio;
         break;
     }
-    // ADRC-031: the low-side policy is b0ScaleMin (1.0 unless adrc_b0_scale_min lowers it).
-    adrcRuntime->b0ThrottleScale = constrainf(rawScale, adrcRuntime->b0ScaleMin, maxB0Scale);
+    // ADRC-031: the low-side policy is b0ScaleMin (1.0 unless adrc_b0_scale_min lowers it) - but only
+    // once airborne. With the gate closed the stick is below hover by definition, so the floor would
+    // divide the P/D-path b0 by up to 5 on the ground, multiplying exactly the closed-gate loop gain
+    // that ADRC-030/030b bound (and adrcSetGroundWc() caps that gain with the unscaled b0).
+    const float minB0Scale = adrcRuntime->liftoff ? adrcRuntime->b0ScaleMin : 1.0f;
+    adrcRuntime->b0ThrottleScale = constrainf(rawScale, minB0Scale, maxB0Scale);
 }
 
 void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent)

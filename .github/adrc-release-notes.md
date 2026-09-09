@@ -10,7 +10,9 @@ this floor; FIXED is unaffected, above hover nothing changes. Rationale: below h
 plant gain is lower than at hover (thrust ∝ rpm²), so a b0 pinned at the hover value
 under-gains the loop there — that is the low-throttle wobble testers have been curing
 with `thrust_linear` (a global ×1.9 gain at TL 95, see the AOS 3.5 sweep) or with
-`adrc_hover_throttle` 5. This lets the observer see the true plant instead. The clamp
+`adrc_hover_throttle` 5. This lets the observer see the true plant instead. The floor acts only while the
+liftoff gate is open; on the ground the schedule stays ≥ 1, so the closed-gate loop gain
+bounded by ADRC-030/030b is not multiplied. The clamp
 was introduced with fix #10a after a 26 Hz gain modulation through the mixer constrain
 at low throttle; that is the failure mode to watch for when lowering the floor — start
 at 70, check the motor line below hover, then 50. PG version stays 13 (field appended).
