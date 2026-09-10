@@ -468,3 +468,41 @@ when the loop gain drops and fall when it rises (under-gain = bounce-back). +20 
 0.05 → 0.11 while pitch (less b0) improves 1.14 → 1.08 — consistent with roll wanting a lower b0 than the 50 % split
 (squished X: arm ∝ d, roll inertia ∝ d²), low N. The 2 % line of the 55/25/20 flight coincides with the lowest pack
 of the set (15.1 V median vs 16.4 V).
+
+## Addendum 2026-09-10: Air65 at 144/160 SQRT — `adrc_hover_throttle` sweep 5…27 (PR comment 5620793842)
+
+Archive `Hover_throttle_sweep.zip` (`6062a27a38595a4bed484ed9c6aecff05ff21b6854637d4714e7d3254d1c9fee`); twelve hover-only
+BBLs gzipped in `8ksal8_air65_hover_20260910/`. Air65, exp5 `6143baff`, 144/160, SQRT, `b0 = 8964/5378/3586`,
+`adrc_b0_scale_min` 100 (ADRC-031 not engaged), TL 5, ground wc 40 / dgain 10; headers otherwise identical. Scripts
+`hov.py` (2-s windows: line vs scale/throttle/pack) and `hov2.py` (1-s windows, burst windows > 5 %, throttle and
+scale in burst vs calm windows, 76 Hz gyro amplitude).
+
+True hover is 34–38 % throttle in every log, so the SQRT scale at hover is √(36/hover): 2.69 at hover 5 (debug[7]
+agrees), 1.15 at 27. Both P (`wc²/b0`) and D (`2·wc·wo/b0`) scale with 1/b0, so the effective wc/wo is
+144/160 ÷ √scale.
+
+| hover | scale at hover | effective wc/wo | line, window median | window p90 | burst windows (>5 %) | throttle in bursts / calm | gyro 76 Hz in bursts |
+|---:|---:|---|---:|---:|---:|---|---:|
+| 5 | 2.69 | ≈ 88/98 | 0.40 % | 2.1 % | 2/24 | 22 / 36 % | 1.0 °/s |
+| 7 | 2.29 | ≈ 95/106 | 0.52 % | 8.1 % | 2/16 | 32 / 38 % | 1.4 |
+| 9 | 2.04 | ≈ 101/112 | 0.73 % | 18.5 % | 3/23 | 38 / 37 % | 1.5 |
+| 11 | 1.81 | ≈ 107/119 | 0.89 % | 13.2 % | 3/20 | 29 / 37 % | 2.2 |
+| 13 | 1.67 | ≈ 111/124 | 1.17 % | 18.5 % | 5/21 | 0 / 37 % | 2.6 |
+| 15 | 1.57 | ≈ 115/128 | 1.52 % | 21.9 % | 4/22 | 0 / 38 % | 3.1 |
+| 17 | 1.46 | ≈ 119/132 | 3.02 % | 58.8 % | 8/22 | 8 / 37 % | 3.3 |
+| 19 | 1.38 | ≈ 123/136 | 1.85 % | 34.1 % | 4/26 | 1 / 36 % | 1.9 |
+| 21 | 1.32 | ≈ 125/139 | 2.49 % | 22.7 % | 6/28 | 0 / 37 % | 2.0 |
+| 23 | 1.26 | ≈ 128/143 | 2.93 % | 19.6 % | 6/29 | 11 / 37 % | 2.5 |
+| 25 | 1.18 | ≈ 133/147 | 3.53 % | 10.1 % | 5/23 | 0 / 37 % | 1.8 |
+| 27 | 1.15 | ≈ 134/149 | 3.34 % | 8.0 % | 7/34 | 0 / 37 % | 0.7 |
+
+The baseline line is monotone in the gain (0.40 → 3.5 %). The whole-flight RMS (4.7 % at hover 5, 17–26 % at 13–17,
+5 % at 27) is dominated by bursts, and from hover 13 up every burst window sits at zero stick (window line vs
+throttle r = −0.9 within a log): chops and landing approaches with airmode, gate open. At zero throttle the schedule
+ratio is 0, the scale clamps at 1 and the controller runs on the raw 144/160 until the stick returns; it rings at
+75–79 Hz (0.48 × `wo`) with only 1–3 °/s in the gyro — the oscillation lives in the motors. At hover 5 a chop only
+takes the scale 2.7 → ≈ 2.2 inside the 80 ms schedule filter, so it passes. Conclusions: (1) hover 5 encodes "gain
+÷ 2.7" into the schedule and removes the schedule itself (cap 4 reached at 80 % throttle, nothing below hover for
+ADRC-031 to act on); the clean equivalent is hover 36 with 88/98; (2) with airmode the gate stays open on landing
+(`adrc_liftoff_idle_hold_ms` 0), so a tune that rings at zero stick in the air rings on the ground until disarm and
+the ground wc does not return — disarm on touchdown.
