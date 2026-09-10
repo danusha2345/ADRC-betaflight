@@ -45,9 +45,9 @@ the same numbers came with hot packs.
 | knob | what it really does | measured |
 |---|---|---|
 | `thrust_linear` | multiplies every controller output by the slope of the TL curve at the operating point — hover sits at motor ≈ 0.34 *after* the curve | TL 60: ×1.36 at hover, ×1.6 at 20 % motor · TL 95: ×1.9 / ×2.3 · TL 100: ×2.0 / ×2.4 |
-| `adrc_hover_throttle` below the true hover (non-FIXED laws) | the schedule scale at hover is `f(true_hover / setting)`; SQRT with hover 5 on a 36 %-hover craft = ×2.7 on b0 = gain ÷ 2.7 | Air65 144/160 at hover 5 flies like 88/98; at hover 27 it is the real 144/160 and rings at every chop |
+| `adrc_hover_throttle` below the true hover (non-FIXED laws) | the schedule scale at hover is `f(true_hover / setting)`; SQRT with hover 5 on a 36 %-hover craft = ×2.7 on b0 = gain ÷ 2.7 | Air65 144/160 at hover 5 flies like 88/98; at hover 27 (scale 1.15) it is ≈ 134/149 and rings at every zero-stick chop, where the scale clamps at 1 and the raw 144/160 is exposed |
 | `adrc_b0_law` above hover | QUADRATIC/LINEAR/SQRT *lower* the gain as throttle rises (b0 × scale); FIXED does not | throttle-pump error: FIXED 30–38 °/s, SQRT 42–46, LINEAR 49–96, QUADRATIC 122–160 (cap) |
-| `b0` itself | the fitter's b0 is ~20 % conservative on purpose = 25 % gain margin | doubling b0 at fixed wc/wo halves the gain (AOS 3.5: line 9.6 → 0.7 %, overshoot 5 → 19 %) |
+| `b0` itself | `b0` and `wc/wo` are one knob: raising b0 lowers G_P and G_D exactly like lowering wc/wo. A b0 *below* the true plant gain is *more* gain (less margin), not a safety margin | doubling b0 at fixed wc/wo halves the gain (AOS 3.5: line 9.6 → 0.7 %, roll overshoot 5 → 19 %) |
 
 Below hover no law scales b0 down (b10.1 clamps the schedule at ≥ 1), so the loop is *under*-gained at low throttle
 by roughly the thrust curve (plant gain at 20 % motor ≈ half of hover's). That is the low-throttle wobble testers
@@ -77,14 +77,16 @@ dead within ~1 s, no motor at 2047.** With airmode the gate does not close on la
 ## 5. Per-axis b0
 
 `b0 = torque authority / inertia`, per axis. The 50/30/20 % split is a whoop rule. Under-gain looks like
-bounce-back (gyro peak / setpoint peak > 1.2, error/setpoint ratio > 0.08 on the active samples). On a squished-X
+bounce-back (roughly: gyro peak / setpoint peak above ~1.2 and error/setpoint ratio above ~0.08 on the active
+samples; the well-tuned axes in the same logs sat at 1.08–1.14 and 0.04–0.05). On a squished-X
 (AOS 3.5) roll bounced back in every flight and *more* b0 on roll made it worse: roll wants less. Fit per axis
 (the fitter does), do not split by percentage.
 
 ## 6. Checklist
 
 1. `adrc_hover_throttle` = true hover (read it from a log).
-2. Decide `thrust_linear` first, then fit `b0` with it. Fitter b0 is conservative; that is the margin, keep it.
+2. Decide `thrust_linear` first, then fit `b0` with it. Treat the fitted b0 and wc/wo as one gain: if you lower
+   b0 below the fit you have raised the gain and must lower wc/wo to match (and vice versa).
 3. Sweep `wo` up until the motor line appears; stay ~10 % under. `wc ≈ 0.9 · wo`. Same law for the sweep as for
    flying (FIXED vs SQRT move the knee by ~10 wo).
 4. Tap test on the ground with airmode on. If it rails, lower `adrc_ground_wc` (or rely on `adrc_ground_dgain`).
