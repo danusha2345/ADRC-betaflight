@@ -506,3 +506,24 @@ takes the scale 2.7 → ≈ 2.2 inside the 80 ms schedule filter, so it passes. 
 ADRC-031 to act on); the clean equivalent is hover 36 with 88/98; (2) with airmode the gate stays open on landing
 (`adrc_liftoff_idle_hold_ms` 0), so a tune that rings at zero stick in the air rings on the ground until disarm and
 the ground wc does not return — disarm on touchdown.
+
+## Addendum 2026-09-11: first `adrc_b0_scale_min` flights (ADRC-031, exp5) — AOS 3.5 at 114/120 (PR comment 5636377477)
+
+Archive `AOS35v5_tuned_b0_min_test_btfl_002.zip` (`fe0443658d7926f9a50cc7ea95771a3342b71b130f1da391cee822aab3671385`);
+three BBLs gzipped in `8ksal8_aos35_b0min_20260911/`. AOS 3.5, exp5 `6143baff`, 114/120, `b0 = 4466/3350/3350`
+(40/30/30 split), SQRT, hover 35 (true hover), TL 0, ground wc 40 / dgain 10, ESC PWM 48 kHz, `adrc_b0_scale_min`
+100 / 70 / 50. Loop gain `wc²/b0` = 2.9, ×2.5 the TL-60 tune of addendum 7 (1.16); calm line 0.33 % with 5-s windows to
+4.7 % at min 100, i.e. the tune sits at the knee.
+
+| min | flight | frames scale < 1 | calm line (|sp| p90 < 100) | zero-stick flips (|sp| p90 > 400, thr < 15 %): n, scale, line med/max | moves at throttle: n, line med/max | err R/P | overshoot R/P |
+|---:|---:|---:|---:|---|---|---|---|
+| 100 | 290 s | 0 % | 0.33 % | 6, 1.00, 5.2 / 9.1 % | 9, 1.3 / 4.0 % | 2/2 | 7/7 % |
+| 70 | 246 s | 64 % (p10 0.86) | 0.42 % | 7, 0.70, 6.2 / 11.4 % | 5, 1.6 / 2.9 % | 1/2 | 7/6 % |
+| 50 | 41 s | 69 % (p10 0.87) | 0.42 % | 3, 0.65, **37.5 / 40.7 %** (71 Hz = 0.59 × wo) | — | 2/2 | 5/7 % |
+
+70 is benign on this tune (same calm line, same tracking, same flip line as 100; ×1.3 gain at 20 % throttle is the
+"locked-in" feel). 50 crosses the knee during zero-stick flips: the scale reaches 0.65 inside the 80 ms schedule
+filter, ×1.5 on a tune already at the boundary, and the motors ring for the length of the flip; ≈ 93/98 would absorb
+it. Roll bounce-back of addendum 7b is gone with the 40/30/30 split (roll overshoot 5–7 % ≈ pitch). The tester's
+"failed RTH" (min-70 log, 80–122 s, FC-held throttle, error 1–3 °/s, one 428 °/s wobble at 90 s) is not a rate-loop
+event; `adrc_hover_throttle` is read only by the b0 schedule, GPS rescue / position hold have their own hover settings.
