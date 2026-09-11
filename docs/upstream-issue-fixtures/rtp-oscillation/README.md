@@ -56,3 +56,23 @@ b9_Airmode_switch_ADRC_btfl_003.01.csv       PIDF  96.51s       665     6 ( 0.0%
 Full analyses of these logs (frequencies, motor saturation, provenance) are published beside
 them: [`pr15400-8ksal8-arming/`](../../flight-test-analysis/pr15400-8ksal8-arming/) and
 [`pr15400-dedlike-groundloop/`](../../flight-test-analysis/pr15400-dedlike-groundloop/).
+
+## 2026-09-11 addition: a 14 s ground rock the detector could not catch
+
+Log: `docs/flight-test-analysis/pr15400-8ksal8-airmode-rxsmoothing/b11_tests_20260907/g40_103_140_single_axis.bbl.gz`
+(Air65, b11-exp2 `33004f5c`, airmode on, stick at idle, props on, `adrc_ground_wc` 40 on a 103/140 pitch axis;
+PR betaflight#15400 comment 5562538603). After a tap the craft rocked at 4 Hz for 14 s at 520–1365 °/s with a motor
+at 2047 in every second until the tester disarmed; it walked off the couch. All four terms are logged (PIDF) and the
+exact final Sum is logged too (`adrcPidSum`, divide by the `adrc_pid_sum_scale` header) — both give the same answer:
+
+```
+blackbox_decode --unit-flags raw g40_103_140_single_axis.bbl
+python3 rtp_oscillation_check.py g40_103_140_single_axis.01.csv
+log                              terms   span  |Sum|max  frames>=600   run<=     accum   maxgap  fires?
+g40_103_140_single_axis.01.csv   PIDF  17.75s     3472  1052 (7.2%)  58.6ms  1281.6ms   1.3ms      no
+```
+
+|Sum| reached 3472 (5.8× the threshold) and the full trigger condition was true for 1.28 s in total, but never for
+more than 58.6 ms in a row (4 Hz rock: sign crossings every 125 ms), so the 75 ms continuous hold could not be met.
+The two companion logs in the same folder (`g20/log2_103-140_single_axis`, `g40_99_110_all`: taps that settled)
+give 8.7 ms and 11.2 ms.
