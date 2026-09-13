@@ -45,7 +45,8 @@ per-motor RMS grows slowly with gain, then by ×8–10 within ~10 % of `wo`:
 Tracking (|setpoint − gyro| median 2–5 °/s) does **not** change across the knee, so the motor spectrum is the only
 early warning. How much reaches the airframe varies: 1–3 °/s in the band on the Air65 hover sweep, but 6–8 °/s over
 a whole flight and 17–34 °/s in individual windows on the two Petrel75s. Cool motors prove nothing; on the Air65 the
-same numbers came with hot packs, and one Petrel flight drew 11 % more mean current than its quiet sibling.
+same numbers came with hot packs; one Petrel flight drew 11 % more mean current than its quieter sibling, but
+that flight was also on a lower pack with different manoeuvres, so the cost in current is not established.
 
 **Rule: pick `wo` under the knee for your craft (read the motor spectrum, not the feel), then `wc ≈ 0.9 · wo`.**
 
@@ -99,8 +100,8 @@ samples; the well-tuned axes in the same logs sat at 1.08–1.14 and 0.04–0.05
 
 ## 6. Checklist
 
-0. Read the motor spectrum over the whole 10–150 Hz range, not the feel: every wrong conclusion in this corpus so
-   far came from looking in too narrow a band. The b0 schedule keys on a 2 Hz low-pass of the *applied* collective,
+0. Read the motor spectrum over the whole 10–150 Hz range, not the feel: the largest analysis errors in this
+   corpus came from searching too narrow a band. The b0 schedule keys on a 2 Hz low-pass of the *applied* collective,
    not on stick throttle, so "at zero stick the scale is 1" is false — read `debug[7]` instead of assuming.
 1. `adrc_hover_throttle` = true hover (read it from a log).
 2. Decide `thrust_linear` first, then fit `b0` with it. Treat the fitted b0 and wc/wo as one gain: if you lower
