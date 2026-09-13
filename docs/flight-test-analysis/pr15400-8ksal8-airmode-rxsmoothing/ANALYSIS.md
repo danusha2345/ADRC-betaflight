@@ -527,3 +527,70 @@ filter, ×1.5 on a tune already at the boundary, and the motors ring for the len
 it. Roll bounce-back of addendum 7b is gone with the 40/30/30 split (roll overshoot 5–7 % ≈ pitch). The tester's
 "failed RTH" (min-70 log, 80–122 s, FC-held throttle, error 1–3 °/s, one 428 °/s wobble at 90 s) is not a rate-loop
 event; `adrc_hover_throttle` is read only by the b0 schedule, GPS rescue / position hold have their own hover settings.
+
+## Addendum 2026-09-13: two Petrel75 2S, three b0 laws — and a metric correction (PR comment 5650057288)
+
+Archives `Petral75_2s_b11_x5_.zip` (`1e3c863da867c54e0fbdc702cb2123ff3ac904c4e985aee67fa8bec561386473`) and
+`HDZ_Petrel75_2s_b11_x5_b0_law_1_2_3_LOG167.zip` (`b4a1a9d3e11e02ba990537918354c3d4ffa3d6bd5e7fcefb3239618de94b0ab1`,
+one SD `.TXT` holding three logs, split on the `H Product:` marker — each fragment is byte-identical to its slice and
+decodes with 0 failed frames). Six BBLs gzipped in `8ksal8_petrel75_20260913/`. Both crafts: exp5 `6143baff`, 95/100,
+`adrc_hover_throttle` 38 (Petrel75 #1) / 43 (HDZ), TL 0, `adrc_ground_wc` 10 + `dgain` 4.0, SQRT and LINEAR at
+`adrc_b0_scale_min` 85, FIXED at 100.
+
+### Metric correction (applies to the earlier addenda)
+
+The "motor line" of addenda 3–8 is the strongest peak in **40–80 Hz**. On these two crafts the dominant oscillation is
+at **28–33 Hz**, below that window, so the earlier statistic missed it entirely and the first version of this analysis
+wrongly concluded the flights were quiet and the laws indistinguishable. Re-checked the earlier campaigns with a wide
+band sweep (25–38 / 38–55 / 55–70 / 70–90 Hz): the Air65 `wc/wo` sweep (55–70 Hz dominant, 22.5 % at 106/120), the AOS
+3.5 TL sweep (55–70, 10.2 % at TL 95) and the Air65 hover sweep (70–90, 5.7 → 45.9 %) all have their dominant content
+inside 40–90 Hz, so those conclusions stand; only the absolute magnitudes were understated by the ±2 Hz band. **From
+here on: search 15–120 Hz, report the band, and use the p90 across windows as well as the median** — the oscillation
+here is intermittent and the median hides it.
+
+### What the six logs show, 25–38 Hz motor RMS per motor
+
+| log | law | floor | whole flight | worst-20 % windows: line / scale / thr / vbat | matched windows (thr 42–50 %, no rail): n / median / p90 / scale | worst axis: gyro RMS vs setpoint RMS |
+|---|---|---:|---:|---|---|---|
+| Petrel75 #1 SQRT | 1 | 85 | 3.19 % | 2.14 % / 1.10 / 45 % / 8.07 V | 37 / 0.53 / 1.29 % / 1.08 | pitch 2.86 vs 0.28 °/s |
+| Petrel75 #1 LINEAR | 2 | 85 | 1.09 % | 1.56 % / 1.03 / 38 % / 7.74 V | 18 / 0.51 / 0.82 % / 1.15 | pitch 0.76 vs 0.41 |
+| Petrel75 #1 FIXED | 3 | 100 | **11.38 %** | **14.01 %** / 1.00 / 45 % / 7.38 V | 7 / 0.68 / **3.94 %** / 1.00 | pitch **7.86** vs 0.43 |
+| HDZ SQRT | 1 | 85 | 1.32 % | 1.85 % / 0.99 / 44 % / 8.13 V | 44 / 0.92 / 1.45 % / 1.04 | roll 1.66 vs 0.38 |
+| HDZ LINEAR | 2 | 85 | 1.16 % | 1.48 % / 0.94 / 40 % / 7.58 V | 38 / 0.87 / 1.22 % / 1.06 | roll 1.34 vs 0.52 |
+| HDZ FIXED | 3 | 100 | **4.88 %** | **6.25 %** / 1.00 / 50 % / 7.19 V | 33 / 0.85 / **1.70 %** / 1.00 | roll **6.03** vs 0.45 |
+
+Both FIXED flights carry a self-excited oscillation: gyro RMS 6–8 °/s in the band against setpoint RMS 0.4 °/s, i.e.
+not commanded. It is present without rail clipping — a hover window at 42.3–44.3 s of the Petrel FIXED flight has no
+motor at 2047, median throttle 43.8 %, 14.08 % motor RMS in the band and pitch gyro RMS 10.7 °/s against pitch
+setpoint RMS 0.17 °/s. Whole-flight line energy does coincide with rail segments (99.6 % / 96.6 %), but that is
+timing, not causality: the law can excite the oscillation which then rails the motors.
+
+Mechanism, measurable in the same windows: at throttle 42–50 % with hover 38–43 the two schedules run `b0` 4–15 %
+above its fitted value (scale 1.04–1.15) while FIXED runs it at exactly 1.00, so the schedules fly 4–15 % below the
+loop gain FIXED uses, and these tunes sit close enough to the boundary for that to decide whether the mode is
+excited. Note the floor moves the other way (85 raises the gain below hover) and the oscillating windows are *above*
+hover, so the floor cannot be the cause.
+
+### What this set cannot settle
+
+Flight order is confounded with pack depletion in both sets: SQRT → LINEAR → FIXED, with median vbat 8.16 / 7.72 /
+7.49 V and 8.02 / 7.57 / 7.22 V, and the starting voltages already differ (8.88 / 8.17 / 7.81 V, 8.57 / 7.96 /
+7.60 V). Sag lowers thrust per command, which raises the true loop gain by itself. On the Petrel set the SQRT flight
+also ran `dyn_idle_p/i/d` 25 against 50 in the other two; the HDZ set has no settings confound (identical filters,
+dyn idle 50, only law and floor differ). A clean answer needs the law order reversed on a comparable pack.
+
+`adrc_b0_scale_min` 85: the set has no floor-70 flight, so it does not test the tester's "70 floats, 85 does not";
+the longest continuous zero-throttle stretch is 0.9–1.2 s. At throttle < 5 % the mean motor output is 416–469 and the
+median applied collective 63–91 of 1000 (6.3–9.1 %) in all six, with no ordering by floor. Note also that the floor
+scales the ADRC P/I/D only — `pid.c` adds a feedforward term that is not divided by `b0` (max |axisF| 160–224 here).
+
+`adrc_ground_dgain` 4.0 with ground wc 10: the per-axis cap is `dgain·b0/(2·wo)` = 57–97 rad/s, far above 10, so it
+never binds and these flights do not exercise it. The closed-gate `G_D` = `2·wc·wo/b0` is 0.41–0.70 per axis
+(0.72 for the Petrel pitch axis with the Euler correction at this dT) — the pitch axis is at or just above the ≤ 0.6
+"settles clean" boundary of `docs/ADRC_GAIN_GUIDE.md`, which was drawn on Air65 tap tests, and no tap test was flown
+on these crafts.
+
+Decoder note: `blackbox_decode` in `.scratch/tools/blackbox-tools` misreads a numeric `H P interval:4` header
+(expects `1/4`), which corrupts `loopIteration` and the "frames missing" statistics. All 65 other columns, timestamps
+included, are unaffected, so the spectra above stand; do not quote frame statistics from these decodes. Actual PID
+`dT` here is 250 µs (gyro 125 µs, `pid_process_denom` 2); the logged rate is ~1 kHz.

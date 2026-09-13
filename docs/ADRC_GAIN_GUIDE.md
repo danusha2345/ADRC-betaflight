@@ -24,9 +24,13 @@ even if their `wc/wo/b0` look different.
 
 ## 2. The knee (in flight)
 
-Above a craft-specific `wo`, the motors carry a line at **≈ 0.5–0.7 × wo** (Hz per rad/s: 55–61 Hz at wo 100–110 on
-the Air65, 61–64 Hz at wo 90 on the TH3+, 65 Hz at wo 100 on the AOS 3.5). Its per-motor RMS grows slowly, then by
-×8–10 within ~10 % of `wo`:
+Above a craft-specific `wo`, the motors carry a line whose frequency scales with `wo`. Most of the corpus sits at
+**≈ 0.5–0.7 × wo** (55–61 Hz at wo 100–110 on the Air65, 61–64 Hz at wo 90 on the TH3+, 65 Hz at wo 100 on the AOS
+3.5, 75–79 Hz at wo 160), but two Petrel75 whoops oscillate at **28–33 Hz at wo 100, i.e. ≈ 0.3 × wo** (addendum
+2026-09-13). **Search 15–120 Hz and report the band you found** — a fixed 40–80 Hz window misses the low mode
+entirely, which is how the first version of that analysis concluded "quiet" on a flight with 14 % motor-band RMS.
+Report the p90 across windows as well as the median: the oscillation is intermittent and a median hides it. Its
+per-motor RMS grows slowly with gain, then by ×8–10 within ~10 % of `wo`:
 
 | craft / law | quiet | knee |
 |---|---|---|
@@ -68,6 +72,10 @@ itself; the loop that lifts the craft closes through the airframe and the airmod
 | ≥ 4 | self-sustaining rock (4 Hz) or lift |
 | 1.6–2.2 | settles in 0.3–0.6 s but rails the motors on every tap |
 | ≤ 0.6 | settles clean |
+
+The bands come from tap tests on one Air65 at two tunes; they are an ordering, not a validated threshold, and no
+other craft has been tap-tested at a known `G_D` yet. `2·wc·wo/b0` is the continuous-time peak of the D path; the
+forward-Euler implementation is a few percent above it at typical `dT`.
 
 `adrc_ground_wc` (b11-exp2+) lowers `wc` while the gate is closed and ramps it back over `adrc_wc_ramp_ms` after
 liftoff; `adrc_ground_dgain` (exp4+, default 1.0) additionally caps the ground `wc` at `dgain · b0 / (2·wo)` so the
