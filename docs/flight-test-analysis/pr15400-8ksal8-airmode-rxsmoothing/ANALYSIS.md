@@ -594,3 +594,40 @@ Decoder note: `blackbox_decode` in `.scratch/tools/blackbox-tools` misreads a nu
 (expects `1/4`), which corrupts `loopIteration` and the "frames missing" statistics. All 65 other columns, timestamps
 included, are unaffected, so the spectra above stand; do not quote frame statistics from these decodes. Actual PID
 `dT` here is 250 µs (gyro 125 µs, `pid_process_denom` 2); the logged rate is ~1 kHz.
+
+
+## Correction 2026-09-13 to the addendum of 2026-09-10 (Air65 hover sweep)
+
+That addendum measured the motor line with the 40–80 Hz peak search. On that craft at `wo` 160 the mode peaks at
+**75.5–86 Hz** and moves up with the hover setting, so the top of the window clipped it and the reported amplitudes
+were an order of magnitude low. Recomputed over 70–90 Hz (`bands.py`), whole flight after the gate and per 1-s
+window, per-motor RMS over mean motor output:
+
+| hover | peak | whole flight | windows > 5 % | of those, throttle > 15 % | window median / worst tenth | b0 scale in the loudest windows |
+|---:|---:|---:|---:|---:|---:|---:|
+| 5 | 76.5 Hz | 5.5 % | 2/24 | 2 | 0.63 / 4.7 % | 2.22 |
+| 7 | 75.5 | 7.5 % | 2/16 | 2 | 0.77 / 14.1 % | 2.10 |
+| 9 | 75.5 | 8.6 % | 4/23 | 3 | 1.03 / 10.1 % | 1.90 |
+| 11 | 75.5 | 10.8 % | 4/20 | 3 | 1.44 / 30.2 % | 1.62 |
+| 13 | 76.0 | 18.7 % | 5/21 | 2 | 1.85 / 56.4 % | 1.33 |
+| 15 | 76.5 | 19.5 % | 4/22 | 0 | 2.31 / 59.4 % | 1.31 |
+| 17 | 76.5 | 26.8 % | 10/22 | 6 | 4.62 / 51.8 % | 1.35 |
+| 19 | 76.5 | 19.0 % | 10/26 | 7 | 4.06 / 35.1 % | 1.32 |
+| 21 | 79.0 | 23.0 % | 16/28 | 11 | 5.62 / 71.2 % | 1.26 |
+| 23 | 86.0 | 27.7 % | 18/29 | 15 | 5.54 / 60.6 % | 1.25 |
+| 25 | 85.5 | 40.6 % | 18/23 | 13 | 15.5 / 75.8 % | 1.18 |
+| 27 | 82.0 | 46.4 % | 32/34 | 25 | 45.2 / 79.3 % | 1.17 |
+
+Three statements in that addendum do not survive:
+
+- **"The baseline climbs 0.40 → 3.5 %"** — it climbs 5.5 → 46 %, monotonically; at hover 25–27 the craft oscillates
+  in most windows of the flight rather than occasionally.
+- **"From hover 13 up every burst window sits at zero stick"** — at hover 27, 32 of 34 windows exceed 5 % and 25 of
+  those have median stick throttle above 15 %.
+- **"At zero throttle the scale clamps at 1 and the raw 144/160 is exposed"** — the schedule keys on a 2 Hz low-pass
+  of the applied collective, not on stick throttle; in the zero-stick windows `debug[7]` reads 1.06–1.32, never 1.00.
+
+What survives, better supported: the amplitude tracks the b0 scale, i.e. the loop gain. The scale in the loudest
+windows falls 2.22 → 1.17 across the sweep as the amplitude rises, and `adrc_hover_throttle` 5 on a craft whose real
+hover is ≈ 36 % is what held the scale at 2.2 and kept the tune quiet. The further claim that hover 5 at 144/160 is
+"the same as 88/98" is withdrawn: equal loop gain is not equal dynamics, because `wo` also sets the frequencies.
