@@ -57,6 +57,7 @@
 #define ADRC_B0_MIN 100.0f
 #define ADRC_SIGMA_DECAY_MAX 100.0f
 #define ADRC_GATED_Z3_DECAY_MAX 2000.0f
+#define ADRC_B0_SCALE_MIN_FLOOR_PERCENT 20
 #define ADRC_B0_SCALE_MIN_FLOOR 0.2f // ADRC-031: b0 never scheduled below 20 % of the hover value
 #define ADRC_B0_SCALE_MAX 50.0f
 
@@ -711,7 +712,17 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
 
 void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent)
 {
-    adrcRuntime->b0ScaleMin = constrainf(minPercent * 0.01f, ADRC_B0_SCALE_MIN_FLOOR, 1.0f);
+    // Integer decision first: the firmware is built with -ffast-math, and a float clamp at exactly
+    // the floor (minPercent 20 -> 20 * 0.01f = 0.19999999) followed by a "< floor" sanity check was
+    // folded by the compiler into a reset to 1.0 (b11-exp5: adrc_b0_scale_min = 20 behaved as off,
+    // 21-100 worked). Never derive "off" from a float comparison against the floor.
+    if (minPercent >= 100) {
+        adrcRuntime->b0ScaleMin = 1.0f;
+    } else if (minPercent <= ADRC_B0_SCALE_MIN_FLOOR_PERCENT) {
+        adrcRuntime->b0ScaleMin = ADRC_B0_SCALE_MIN_FLOOR;
+    } else {
+        adrcRuntime->b0ScaleMin = minPercent * 0.01f;
+    }
 }
 
 adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRate, float currentPidSetpoint,
@@ -726,9 +737,13 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     if (!adrcAxisStateIsFinite(adrcRuntime, axis)) {
         adrcResetAxisState(adrcRuntime, axis, finiteGyroRate);
     }
-    if (!adrcIsFinite(adrcRuntime->b0ScaleMin) || adrcRuntime->b0ScaleMin < ADRC_B0_SCALE_MIN_FLOOR
-        || adrcRuntime->b0ScaleMin > 1.0f) {
+    // Sanity: a corrupt floor falls back to "off"; a floor merely below the constant (float rounding
+    // under -ffast-math, see adrcSetB0ScaleMin) is clamped UP to the constant, never reset to off.
+    if (!adrcIsFinite(adrcRuntime->b0ScaleMin) || adrcRuntime->b0ScaleMin > 1.0f
+        || adrcRuntime->b0ScaleMin <= 0.0f) {
         adrcRuntime->b0ScaleMin = 1.0f;
+    } else if (adrcRuntime->b0ScaleMin < ADRC_B0_SCALE_MIN_FLOOR) {
+        adrcRuntime->b0ScaleMin = ADRC_B0_SCALE_MIN_FLOOR;
     }
     if (!adrcIsFinite(adrcRuntime->b0ThrottleScale) || adrcRuntime->b0ThrottleScale < adrcRuntime->b0ScaleMin) {
         adrcRuntime->b0ThrottleScale = adrcRuntime->b0ScaleMin;

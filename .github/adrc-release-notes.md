@@ -2,6 +2,15 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## b11-exp6 — fix: `adrc_b0_scale_min = 20` behaved as off
+
+In exp5 the CLI minimum, `adrc_b0_scale_min = 20`, silently acted as 100 (floor off):
+`20 × 0.01f` rounds just below the 0.2 floor constant and, with the `-ffast-math` the
+firmware is built with, the "below floor → reset to off" sanity check fired. 21–100
+were unaffected. Found in a tester's floor sweep (Petrel75, 14 Sep). The floor is now
+derived from the integer setting and a value below the constant is clamped up, never
+switched off. No other change from exp5.
+
 ## b11-exp5 — ADRC-031 b0 schedule below hover (opt-in, off by default)
 
 Adds `adrc_b0_scale_min` (20–100 %, default 100 = b10.1 behaviour). The throttle→b0

@@ -1357,3 +1357,32 @@ TEST_F(AdrcUnittest, B0ScaleMinDoesNotApplyWhileGateIsClosed)
     settleB0ThrottleScale();
     EXPECT_FLOAT_EQ(1.0f, runtime.b0ThrottleScale);
 }
+
+TEST_F(AdrcUnittest, B0ScaleMinBoundaryValueIsNotTreatedAsOff)
+{
+    // b11-exp5 regression: adrc_b0_scale_min = 20 (the CLI minimum) behaved as 100 on the target
+    // because 20 * 0.01f rounds below 0.2f and the old "< floor -> reset to 1" sanity check fired
+    // under -ffast-math. The floor must engage for 20 exactly like for 21, and a runtime value just
+    // below the floor must be clamped up, not switched off.
+    profile.hoverThrottlePercent = 38;
+    profile.b0Law = ADRC_B0_LAW_SQRT;
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    for (uint8_t pct : {20, 21}) {
+        adrcSetB0ScaleMin(&runtime, pct);
+        EXPECT_GE(runtime.b0ScaleMin, 0.2f);
+        EXPECT_LE(runtime.b0ScaleMin, 0.21f);
+        adrcResetGate(&runtime);
+        runtime.liftoff = true;
+        simulatedThrottle = 0.02f; // idle collective in flight -> raw sqrt(0.02/0.38) = 0.23
+        settleB0ThrottleScale();
+        adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+        EXPECT_NEAR(0.229f, runtime.b0ThrottleScale, 0.01f) << "pct " << int(pct);
+        EXPECT_GE(runtime.b0ScaleMin, 0.2f);
+    }
+    runtime.b0ScaleMin = 0.19999999f; // what the target computed for 20
+    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+    EXPECT_FLOAT_EQ(0.2f, runtime.b0ScaleMin);
+    runtime.b0ScaleMin = NAN;
+    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+    EXPECT_FLOAT_EQ(1.0f, runtime.b0ScaleMin);
+}
