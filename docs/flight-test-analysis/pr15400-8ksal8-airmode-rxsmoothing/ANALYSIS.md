@@ -634,7 +634,7 @@ hover is ≈ 36 % is what held the scale at 2.2 and kept the tune quiet. The fur
 
 ## Addendum 2026-09-14: Petrel75 pair on separate packs, tap tests at two dgain values, `adrc_b0_scale_min` sweep — and an exp5 bug (PR comments 5657097336, 5663653554)
 
-Fifteen BBLs gzipped in `8ksal8_petrel75_20260914/` (SHA-256 in `SHA256SUMS`; the HDZ flight and tap archives were
+Fifteen BBLs gzipped in `8ksal8_petrel_20260914/` (SHA-256 in `SHA256SUMS`; the HDZ flight and tap archives were
 single multi-log `.TXT` files split on the `H Product:` marker, byte-identical fragments). Both crafts exp5
 `6143baff`, 95/100, ground wc 10. Methodology: `bands.py` (10–150 Hz peak search, 1-s windows, median and worst
 windows); events located by the maximum |pidSum| after the gate and read on 100 ms timelines.
