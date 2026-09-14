@@ -631,3 +631,59 @@ What survives, better supported: the amplitude tracks the b0 scale, i.e. the loo
 windows falls 2.22 → 1.17 across the sweep as the amplitude rises, and `adrc_hover_throttle` 5 on a craft whose real
 hover is ≈ 36 % is what held the scale at 2.2 and kept the tune quiet. The further claim that hover 5 at 144/160 is
 "the same as 88/98" is withdrawn: equal loop gain is not equal dynamics, because `wo` also sets the frequencies.
+
+## Addendum 2026-09-14: Petrel75 pair on separate packs, tap tests at two dgain values, `adrc_b0_scale_min` sweep — and an exp5 bug (PR comments 5657097336, 5663653554)
+
+Fifteen BBLs gzipped in `8ksal8_petrel75_20260914/` (SHA-256 in `SHA256SUMS`; the HDZ flight and tap archives were
+single multi-log `.TXT` files split on the `H Product:` marker, byte-identical fragments). Both crafts exp5
+`6143baff`, 95/100, ground wc 10. Methodology: `bands.py` (10–150 Hz peak search, 1-s windows, median and worst
+windows); events located by the maximum |pidSum| after the gate and read on 100 ms timelines.
+
+### exp5 bug: `adrc_b0_scale_min = 20` acted as off
+
+`b0min_20_btfl_007`: gate open, seven zero-stick intervals of 0.34–0.60 s with applied collective 1.0–6.6 % (raw SQRT
+schedule ≈ 0.16–0.23), logged scale 1.00 throughout; the D output implies a divisor of `b0 × 1.0`. Floors 30/40/50/70/80
+engaged exactly (logged minima 0.37 / 0.40 / 0.50 / 0.70 / 0.80). Host reproduction with the firmware's flags
+(`-O2 -ffast-math -flto -fmerge-all-constants`): `20 × 0.01f` = 0.19999999 < 0.2f, and the clamp-to-floor followed by
+the "below floor → reset to 1.0" sanity check folds into a reset; without `-ffast-math` the result is 0.2. Fixed in
+`80b790bc` (b11-exp6): integer decision on the setting, sub-floor values clamped up. The tester's "20 seems to do
+nothing" was correct; the first explanation offered here ("the craft's idle collective never gets low enough") was
+wrong and is withdrawn.
+
+Binding share of frames after the gate: floor 40 0.2 %, 50 4.6 %, 70 14 %, 80 12 %. Raw schedule minima reached in the
+zero-stick stretches: 0.37–0.44 (the schedule keys on a 2 Hz low-pass of the applied collective; chops of 0.3–0.7 s do
+not take it further). Whether floors below 40 ever bind on this craft is untested (the floor-20 flight is the bug case).
+
+### Events (five of the eleven flight logs)
+
+| log | when | what the log shows | reading |
+|---|---|---|---|
+| `HDZ_SQRT_h43` log 1 (5.4 s) | gate at 2.63 s (gyro path, 30 % collective) | roll setpoint −150…−170 °/s for 0.31 s before the gate; after it the roll rate reaches the setpoint within 200 ms while ground wc ramps to flight wc and the scale drops to 0.85; tracking break at +0.24 s (gyro −65/−54 vs setpoint −248/+50, motors 1709/1103/847/48); 11.2 g at +1.11 s with roll 2626 °/s; then 9–10 g impacts, pitch to 2847 °/s, pidSum demand to 12 972; ends tilted (roll ≈ −164°) with motors 336/1307/755/892 | deflected stick at arm and a liftoff transition are both in the log; cause not assignable without the tester's account |
+| `PET_SQRT_1` | +123.88…124.07 s | roll rate 178 → 946 °/s over 0.3 s while roll setpoint falls 113 → 66; motors 2009/1805/1805/348, eRPM 3390/3371/3158/480–510 (motor 4 low with its command); accelerometer to 5.19 g; 195 frames over a pidSum limit; recovers; log is exactly 16 MiB with no clean end (flash limit is the likely reason) | loss of authority on one corner; contact / prop damage / un-commanded transient not separable from the columns |
+| `HDZ_SQRT_h43` log 2 | last 0.1 s, +264.8 s | calm 38–45 % hover, then 6.28 g, roll/pitch −826/+760 °/s, pidSum 3317/3941, a motor at 2047; log ends there ("clean end" = logging closed, not a landing) | impact-like; context unknown |
+| `b0min_30` / `b0min_70` | +16.66 s / +25.14 s | throttle to 63 % / 49 %, chop to 0, 0.28 s / 0.15 s below 0.3 g (median ≈ 0.06 g), then 5.13 g / 5.65 g with pitch 1229 / 961 °/s and pidSum 10 359 / 9 134 (any-axis over limit 34–35 ms in total, above 9 000 for 1–3 ms); stick stays at 0 for ≈ 0.4 s after the peak and the demand has decayed before throttle returns; normal flight follows | consistent with the tester's drop test reaching the ground with the gate open (gate closes only on disarm or a controller-epoch reset in this build); surface and sequence to be confirmed |
+
+`b0min_80` also has a 6.23 g peak at +17.2 s with a small angular response (pitch ≤ 182 °/s).
+
+### Matched-pack law pair (25–38 Hz, per-motor RMS over mean motor output)
+
+| flight | whole | window median / p90 / max | matched 42–50 %, no rail: n / med / p90 / scale | worst axis gyro vs setpoint | rail | mean A | 38–55 whole |
+|---|---:|---|---|---|---:|---:|---:|
+| HDZ FIXED (hover 5, floor 100) | 3.51 % | 0.66 / 2.37 / 17.3 % | 142 / 0.64 / 1.16 / 1.00 | roll 4.32 vs 0.30 | 1.19 % | 5.95 | 1.06 % |
+| HDZ SQRT (hover 43, floor 85) | 1.07 % | 0.75 / 1.47 / 3.5 % | 166 / 0.73 / 1.16 / 1.02 | roll 1.35 vs 0.31 | 0.83 % | 6.08 | 1.83 % |
+| PET FIXED (hover 5, floor 100) | 1.06 % | 0.55 / 1.32 / 6.6 % | 99 / 0.56 / 0.87 / 1.00 | roll 0.91 vs 0.23 | 0.77 % | 5.63 | 1.37 % |
+| PET SQRT (hover 38, floor 70) | 0.82 % | 0.54 / 1.09 / 4.7 % | 126 / 0.53 / 0.71 / 1.08 | roll 0.63 vs 0.24 | 0.49 % | 5.66 | 0.69 % |
+
+Against the back-to-back single-pack session (addendum 2026-09-13: PET FIXED 11.38 %, HDZ FIXED 4.88 %) the FIXED
+numbers fell to 1.06 % and 3.51 %. Law and pack state were confounded in that session; this pair still differs in floor
+and hover, day and flying, one flight per cell, and the 38–55 Hz ranking is reversed on the HDZ only. No law effect is
+identified. Under FIXED the schedule returns 1.00 and the floor cannot apply, so the two FIXED flights are
+configuration-identical to FIXED at any hover/floor.
+
+### Tap tests (gate closed, stick at idle)
+
+Effective ground wc `min(10, dgain·b0/(2·wo))`: dgain 4.0 → 10/10/10; dgain 0.4 → HDZ 9.71/7.28/7.28, PET 8.92/5.72/8.23
+(the cap binds on all axes, removing 27–43 % of the pitch D gain). 7/8/8/9 excursions above 30 °/s, longest
+0.47/0.52/0.57/0.50 s, peak gyro 690/991/722/830 °/s, max motor 1035/1092/1201/811, applied collective to 25/25/30/21 %,
+gate never opened, no motor at 2047 (lower endpoint 48 reached in 0.35–1.0 % of frames). Not all decays are monotone
+(e.g. 319 → 552 → 547 °/s in one PET tap); a second hand contact cannot be excluded without video.
