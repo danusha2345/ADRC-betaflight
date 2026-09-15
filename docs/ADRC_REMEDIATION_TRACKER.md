@@ -1451,3 +1451,13 @@ boundaries rather than prescribing a new flight matrix.
   `adrc_z3_log_scale` and exact observability fields; this is not a prescribed
   flight programme.
 - F411 8 kHz DWT cycle benchmark on real hardware (ADRC-012).
+
+
+## ADRC-032 — per-axis damping ratio (candidate, 2026-09-15)
+
+The virtual PD is `P = wc²·e/b0`, `D = 2·wc·z2/b0`, i.e. critically damped (ζ = 1) with no way to change the ratio.
+Classic Betaflight yaw runs D = 0 and is tuned by raising P/I; on whoops the yaw axis has the lowest noise floor and
+the tester's "yaw washout" (Petrel75, 14 Sep, addendum 11 follow-up) is a mixer-saturation event where the yaw
+demand steals the authority roll needs. Raising yaw `wc` under ADRC raises yaw D with it. Proposal: `adrc_zeta_*`
+per axis (percent, default 100 = today's law, 0 = PD without D), applied as `kd = 2·ζ·wc` in the flight law and in
+the ground-wc path. Fields appended to `pidProfile_t`, PG version unchanged. Status: planned for b11-exp7.

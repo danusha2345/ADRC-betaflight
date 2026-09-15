@@ -687,3 +687,20 @@ Effective ground wc `min(10, dgain·b0/(2·wo))`: dgain 4.0 → 10/10/10; dgain 
 0.47/0.52/0.57/0.50 s, peak gyro 690/991/722/830 °/s, max motor 1035/1092/1201/811, applied collective to 25/25/30/21 %,
 gate never opened, no motor at 2047 (lower endpoint 48 reached in 0.35–1.0 % of frames). Not all decays are monotone
 (e.g. 319 → 552 → 547 °/s in one PET tap); a second hand contact cannot be excluded without video.
+
+### Addendum 11, follow-up 2026-09-15: the tester's account of the five events (PR comment 5671567863)
+
+1. HDZ takeoff crash: an ESC problem — a motor sometimes stopped on arm before the throttle was raised, the craft
+   flipped on takeoff; fixed by an ESC setting. Not a controller event.
+2. Petrel +124 s: the tester calls it "yaw washout", seen on whoops with classic PID too. The log agrees with the
+   mechanism: in the second before the departure all three axes demand at once (z3/b0 roll/pitch ±670, yaw −533
+   against `pidsum_limit_yaw` 400), the mixer saturates (motors 2009/1843/1843/348) and roll can no longer be held
+   (demand −1736, rate 170 → 946 °/s against setpoint 120 → 60) while the yaw rate error never exceeds 245 °/s. On
+   classic PID the usual fix is more yaw P/I with D = 0; ADRC's yaw law carries `D = 2·wc·z2/b0` at critical
+   damping, so raising yaw `wc` raises yaw D with it. Per-axis `adrc_wc_yaw` / `adrc_wo_yaw` / `adrc_b0_yaw` exist
+   (the tester had 95/100 on all axes). Candidate ADRC-032: a per-axis damping ratio ζ (`D = 2·ζ·wc·z2/b0`).
+3. HDZ log end: hover at 38 % stick, then within the last 20 ms 6.3 g and roll/pitch 826/653 °/s, then the frame
+   with the armed bit cleared (motors 48/1293/1293/2047). Impact and disarm within one frame interval; the tester's
+   "runs a little longer after disarm" is not observable in Blackbox (recording stops at disarm).
+4. `b0min_30/70`: drop tests that reached the floor and the ceiling — confirmed. `adrc_ground_dgain` 4 was set by
+   accident (back to 40); `adrc_hover_throttle` 5 under FIXED was set "to be sure" (inert under FIXED).
