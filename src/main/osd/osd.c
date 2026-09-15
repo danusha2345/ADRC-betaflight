@@ -150,6 +150,15 @@ static displayPort_t *osdDisplayPort;
 static osdDisplayPortDevice_e osdDisplayPortDeviceType;
 static bool osdIsReady;
 
+uint16_t osdGetCapacityAlarm(void)
+{
+    if (currentBatteryProfile && currentBatteryProfile->batteryCapacity > 0) {
+        return currentBatteryProfile->batteryCapacity;
+    }
+
+    return osdConfig()->cap_alarm;
+}
+
 static bool suppressStatsDisplay = false;
 
 static bool backgroundLayerSupported = false;
@@ -162,7 +171,7 @@ STATIC_ASSERT(OSD_POS_MAX == OSD_POS(63,31), OSD_POS_MAX_incorrect);
 
 PG_REGISTER_WITH_RESET_FN(osdConfig_t, osdConfig, PG_OSD_CONFIG, 13);
 
-PG_REGISTER_WITH_RESET_FN(osdElementConfig_t, osdElementConfig, PG_OSD_ELEMENT_CONFIG, 3);
+PG_REGISTER_WITH_RESET_FN(osdElementConfig_t, osdElementConfig, PG_OSD_ELEMENT_CONFIG, 4);
 
 // Controls the display order of the OSD post-flight statistics.
 // Adjust the ordering here to control how the post-flight stats are presented.

@@ -127,8 +127,11 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     [DEBUG_FLASH_TEST_PRBS] = "FLASH_TEST_PRBS",
     [DEBUG_MAVLINK_TELEMETRY] = "MAVLINK_TELEMETRY",
     [DEBUG_AUTOPILOT_PID] = "AUTOPILOT_PID",
+    [DEBUG_POSITION_NAV] = "POSITION_NAV",
     [DEBUG_AUTOPILOT_STOP] = "AUTOPILOT_STOP",
     // Keep DEBUG_ADRC at its b9 ordinal so retained tester configs do not silently select PITOT.
     [DEBUG_ADRC] = "ADRC",
     [DEBUG_PITOT] = "PITOT",
+    [DEBUG_POSITION_EST] = "POSITION_EST",
+    [DEBUG_AUTOPILOT_HEADING] = "AUTOPILOT_HEADING",
 };
