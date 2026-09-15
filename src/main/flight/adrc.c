@@ -58,6 +58,7 @@
 #define ADRC_SIGMA_DECAY_MAX 100.0f
 #define ADRC_GATED_Z3_DECAY_MAX 2000.0f
 #define ADRC_B0_SCALE_MIN_FLOOR_PERCENT 20
+#define ADRC_ZETA_MAX 2.0f // ADRC-032: damping ratio ceiling (percent setting 0..200)
 #define ADRC_B0_SCALE_MIN_FLOOR 0.2f // ADRC-031: b0 never scheduled below 20 % of the hover value
 #define ADRC_B0_SCALE_MAX 50.0f
 
@@ -347,6 +348,7 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         c->kp = c->wc * c->wc;
         c->kd = 2.0f * c->wc;
         c->groundWc = c->wc; // ADRC-030 off until adrcSetGroundWc() lowers it
+        c->zeta = 1.0f;      // ADRC-032 critical damping until adrcSetZeta()
         c->beta1 = 3.0f * c->wo;
         c->beta2 = 3.0f * c->wo * c->wo;
         c->beta3 = c->wo * c->wo * c->wo;
@@ -710,6 +712,15 @@ void adrcUpdatePerLoopState(adrcRuntime_t *adrcRuntime, const adrcProfile_t *adr
     adrcRuntime->b0ThrottleScale = constrainf(rawScale, minB0Scale, maxB0Scale);
 }
 
+void adrcSetZeta(adrcRuntime_t *adrcRuntime, const uint8_t zetaPercent[XYZ_AXIS_COUNT])
+{
+    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
+        adrcCoefficient_t *c = &adrcRuntime->coefficient[axis];
+        c->zeta = constrainf(zetaPercent[axis] * 0.01f, 0.0f, ADRC_ZETA_MAX);
+        c->kd = 2.0f * c->zeta * c->wc;
+    }
+}
+
 void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent)
 {
     // Integer decision first: the firmware is built with -ffast-math, and a float clamp at exactly
@@ -857,7 +868,7 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // c->wc (so kp == c->kp, kd == c->kd) whenever the feature is off.
     const float wcEff = c->groundWc + (c->wc - c->groundWc) * adrcRuntime->wcBlend;
     const float kp = wcEff * wcEff;
-    const float kd = 2.0f * wcEff;
+    const float kd = 2.0f * c->zeta * wcEff; // ADRC-032
     adrcOutput_t output = {
         .P = (kp * (adrcRuntime->vRef[axis] - adrcRuntime->z1[axis])) / b0,
         .D = (-kd * adrcRuntime->z2[axis]) / b0,

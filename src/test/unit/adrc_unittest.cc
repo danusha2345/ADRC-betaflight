@@ -1386,3 +1386,44 @@ TEST_F(AdrcUnittest, B0ScaleMinBoundaryValueIsNotTreatedAsOff)
     adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
     EXPECT_FLOAT_EQ(1.0f, runtime.b0ScaleMin);
 }
+
+// ADRC-032: per-axis damping ratio. 100 % leaves the law untouched; 50 % halves D; 0 % removes D; the ground-wc
+// path scales with it too.
+TEST_F(AdrcUnittest, ZetaScalesTheDTermOnly)
+{
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    const uint8_t crit[3] = {100, 100, 100};
+    adrcSetZeta(&runtime, crit);
+    EXPECT_FLOAT_EQ(2.0f * runtime.coefficient[FD_YAW].wc, runtime.coefficient[FD_YAW].kd);
+    adrcResetGate(&runtime);
+    runtime.liftoff = true;
+    // Each call starts from the same observer state: reset the axis, seed z2, one control step.
+    auto stepYaw = [&]() { adrcResetState(&runtime, FD_YAW); runtime.z2[FD_YAW] = 1000.0f; // deg/s^2
+        return adrcApplyControl(&runtime, FD_YAW, 0.0f, 100.0f, TEST_DT, 400.0f); };
+    adrcOutput_t out = stepYaw(); // D = -2*zeta*wc*z2/b0 = -2*60*1000/2000 = -60 at zeta 1
+    const float pFull = out.P;
+    EXPECT_NEAR(-60.0f, out.D, 2.0f);
+
+    const uint8_t half[3] = {100, 100, 50};
+    adrcSetZeta(&runtime, half);
+    out = stepYaw();
+    EXPECT_NEAR(-30.0f, out.D, 2.0f);
+    EXPECT_NEAR(pFull, out.P, 1.0f); // P unchanged
+
+    const uint8_t none[3] = {100, 100, 0};
+    adrcSetZeta(&runtime, none);
+    out = stepYaw();
+    EXPECT_FLOAT_EQ(0.0f, out.D);
+    EXPECT_FLOAT_EQ(1000.0f, runtime.coefficient[FD_ROLL].kd / (2.0f * runtime.coefficient[FD_ROLL].wc) * 1000.0f); // roll untouched
+
+    // Ground path: ground wc 40 with zeta 0.5 on roll -> kd = 2*0.5*40 = 40 while the gate is closed.
+    const uint8_t rollHalf[3] = {50, 100, 100};
+    adrcSetZeta(&runtime, rollHalf);
+    adrcSetGroundWc(&runtime, 40, 0, 0);
+    adrcResetGate(&runtime);
+    adrcUpdatePerLoopState(&runtime, &profile, TEST_DT);
+    adrcResetState(&runtime, FD_ROLL);
+    runtime.z2[FD_ROLL] = 1000.0f;
+    out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+    EXPECT_NEAR(-2.0f * 0.5f * 40.0f * 1000.0f / 2000.0f, out.D, 2.0f);
+}

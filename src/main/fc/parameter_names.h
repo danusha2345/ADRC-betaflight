@@ -269,6 +269,9 @@
 #define PARAM_NAME_ADRC_WC_RAMP_MS "adrc_wc_ramp_ms"
 #define PARAM_NAME_ADRC_GROUND_DGAIN "adrc_ground_dgain"
 #define PARAM_NAME_ADRC_B0_SCALE_MIN "adrc_b0_scale_min"
+#define PARAM_NAME_ADRC_ZETA_ROLL "adrc_zeta_roll"
+#define PARAM_NAME_ADRC_ZETA_PITCH "adrc_zeta_pitch"
+#define PARAM_NAME_ADRC_ZETA_YAW "adrc_zeta_yaw"
 
 #define PARAM_NAME_HORIZON_LEVEL_STRENGTH "horizon_level_strength"
 #define PARAM_NAME_HORIZON_LIMIT_DEGREES "horizon_limit_degrees"

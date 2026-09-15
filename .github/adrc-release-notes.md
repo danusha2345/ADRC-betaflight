@@ -2,6 +2,17 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## b11-exp7 — ADRC-032 per-axis damping ratio (opt-in, default unchanged)
+
+Adds `adrc_zeta_roll/pitch/yaw` (0–200 %, default 100). The virtual PD is
+`P = wc²·e/b0`, `D = 2·ζ·wc·z2/b0`; until now ζ was fixed at 1 (critical damping).
+Classic Betaflight yaw flies with D = 0 and is tuned by raising P/I; a tester's
+"yaw washout" on a Petrel75 (mixer saturated by a yaw demand, roll then departs)
+is the case for letting yaw `wc` go up without yaw D going up with it. 100 leaves
+the law bit-identical; 0 removes the D path on that axis; the ground-wc path
+scales with it too. Suggested first test: same tune, `adrc_zeta_yaw` 50, then
+`adrc_wc_yaw` up in steps. PG version unchanged (fields appended).
+
 ## b11-exp6 — fix: `adrc_b0_scale_min = 20` behaved as off
 
 In exp5 the CLI minimum, `adrc_b0_scale_min = 20`, silently acted as 100 (floor off):

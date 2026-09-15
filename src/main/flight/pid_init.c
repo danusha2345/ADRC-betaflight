@@ -380,6 +380,7 @@ void pidInitConfig(const pidProfile_t *pidProfile)
     adrcSetGroundWc(&pidRuntime.adrc, pidProfile->adrc_ground_wc, pidProfile->adrc_wc_ramp_ms,
         pidProfile->adrc_ground_dgain);
     adrcSetB0ScaleMin(&pidRuntime.adrc, pidProfile->adrc_b0_scale_min);
+    adrcSetZeta(&pidRuntime.adrc, pidProfile->adrc_zeta);
     adrcInitZ3LogScale(&pidRuntime.adrc, &pidProfile->adrc,
         pidProfile->pidSumLimit, pidProfile->pidSumLimitYaw);
 
