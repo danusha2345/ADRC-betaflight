@@ -849,7 +849,7 @@ The trade-off written into ADRC-033 (a real disturbance arriving while the mixer
 been exercised: the pinned intervals here are 50–560 ms and end with the manoeuvre. The tester has not flown a
 scenario that would test it and intends to. Default stays OFF until someone has.
 
-## Addendum 14, 2026-09-16: Air65 (1S) on exp8 with the inhibit ON — the same picture on a second craft (PR comment 5700091124)
+## Addendum 14, 2026-09-16: Air65 (1S) on exp8 with the inhibit ON — the same picture on a second craft (PR comment 5700091124; reply 5700665475)
 
 Two flights, Air65 1S, wc/wo 97/110, b0 89/53/35, ground wc 10 / dgain 4.0, td 120, limits 500/1000, flag ON in
 both. Logs in `8ksal8_air65_20260916_exp8/`. The tester: "it happened on my Air65", then with ζ yaw 50 and yaw
