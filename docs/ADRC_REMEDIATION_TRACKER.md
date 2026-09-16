@@ -1462,7 +1462,7 @@ demand steals the authority roll needs. Raising yaw `wc` under ADRC raises yaw D
 per axis (percent, default 100 = today's law, 0 = PD without D), applied as `kd = 2·ζ·wc` in the flight law and in
 the ground-wc path. Fields appended to `pidProfile_t`, PG version unchanged. Status: planned for b11-exp7.
 
-## ADRC-033 — z3 growth inhibit while the mixer cannot deliver the command (candidate, 2026-09-16)
+## ADRC-033 — z3 growth inhibit while the mixer cannot deliver the command (implemented 2026-09-16, b11-exp8, opt-in)
 
 Five "yaw washout" events in seven Petrel75 logs (addendum 12 of the 8ksal8 campaign) share one sequence: the mixer
 pinned (a motor on the ceiling and one on the floor, or all on the ceiling at full throttle), then the ESO charging z3
@@ -1479,4 +1479,7 @@ output; adrc.c sets `inhibitZ3Growth = !liftoff || mixerSaturated`. Opt-in (`adr
 A/B on the same craft; field appended to `pidProfile_t`, PG version unchanged. Not the same as scaling u (which
 over-gains the loop); this only stops the integrator from charging while its command cannot be delivered. Open
 question for the A/B: a real disturbance during saturation (prop wash at the ceiling) is then not learned until the
-mixer frees up. Status: candidate, not implemented.
+mixer frees up. Status: implemented as `adrc_sat_z3_inhibit` (OFF/ON, default OFF) in commit e6511d6a, tag
+`adrc-pr15400-b11-exp8` (fork/gitlab/forgejo); mixer publishes `motorMixRange > 1.0f` via
+`pidUpdateAdrcMixerSaturation()`, one-iteration lag like the applied output. Unit test
+`SatZ3InhibitStopsZ3GrowthOnlyWhileMixerSaturatedAndEnabled`. Awaiting the tester's OFF/ON A/B on the Petrel75.
