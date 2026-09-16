@@ -705,7 +705,7 @@ gate never opened, no motor at 2047 (lower endpoint 48 reached in 0.35–1.0 % o
 4. `b0min_30/70`: drop tests that reached the floor and the ceiling — confirmed. `adrc_ground_dgain` 4 was set by
    accident (back to 40); `adrc_hover_throttle` 5 under FIXED was set "to be sure" (inert under FIXED).
 
-## Addendum 12, 2026-09-16: four more "yaw washout" logs — ESO windup on all three axes while the mixer cannot deliver the command (PR comment 5684488326)
+## Addendum 12, 2026-09-16: four more "yaw washout" logs — ESO windup on all three axes while the mixer cannot deliver the command (PR comment 5684488326; reply 5693798017)
 
 Six flights on b11-exp6 (80b790bc), Petrel75 2S, `pidsum_limit` / `pidsum_limit_yaw` raised 500/400 → 1000/1000 by
 the tester in this batch; logs in `8ksal8_petrel_20260915_yawwash/` (SHA256SUMS). Scripts: `wash.py` (event finder,
