@@ -2,6 +2,21 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## b11-exp8 — ADRC-033 z3 growth inhibit while the mixer is saturated (opt-in, default off)
+
+Adds `adrc_sat_z3_inhibit` (OFF/ON, default OFF). Five "yaw washout" events in seven
+Petrel75 logs (15 Sep) share one sequence: the mixer gets pinned (a motor on the
+ceiling and one on the floor, or all on the ceiling at full throttle), the observer is
+told the clipped pidSum but not that the mixer could not deliver it, and z3 charges on
+all three axes at once to the `pidsum_limit` clamp in 100–160 ms; then a 540–1 379 °/s
+roll/pitch excursion and recovery in 0.2–0.8 s. No gain, floor, ground-wc, limit or ζ
+setting changes it. With the flag ON the ground gate's existing z3 growth inhibit (z3 may
+only move toward zero) also applies while the mixer clipped on the previous loop
+(`motorMixRange > 1`); nothing is scaled, u is unchanged. Trade-off to watch in the A/B:
+a real disturbance that arrives while the mixer is pinned is learned only once it
+frees up. Suggested test: same tune, same manoeuvre (zero throttle → punch, full-throttle
+punch), flag OFF then ON on the same pack state. PG version unchanged (field appended).
+
 ## b11-exp7 — ADRC-032 per-axis damping ratio (opt-in, default unchanged)
 
 Adds `adrc_zeta_roll/pitch/yaw` (0–200 %, default 100). The virtual PD is

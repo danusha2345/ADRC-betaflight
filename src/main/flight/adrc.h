@@ -202,6 +202,10 @@ typedef struct adrcRuntime_s {
     uint8_t liftoffCause;    // adrcLiftoffCause_e branch that most recently opened the gate
     uint8_t z3GrowthInhibitMask; // axis bits set only when this iteration actually suppresses the
                                  // observer-error half of a z3 update, not merely when eligible
+    bool satZ3Inhibit;      // ADRC-033: also inhibit z3 growth while the mixer is saturated (opt-in)
+    bool mixerSaturated;    // ADRC-033: mixer clipped (motorMixRange > 1) on the previous iteration;
+                             // published by mixTable() through adrcSetMixerSaturated(), same
+                             // one-iteration lag as lastOutput
 } adrcRuntime_t;
 
 // P/I/D fields are repurposed purely for blackbox/mixer compatibility; they do not carry their
@@ -233,6 +237,8 @@ void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent);
 // ADRC-032 (experimental): per-axis damping ratio of the virtual PD in percent (100 = critical damping, the
 // original law; 0 = P only, the classic Betaflight yaw with D = 0). Call after adrcInitConfig().
 void adrcSetZeta(adrcRuntime_t *adrcRuntime, const uint8_t zetaPercent[XYZ_AXIS_COUNT]);
+void adrcSetSatZ3Inhibit(adrcRuntime_t *adrcRuntime, bool enabled);
+void adrcSetMixerSaturated(adrcRuntime_t *adrcRuntime, bool saturated);
 
 // The z3 blackbox divisor implied by this profile: the smallest integer whose int16 endpoint
 // covers the worst-case z3 anti-windup bound (pidSumLimit * b0 * b0ThrottleScaleMax, per axis)

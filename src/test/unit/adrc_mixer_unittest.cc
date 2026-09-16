@@ -589,4 +589,11 @@ void pidUpdateAdrcAppliedOutput(const pidProfile_t *pidProfile, float axisScale,
     adrcFeedbackYawLimit = yawSumLimit;
 }
 
+bool adrcFeedbackMixerSaturated = false;
+void pidUpdateAdrcMixerSaturation(const pidProfile_t *pidProfile, bool saturated)
+{
+    UNUSED(pidProfile);
+    adrcFeedbackMixerSaturated = saturated;
+}
+
 } // extern "C"
