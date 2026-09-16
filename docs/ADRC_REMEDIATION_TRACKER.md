@@ -1487,3 +1487,7 @@ wind to 995/1000/1000 and a 675 °/s excursion; ON, same tune and session → in
 I terms ≤ 257, no excursion above 350 °/s, both-end frames 1 057 → 206. Two excursions remain with the flag ON, both
 with flat I terms, both on a pack at 6.4–6.9 V under load (no differential authority at the ceiling) — not the
 controller. Trade-off (late learning of a real disturbance while pinned) not yet exercised; default stays OFF.
+Verification plan (PR comment 5699684269): (1) 2–3 more OFF/ON pairs on the Petrel on different packs incl. a fresh
+one, same manoeuvre set; (2) the HDZ with the same pairs; (3) a 5" (jmsweng) flown ON — must be a no-op, inhibit count
+from adrcState bits 4|8|16; (4) the trade-off case: a long pinned interval with a real disturbance inside (full
+throttle into prop wash, sustained full-stick climb on a tired pack). Other airframes welcome.
