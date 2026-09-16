@@ -833,7 +833,7 @@ Two excursions survive with the flag ON, both with the I terms flat (inhibit act
 - `zeta_yaw_0` at 27.06 s: the addendum-12 entry (0.3 s at zero throttle, then throttle 1000 → 1476 with pitch
   −65), pack 6.8–6.9 V under load, motor 3 on 2047 and motor 4 on 348 for 0.5 s. I terms stay at −139/244/204
   throughout; the excursion (roll 659, pitch −739, yaw −264 °/s) is carried by P alone (pidSum roll −6 241 /
-  pitch +7 933 / yaw +4 731 at the peak) and ends 0.34 s after the pin began. With the ceiling reached at 1 400 of
+  pitch +7 933 / yaw +4 731 at the peak) and ends 0.34 s after the pin began. With the ceiling reached at ~1 300 of
   stick on this pack there is simply no differential authority left; the observer no longer makes it worse.
 - `zeta_yaw_100_2` at 17.63 s: full stick (2000) on a pack at 6.4–6.7 V under load, motors 2047/48/149/281 for
   50 ms, excursion 907 / 846 °/s (roll-pitch / yaw), I terms ≤ 168, recovery 0.12 s.
