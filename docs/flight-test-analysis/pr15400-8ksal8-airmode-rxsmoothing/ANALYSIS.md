@@ -848,3 +848,32 @@ cannot rank 100/50/0 either way; the tester feels no difference between them.
 The trade-off written into ADRC-033 (a real disturbance arriving while the mixer is pinned is learned late) has not
 been exercised: the pinned intervals here are 50–560 ms and end with the manoeuvre. The tester has not flown a
 scenario that would test it and intends to. Default stays OFF until someone has.
+
+## Addendum 14, 2026-09-16: Air65 (1S) on exp8 with the inhibit ON — the same picture on a second craft (PR comment 5700091124)
+
+Two flights, Air65 1S, wc/wo 97/110, b0 89/53/35, ground wc 10 / dgain 4.0, td 120, limits 500/1000, flag ON in
+both. Logs in `8ksal8_air65_20260916_exp8/`. The tester: "it happened on my Air65", then with ζ yaw 50 and yaw
+wc/wo 114/120 "could not duplicate".
+
+| flight | ζ yaw | yaw wc/wo | scale_min | length | vbat start → end | inhibit frames (air) | both-end pins ≥ 30 ms | max \|I\| r/p/y | excursions > 350 °/s | motor at 2047 |
+|---|---:|---|---:|---:|---|---:|---:|---|---:|---:|
+| btfl_003 | 100 | 97/110 | 80 | 120 s | 3.90 → 3.42 | 725 | 3 (0.27 / 0.15 / 0.32 s) | 169 / 208 / 324 | 1 (480, 0.51 s) | 1.7 % |
+| btfl_005 | 50 | 114/120 | 100 | 135 s | 4.14 → 3.35 | 45 | 1 (0.06 s) | 152 / 238 / 237 | 1 (712, 0.14 s) | 11.4 % |
+
+**btfl_003 at 92.3 s** is the Petrel entry on a 1S: pitch −130 at throttle 1108 → 1400, pack 3.2 → 3.1 V under
+load, motor 0 on 2047 from 91.98 s and motor 1 on the 305–348 floor for 0.32 s. The inhibit is active the whole
+time (`adrcState` 93) and the I terms sit at 92/143/−280; roll drifts to −479 °/s on P alone (pidSum roll +2 424
+with motor 0 pinned) and is back under 100 °/s 0.5 s after the pin began. The two other pins in this flight (0.27 and
+0.15 s, I terms flat) ended at 261 and 145 °/s. Three pins of 150–320 ms without windup, on a craft whose I limit
+is 500: this is what the flag was for.
+
+**btfl_005 at 128.95 s** is not that event: within one 20 ms frame gyro roll goes +3 → −241 → −706 and the motors
+jump 1629/920/1343/1128 → 698/48/2047/356 with no stick input (setpoint 1/−35/−86 → 0/−31/−74), then a frame with
+all three I terms at zero and P intact — the same one-frame I clear seen at the btfl_all crash and consistent with
+an impact-triggered clear (`crash_recovery` state not in this header line set; treated as unknown). Recovery 0.14 s.
+"Could not duplicate" holds for the manoeuvre; this excursion is something else. The flight also changed three
+things at once (ζ yaw 50, yaw wc/wo 114/120, floor off) and spent 11.4 % of its airtime with a motor at 2047 on a
+pack ending at 3.35 V, so nothing about ζ or the yaw gains can be read from it.
+
+Both flights: the I terms never exceed 324 through 770 inhibited frames; every pin ends with the manoeuvre. What
+remains on a 1S at 3.1–3.2 V under load is the ceiling, as on the Petrel.
