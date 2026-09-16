@@ -1461,3 +1461,22 @@ the tester's "yaw washout" (Petrel75, 14 Sep, addendum 11 follow-up) is a mixer-
 demand steals the authority roll needs. Raising yaw `wc` under ADRC raises yaw D with it. Proposal: `adrc_zeta_*`
 per axis (percent, default 100 = today's law, 0 = PD without D), applied as `kd = 2·ζ·wc` in the flight law and in
 the ground-wc path. Fields appended to `pidProfile_t`, PG version unchanged. Status: planned for b11-exp7.
+
+## ADRC-033 — z3 growth inhibit while the mixer cannot deliver the command (candidate, 2026-09-16)
+
+Five "yaw washout" events in seven Petrel75 logs (addendum 12 of the 8ksal8 campaign) share one sequence: the mixer
+pinned (a motor on the ceiling and one on the floor, or all on the ceiling at full throttle), then the ESO charging z3
+on all three axes at up to 4 600–7 600 I-units/s to the `pidsum_limit` clamp in 100–160 ms, a 449–1 379 °/s
+roll/pitch excursion, recovery in 0.2–0.8 s. Every such episode ≥ 90 ms ended this way; ceiling-only or floor-only
+saturation below full throttle never exceeded 192 °/s. The controller is fed `constrain(pidSum, ±pidsum_limit)` but
+not the mixer's own clipping (`motorMixRange ≥ 1` is deliberately not multiplied into u, 2026-07-12 A/B). The clamp
+follows `pidsum_limit` (500/400 on 14 Sep → I at 500/500/400, 1000 now → 860–1000) but the excursion size does not
+(901 °/s then, 540–847 °/s now), so the limit is not the lever.
+
+Proposal: reuse the gate's `inhibitZ3Growth` (admit the observer-error term only when it moves z3 toward zero) while
+the mixer was saturated on the previous iteration: mixer publishes `motorMixRange >= 1.0f` next to the applied
+output; adrc.c sets `inhibitZ3Growth = !liftoff || mixerSaturated`. Opt-in (`adrc_sat_z3_inhibit`, default off) for
+A/B on the same craft; field appended to `pidProfile_t`, PG version unchanged. Not the same as scaling u (which
+over-gains the loop); this only stops the integrator from charging while its command cannot be delivered. Open
+question for the A/B: a real disturbance during saturation (prop wash at the ceiling) is then not learned until the
+mixer frees up. Status: candidate, not implemented.

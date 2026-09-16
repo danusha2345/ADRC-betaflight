@@ -704,3 +704,100 @@ gate never opened, no motor at 2047 (lower endpoint 48 reached in 0.35–1.0 % o
    "runs a little longer after disarm" is not observable in Blackbox (recording stops at disarm).
 4. `b0min_30/70`: drop tests that reached the floor and the ceiling — confirmed. `adrc_ground_dgain` 4 was set by
    accident (back to 40); `adrc_hover_throttle` 5 under FIXED was set "to be sure" (inert under FIXED).
+
+## Addendum 12, 2026-09-16: four more "yaw washout" logs — ESO windup on all three axes while the mixer cannot deliver the command (PR comment 5684488326)
+
+Six flights on b11-exp6 (80b790bc), Petrel75 2S, `pidsum_limit` / `pidsum_limit_yaw` raised 500/400 → 1000/1000 by
+the tester in this batch; logs in `8ksal8_petrel_20260915_yawwash/` (SHA256SUMS). Scripts: `wash.py` (event finder,
+per-flight summary), `sat.py` (saturation episodes, I-term growth, recovery time), `washtl.py` (timeline around an
+instant). `blackbox_decode` misreads this header's `P interval`, so its frame statistics are wrong; the columns are fine.
+
+| log | wc/wo (r,p / y) | b0 (r,p,y) | scale_min | ground wc / dgain | length | vbat start → end | events \|err\| > 350 °/s | both-end saturation ≥ 30 ms |
+|---|---|---|---:|---|---:|---|---:|---:|
+| yaw_washout_004 | 95/100 / 120/100 | 41,26,38 | 70 | 40 / 1.0 (set by mistake, per tester) | 147 s | 8.06 → 7.27 | 3 | 2 |
+| b0min70_wc_110_001 | 95/100 / 110/100 | 41,26,38 | 70 | 10 / 4.0 | 296 s | 8.83 → 7.28 | 2 | 5 (one event) |
+| wc_wo_110_120_004 | 95/100 / 110/120 | 41,26,38 | 70 | 10 / 4.0 | 154 s | 8.06 → 7.17 | 2 | 2 |
+| 117_123 btfl_017 | 117/123 all | 41,26,38 | 95 | 10 / 4.0 | 75 s | 8.84 → 8.13 | 1 | 1 |
+| 117_123 btfl_018 | 117/123 all | 44,28,41 | 95 | 10 / 4.0 | 69 s | 8.34 → 7.77 | 1 | 2 |
+| 117_123 btfl_all log 1 | 117/123 all | 45,29,42 | 80 | 10 / 4.0 | 231 s | 8.83 → 6.72 | 3 (last = crash) | 5 |
+| 117_123 btfl_all log 2 | 117/123 all | 45,29,42 | 80 | 10 / 4.0 | 65 s | 7.71 → 7.16 | 0 | 0 |
+
+"Both-end" = a motor pinned at the ceiling (2047, or a flat plateau ≥ 1900 — `vbat_sag_compensation` 100 lowers the
+ceiling on a fresh pack) and another at the floor (≤ 350) in the same frames, gate open.
+
+### The four washouts, frame by frame
+
+yaw_washout_004 at 46.0 s (`washtl.py <csv> 46.0 1.2 40`):
+
+1. **Zero-throttle phase, 0.7 s.** Stick at 1000, `adrcState` 67 (liftoff | throttle_idle), motors ≈ 1000/800/950/316
+   — airmode holding attitude with one motor on the idle floor. All three I terms (`z3/b0`) are non-zero and drifting
+   (roll −68 → −92, pitch 116 → 138, yaw 61 → 103) with gyro error under 10 °/s: whatever needs the low motor to go
+   lower is not delivered, and the observer books the shortfall as disturbance.
+2. **Throttle rise with forward pitch.** Throttle 1000 → 1317 in 0.4 s, setpoint pitch −180, roll −50. The pack sags
+   7.6 → 6.88 V at 21 A; at 45.80 s motor 3 reaches 2047 while motor 4 is still at 348: both ends pinned.
+3. **Windup, 160 ms.** Roll I −145 → −888, pitch 245 → 982, yaw 195 → 976 between 45.80 and 45.96 s (up to
+   4 600 units/s on one axis). The clamp is `pidsum_limit` per axis (now 1000). pidSum roll/pitch reach −1 589 / +3 400
+   (log column ÷ 10) — each alone exceeds the whole motor range.
+4. **Departure and recovery.** Roll +403 → +562 °/s against setpoint −38, then pitch −894 °/s against −48; yaw error
+   peaks at 325 °/s. The I terms unwind at the rate they charged; roll/pitch error stays under 100 °/s again 0.68 s
+   after the saturation began. No crash.
+
+b0min70_wc_110 at 119.9 s and wc_wo_110_120 at 134.2 s repeat this: a zero-throttle phase (I terms 60–250 on all
+axes), throttle rise into a sagged pack (6.9–7.2 V under load), both ends pinned, windup to 860–1000 on all three
+axes, roll/pitch excursions of 733 and 540 °/s, yaw error 188 and 387 °/s, recovery 0.76 and 0.64 s.
+
+btfl_018 at 43.1 s is the same windup from a different entry: a punch to 1970 with the roll stick at −250 and the pack
+at 7.1–7.2 V, then the stick released (42.78–42.82 s). Motor 1 sits on a flat 1957–2018 plateau (the sag-compensated
+ceiling) while motor 3 goes to 48 at 42.80 s; from there roll/pitch I go −75/−98 → −760/−858 in 100 ms (7 600/s on
+pitch) and yaw 157 → 398, then the excursion (pitch −735, roll 545, yaw 806 °/s — here yaw is the largest), recovery
+0.24 s. And btfl_all log 1 at 37.3 s is the full-throttle variant: stick at 2000 for 0.3 s, three motors on the
+ceiling with the fourth free (861–991), pitch I charged to the clamp (−1000), pitch excursion 1 379 °/s against a
+setpoint of −142. At full throttle the ceiling alone pins the mixer; no floor contact is needed.
+
+Across the seven flights (`sat.py`): every both-end episode ≥ 90 ms and the one full-throttle ceiling episode ended in
+a roll/pitch excursion of 449–1 379 °/s; top-only episodes below full throttle (5–32 per flight, seconds in total)
+never exceeded 192 °/s, floor-only episodes never exceeded 171 °/s outside the events above. The windup needs the
+command to be undeliverable on all axes at once.
+
+Event at 39.5 s of b0min70 (pitch 1 793 °/s): a zero-throttle pitch flip (setpoint 560 °/s for 0.4 s, motors ≈ 300),
+then a one-frame jump to 1 727 °/s with the pack dropping 8.46 → 7.44 V — impact-like, not the sequence above. The
+btfl_all log 1 ending (229.9–230.8 s) likewise: gyro to −1 905/−1 236 °/s within one 40 ms frame at sticks
+−121/−59/132, pack 7.29 → 6.71 V, a one-frame controller reset (P/I/D all zero) 0.5 s later, then a tumble to the
+end of the log at 6.0–6.1 V. Whether it hit something at 229.9 s only the tester can say.
+
+### The `pidsum_limit` raise
+
+The z3 anti-windup bound is `pidsum_limit · b0_eff` per axis (adrc.c, "Anti-windup" block), so `|I| ≤ pidsum_limit`:
+on 14 Sep (limits 500/400) the washout in `PET_SQRT_1` (126.5 s) clamped exactly at 500/500/400; here the I terms
+reach 860–1000. The excursion size did not follow the clamp: 901 °/s on 14 Sep against 540–847 °/s here. The limit
+sets how far the integrators wind, not whether they do, and the excursion is driven by the P term (roll/pitch P
+2 200–6 800 at the peaks) once the craft is already moving. No recommendation on the limit follows from these logs.
+
+### What it is not
+
+- Not yaw gain: the events occur at yaw wc/wo 120/100, 110/100, 110/120 and 117/123 alike. Yaw winds up like the
+  other two axes and, having the least authority, stays at the clamp longest (46.08–46.20 s at 1000 while roll/pitch
+  unwind), which is what makes the event look like a yaw problem; in btfl_018 the yaw excursion is in fact the largest.
+- Not the b0 floor: 70, 80 and 95 alike.
+- Not ground wc: 10 or 40, dgain 1.0 or 4.0, same pattern.
+- Not D: at the peaks D is 55–380 against P of 2 200–6 800; the exp7 damping ratio (ADRC-032) does not enter this loop.
+
+### Mechanism, in controller terms
+
+Classic Betaflight's I term grows at `Ki · error` (order 50–100 units/s at these errors); z3 grows at
+`β3 · errorEso = wo³ · errorEso`, at the observer's own bandwidth, on every axis whose command is not delivered.
+While the mixer is pinned that is all three axes at once, to the clamp in 100–160 ms. The controller is told
+`u = constrain(pidSum, ±pidsum_limit)` (pid.c `pidUpdateAdrcAppliedOutput`), not what the mixer delivered
+(`motorMixRange` ≥ 1 is deliberately not folded into u — the 2026-07-12 A/B showed that scaling u by the mixer
+normalisation over-gains the loop). The ground gate already has the missing conditional (`inhibitZ3Growth`: admit the
+observer-error term only when it moves z3 toward zero). Candidate ADRC-033: extend the inhibit to
+`!liftoff || mixerSaturatedPreviousLoop`, with `mixerSaturated = motorMixRange ≥ 1` published by the mixer next to the
+applied output. Opt-in for A/B, default off, no PG change.
+
+### What the 117/123 set shows
+
+btfl_all log 2 (65 s, the tester's "best") has no event and no both-end saturation, on a pack already at 7.7 V.
+btfl_017 (fresh pack, same gains) has one 438 °/s roll excursion at 29.0 s with the I terms at 903–984 on all axes
+before it; btfl_all log 1 (same gains) has the full-throttle event and the crash. The gain change is not what
+separates the good flight from the others; the manoeuvres (zero-throttle into a punch, full-throttle punches, on a
+sagging 2S) are.
