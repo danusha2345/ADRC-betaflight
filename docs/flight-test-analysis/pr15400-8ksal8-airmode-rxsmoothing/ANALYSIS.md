@@ -802,7 +802,7 @@ before it; btfl_all log 1 (same gains) has the full-throttle event and the crash
 separates the good flight from the others; the manoeuvres (zero-throttle into a punch, full-throttle punches, on a
 sagging 2S) are.
 
-## Addendum 13, 2026-09-16: exp8 A/B — `adrc_sat_z3_inhibit` OFF/ON, and a `adrc_zeta_yaw` 100/50/0 sweep (PR comments 5697366799, 5698224382)
+## Addendum 13, 2026-09-16: exp8 A/B — `adrc_sat_z3_inhibit` OFF/ON, and a `adrc_zeta_yaw` 100/50/0 sweep (PR comments 5697366799, 5698224382; reply 5699641368)
 
 Six flights on b11-exp8 (e6511d6a), Petrel75 2S, 117/123 all axes, b0 45/29/42, scale_min 80, ground wc 10 / dgain
 4.0, td 140, limits 1000/1000. Logs in `8ksal8_petrel_20260916_exp8_ab/`. Inhibit activity is read directly from
@@ -830,7 +830,7 @@ manoeuvre ends instead of after the integrators unwind.
 
 Two excursions survive with the flag ON, both with the I terms flat (inhibit active, `adrcState` 93):
 
-- `zeta_yaw_0` at 27.06 s: the addendum-12 entry (0.3 s at zero throttle, then throttle 1000 → 1476 with pitch
+- `zeta_yaw_0` at 27.06 s: the addendum-12 entry (1.0 s at zero throttle, then throttle 1000 → 1476 with pitch
   −65), pack 6.8–6.9 V under load, motor 3 on 2047 and motor 4 on 348 for 0.5 s. I terms stay at −139/244/204
   throughout; the excursion (roll 659, pitch −739, yaw −264 °/s) is carried by P alone (pidSum roll −6 241 /
   pitch +7 933 / yaw +4 731 at the peak) and ends 0.34 s after the pin began. With the ceiling reached at ~1 300 of
