@@ -801,3 +801,50 @@ btfl_017 (fresh pack, same gains) has one 438 °/s roll excursion at 29.0 s with
 before it; btfl_all log 1 (same gains) has the full-throttle event and the crash. The gain change is not what
 separates the good flight from the others; the manoeuvres (zero-throttle into a punch, full-throttle punches, on a
 sagging 2S) are.
+
+## Addendum 13, 2026-09-16: exp8 A/B — `adrc_sat_z3_inhibit` OFF/ON, and a `adrc_zeta_yaw` 100/50/0 sweep (PR comments 5697366799, 5698224382)
+
+Six flights on b11-exp8 (e6511d6a), Petrel75 2S, 117/123 all axes, b0 45/29/42, scale_min 80, ground wc 10 / dgain
+4.0, td 140, limits 1000/1000. Logs in `8ksal8_petrel_20260916_exp8_ab/`. Inhibit activity is read directly from
+`adrcState` bits 4|8|16 (`z3_inhibited_rpy`), so "did the flag act" is measured, not inferred.
+
+| flight | flag | ζ yaw | length | vbat start → end | inhibit-active frames (air) | both-end frames | max \|I\| r/p/y | max \|I\| while pinned | excursions > 350 °/s | recovery |
+|---|---|---:|---:|---|---:|---:|---|---|---:|---|
+| inhibit_off | OFF | 100 | 175 s | 8.84 → 7.55 | 0 | 1 057 | 995 / 1000 / 1000 | 995 / 1000 / 1000 | 2 (395, 675) | 0.27 / 0.63 s |
+| inhibit_on | ON | 100 | 143 s | 8.76 → 7.74 | 166 | 206 | 183 / 252 / 257 | 183 / 239 / 251 | 0 | — |
+| zeta_yaw_100_1 | ON | 100 | 73 s | 8.81 → 8.06 | 1 | 13 | 162 / 255 / 241 | 135 / 254 / 206 | 0 | — |
+| zeta_yaw_50 | ON | 50 | 65 s | 8.30 → 7.75 | 18 | 18 | 166 / 225 / 202 | 11 / 72 / 31 | 0 | — |
+| zeta_yaw_0 | ON | 0 | 51 s | 7.94 → 7.53 | 633 | 893 | 212 / 251 / 310 | 196 / 251 / 282 | 1 (688) | 0.34 s |
+| zeta_yaw_100_2 | ON | 100 | 85 s | 7.76 → 7.27 | 76 | 163 | 176 / 285 / 193 | 175 / 274 / 193 | 1 (907, full throttle) | 0.12 s |
+
+### The flag does what it was built to do
+
+OFF reproduces addendum 12 exactly: at 164.0 s a 0.56 s both-end pin charges the I terms 156/254/189 → 995/1000/1000,
+excursion 675 °/s, recovery 0.63 s; at 35.3 s a shorter one (542/771/681 → 864/949/1000, 395 °/s). ON, same tune,
+same pack state, same session: the inhibit fired in 166 frames, the I terms never exceeded 257 on any axis, no
+frame of the flight has a roll/pitch error above 350 °/s, and the both-end frame count fell 5× — the windup was
+itself what kept the mixer pinned. Both-end pins still happen (206 frames), but they now end as soon as the
+manoeuvre ends instead of after the integrators unwind.
+
+### What remains, and why it is not the controller
+
+Two excursions survive with the flag ON, both with the I terms flat (inhibit active, `adrcState` 93):
+
+- `zeta_yaw_0` at 27.06 s: the addendum-12 entry (0.3 s at zero throttle, then throttle 1000 → 1476 with pitch
+  −65), pack 6.8–6.9 V under load, motor 3 on 2047 and motor 4 on 348 for 0.5 s. I terms stay at −139/244/204
+  throughout; the excursion (roll 659, pitch −739, yaw −264 °/s) is carried by P alone (pidSum roll −6 241 /
+  pitch +7 933 / yaw +4 731 at the peak) and ends 0.34 s after the pin began. With the ceiling reached at 1 400 of
+  stick on this pack there is simply no differential authority left; the observer no longer makes it worse.
+- `zeta_yaw_100_2` at 17.63 s: full stick (2000) on a pack at 6.4–6.7 V under load, motors 2047/48/149/281 for
+  50 ms, excursion 907 / 846 °/s (roll-pitch / yaw), I terms ≤ 168, recovery 0.12 s.
+
+The tester's "washout at ζ yaw 0" is the first of these. It is one event on the most depleted pack of the sweep
+(`vbatref` 796 against 885/833/778), with the yaw I term at 204 and yaw D absent by construction; nothing in it
+points at ζ rather than at the pack and the manoeuvre. n = 1 per ζ value on different pack states, so the sweep
+cannot rank 100/50/0 either way; the tester feels no difference between them.
+
+### Open
+
+The trade-off written into ADRC-033 (a real disturbance arriving while the mixer is pinned is learned late) has not
+been exercised: the pinned intervals here are 50–560 ms and end with the manoeuvre. The tester has not flown a
+scenario that would test it and intends to. Default stays OFF until someone has.

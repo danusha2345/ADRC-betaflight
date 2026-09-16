@@ -1482,4 +1482,8 @@ question for the A/B: a real disturbance during saturation (prop wash at the cei
 mixer frees up. Status: implemented as `adrc_sat_z3_inhibit` (OFF/ON, default OFF) in commit e6511d6a, tag
 `adrc-pr15400-b11-exp8` (fork/gitlab/forgejo); mixer publishes `motorMixRange > 1.0f` via
 `pidUpdateAdrcMixerSaturation()`, one-iteration lag like the applied output. Unit test
-`SatZ3InhibitStopsZ3GrowthOnlyWhileMixerSaturatedAndEnabled`. Awaiting the tester's OFF/ON A/B on the Petrel75.
+`SatZ3InhibitStopsZ3GrowthOnlyWhileMixerSaturatedAndEnabled`. A/B 2026-09-16 (addendum 13): OFF → I terms
+wind to 995/1000/1000 and a 675 °/s excursion; ON, same tune and session → inhibit measured active in 166 frames,
+I terms ≤ 257, no excursion above 350 °/s, both-end frames 1 057 → 206. Two excursions remain with the flag ON, both
+with flat I terms, both on a pack at 6.4–6.9 V under load (no differential authority at the ceiling) — not the
+controller. Trade-off (late learning of a real disturbance while pinned) not yet exercised; default stays OFF.
