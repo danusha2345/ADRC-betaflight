@@ -877,3 +877,20 @@ pack ending at 3.35 V, so nothing about ζ or the yaw gains can be read from it.
 
 Both flights: the I terms never exceed 324 through 770 inhibited frames; every pin ends with the manoeuvre. What
 remains on a 1S at 3.1–3.2 V under load is the ceiling, as on the Petrel.
+
+## Addendum 15, 2026-09-17: Pavo20 Pro (3S, F405) on exp8 with the flag ON — a no-op for 230 s (PR comment 5716907562)
+
+One flight, 231.6 s, wc/wo 72/110, b0 32/20/48, SQRT law, hover 38, scale_min 100, ground wc 10 / dgain 4.0, td 0,
+limits 500/400, `adrc_sat_z3_inhibit` ON, pack 12.38 → 10.03 V. Log in `8ksal8_pavo20_20260917_exp8/`.
+
+- **0–230 s:** the inhibit never fires (0 of 222 846 airborne frames), although a motor touches ≥ 2040 in 862 frames —
+  the mixer reaches the ceiling without clipping (`motorMixRange` ≤ 1), which is exactly the case the flag must
+  leave alone. Roll/pitch error: max 151 °/s, p99 51 °/s, no frame above 350; max \|I\| 118/254/118. This is item 3 of
+  the verification plan (a craft whose mixer does not pin: ON must change nothing) on a third airframe.
+- **230.53 s to the end:** within one 40 ms frame gyro roll goes +42 → +279 °/s with the sticks at −4/−5/77, current
+  10 → 33 A, pack 10.27 → 9.0 V; then a tumble (roll 765, pitch 788, yaw −954 °/s) with two frames of cleared I terms,
+  back under control by 231.1 s. The inhibit is active in 346 frames here and the I terms stay ≤ 198. Impact-shaped;
+  the log ends 0.5 s later.
+
+The tester's note that DJI O4 RockSteady is smooth across the throttle range on ADRC is an observation about
+gyro-band vibration, not something this log can confirm or refute.
