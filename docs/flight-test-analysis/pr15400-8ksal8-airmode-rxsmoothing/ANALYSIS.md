@@ -968,7 +968,7 @@ every interval with the stick ≥ 1950 for ≥ 0.4 s.
 
 The 6.1 s climb is the test the plan asked for — full stick on a pack at 6.5–6.75 V with a motor on the ceiling the
 whole time — and the inhibit is active in **none** of its frames: the ceiling is reached through the throttle
-constraint, the differential demand still fits (`motorMixRange` ≤ 1), so the mixer reports no clip and z3 keeps
+constraint, the differential demand still fits — inferred from the inhibit bits staying at zero with the flag ON — so the mixer reports no clip and z3 keeps
 learning. Attitude hold is the same as OFF (p99 23 vs 15–23 °/s). The last ON interval is not a control event:
 at 98.40 s, tracking within 30 °/s, one frame goes to 1 933/110/1 753 °/s with all P/I/D zeroed and motors
 2047/348/348/2047 (yaw-spin recovery) — an impact at full stick.
