@@ -944,7 +944,7 @@ far the only crafts on which it acts are the whoop-class ones on a sagged or sag
 at a time. A deliberate test would be the Petrel held in a pinned state for seconds (sustained climb on a tired
 pack), comparing attitude hold OFF vs ON.
 
-## Addendum 17, 2026-09-18: full-throttle runs OFF/ON on the Petrel75 (the trade-off attempt), a ζ 75 % flight, and the 53 Hz notch (PR comments 5731090482, 5731702346)
+## Addendum 17, 2026-09-18: full-throttle runs OFF/ON on the Petrel75 (the trade-off attempt), a ζ 75 % flight, and the 53 Hz notch (PR comments 5731090482, 5731702346; reply 5732543007)
 
 Petrel75 2S on e6511d6a, 117/120 all axes (ζ flight: 124/130, ζ 75/75/75), b0 45/29/42, scale_min 80, td 140,
 limits 1000/1000, `vbat_sag_compensation` 100. Logs in `8ksal8_petrel_20260918_fullthrottle/`; `fullthr.py` lists
@@ -986,7 +986,7 @@ one flight, gains and ζ changed together, no comparison possible.
 
 ### The 53 Hz notch
 
-Header: `gyro_notch_hz` 53, `gyro_notch_cutoff` 40, no gyro LPF1, LPF2 1000 Hz, dyn notch ×3 from 140 Hz, RPM filter 1
+Header: `gyro_notch_hz` 53, `gyro_notch_cutoff` 40 (lower edge 40, upper ≈ 53²/40 = 70 Hz), no gyro LPF1, LPF2 1000 Hz, dyn notch ×3 from 140 Hz, RPM filter 1
 harmonic. Band amplitudes of the unfiltered gyro over 239 two-second airborne windows of the ζ flight, relative to
 10–25 Hz: roll 25–40 Hz 0.45 (peak 30.0 Hz), pitch 0.62 (38.0 Hz), yaw 40–60 Hz 1.08 (45.5 Hz). The setpoint has no
 line near 50 Hz (40–60 Hz band 0.15–0.16 of its 10–25 Hz content, peak at 30–32 Hz following the gyro), so an RC
