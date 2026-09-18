@@ -894,3 +894,52 @@ limits 500/400, `adrc_sat_z3_inhibit` ON, pack 12.38 → 10.03 V. Log in `8ksal8
 
 The tester's note that DJI O4 RockSteady is smooth across the throttle range on ADRC is an observation about
 gyro-band vibration, not something this log can confirm or refute.
+
+## Addendum 16, 2026-09-18: three more OFF/ON pairs on exp8 — Petrel75, HDZ Petrel75, TH3 (PR comment 5724465769)
+
+All on e6511d6a. `absum.py` prints, per flight: inhibit frames (from `adrcState` bits 4|8|16), both-end pins, max \|I\|,
+frames with roll/pitch error > 350 °/s, and each pin with the I terms before/after. The tester: the Pavo20 ending
+(addendum 15) was a bush, then the ground; "lots of crashes at the ends of most of these".
+
+| craft | flag | tune (wc/wo, limits) | length | vbat | inhibit frames | both-end frames | max \|I\| r/p/y | frames err > 350 | what happened |
+|---|---|---|---:|---|---:|---:|---|---:|---|
+| Petrel75 | OFF | 117/123, 1000/1000 | 84 s | 8.51 → 7.80 | 0 | 1 425 | 1000 / 1000 / 1000 | 988 | three windups: 7.5 s, 44.2 s, 60.3 s |
+| Petrel75 | ON | same | 72 s | 8.55 → 7.88 | 402 | 364 | 193 / 230 / 248 | 112 | one pin at 31.2 s, I flat, 563 °/s on P alone |
+| HDZ Petrel75 | ON | 95/100, 500/400 | 95 s | 8.46 → 7.66 | 0 | 0 | 137 / 205 / 222 | 0 | clean |
+| HDZ Petrel75 | OFF | same | 78 s (+8 ground logs) | 8.43 → 7.64 | 0 | 187 | 230 / 365 / 395 | 63 | clean to 76.4 s, then an impact at full throttle |
+| TH3 | ON | 81/90, 1000/1000, LINEAR hover 5 | 180 s | 8.44 → 7.33 | 0 | 0 | 137 / 176 / 161 | 0 | clean; 19 982 frames at the ceiling, no clip |
+| TH3 | OFF | same | 106 s | 8.25 → 7.46 | 0 | 677 | 1000 / 1000 / 1000 | 885 | clean to 104.7 s, then an impact and a tumble |
+
+### Petrel75, second pair: same result as the first
+
+OFF has three windups to the clamp. 44.2 s (full stick, pack 7.2–7.5 V, I −140/297/281 → −822/997/1000 in 120 ms,
+pitch −873 °/s) and 60.3 s (122/229/196 → 1000/1000/1000, 1 120 °/s) are the addendum-12 shape. **7.5 s is a variant
+worth recording:** throttle only 1 400 on a *fresh* pack (8.3 V), motor 0 on the 348 floor and motor 3 flat at
+1757–1761 for 250 ms — that plateau is the ceiling, because `vbat_sag_compensation` 100 lowers `motorRangeMax` on a
+full pack. Roll I 336 → 996 and pitch −609 → −1000 in 150 ms, then 644 °/s. So a pin does not need a sagged pack or
+a motor at 2047, and any detector keyed on "≥ 1900" (as `sat.py` was) misses it; with the flag ON the log's own
+inhibit bits are the reliable indicator. ON, same tune and pack state: one pin at 31.2 s (throttle 1 410 → 1 700,
+pitch −90, motor 3 on a 1947–1971 plateau and motor 4 on 348 for ~250 ms). Inhibit active (`adrcState` 93), I terms
+−102/226/211 → −77/151/225, excursion 533/−533 °/s carried by P, back within 0.15 s of the pin ending. Two pairs now,
+different days and packs, same outcome: the windup is gone, the excursion while pinned is smaller and ends with
+the pin.
+
+### HDZ Petrel75 and TH3: the flag is a no-op there, and the endings are impacts
+
+Neither craft pinned its mixer in the ON flight (inhibit 0 frames, no both-end frames), and neither OFF flight shows a
+windup before its ending. HDZ OFF at 76.45 s: full stick, one frame with gyro 119/55/−128 and motors
+48/1938/262/126, then a tumble — impact-shaped; the eight short logs after it are ground attempts with the gate
+closed (roll stick held, `adrcState` 2/28/30). TH3 OFF at 104.78 s: full stick with roll −114, one frame to
+296/89/340 °/s, then yaw 1 793 °/s with all P/I/D at zero and motors 2033/348/348/2033 (yaw-spin recovery), then the
+I terms charge to the clamp during the tumble. The windup there follows the impact, it does not cause it. These
+two pairs therefore say nothing for or against the flag beyond "ON changed nothing", which is what it should do on
+a craft that does not pin.
+
+### The trade-off case is still open — and the TH3 shows why it is hard to fly
+
+The tester offered the TH3 pair for the trade-off. In the ON flight the inhibit never fired: 20 s of airtime with a
+motor on the ceiling and not one clip report, because at full throttle this craft still has differential room. The
+trade-off (a real disturbance arriving while the inhibit holds z3) only exists while the flag is acting, and so
+far the only crafts on which it acts are the whoop-class ones on a sagged or sag-compensated ceiling, for 50–570 ms
+at a time. A deliberate test would be the Petrel held in a pinned state for seconds (sustained climb on a tired
+pack), comparing attitude hold OFF vs ON.
