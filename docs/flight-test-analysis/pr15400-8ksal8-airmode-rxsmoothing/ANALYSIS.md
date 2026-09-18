@@ -920,7 +920,7 @@ full pack. Roll I 336 → 996 and pitch −609 → −1000 in 150 ms, then 644 �
 a motor at 2047, and any detector keyed on "≥ 1900" (as `sat.py` was) misses it; with the flag ON the log's own
 inhibit bits are the reliable indicator. ON, same tune and pack state: one pin at 31.2 s (throttle 1 410 → 1 700,
 pitch −90, motor 3 on a 1947–1971 plateau and motor 4 on 348 for ~250 ms). Inhibit active (`adrcState` 93), I terms
-−102/226/211 → −77/151/225, excursion 533/−533 °/s carried by P, back within 0.15 s of the pin ending. Two pairs now,
+−102/226/211 → −77/151/225, gyro 533/−533 °/s (error up to 563) carried by P, back within 0.15 s of the pin ending. Two pairs now,
 different days and packs, same outcome: the windup is gone, the excursion while pinned is smaller and ends with
 the pin.
 
