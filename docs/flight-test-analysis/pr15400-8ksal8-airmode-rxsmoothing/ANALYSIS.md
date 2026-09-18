@@ -943,3 +943,54 @@ trade-off (a real disturbance arriving while the inhibit holds z3) only exists w
 far the only crafts on which it acts are the whoop-class ones on a sagged or sag-compensated ceiling, for 50–570 ms
 at a time. A deliberate test would be the Petrel held in a pinned state for seconds (sustained climb on a tired
 pack), comparing attitude hold OFF vs ON.
+
+## Addendum 17, 2026-09-18: full-throttle runs OFF/ON on the Petrel75 (the trade-off attempt), a ζ 75 % flight, and the 53 Hz notch (PR comments 5731090482, 5731702346)
+
+Petrel75 2S on e6511d6a, 117/120 all axes (ζ flight: 124/130, ζ 75/75/75), b0 45/29/42, scale_min 80, td 140,
+limits 1000/1000, `vbat_sag_compensation` 100. Logs in `8ksal8_petrel_20260918_fullthrottle/`; `fullthr.py` lists
+every interval with the stick ≥ 1950 for ≥ 0.4 s.
+
+| flight | flag | length | vbat | inhibit frames | max \|I\| | pins / excursions |
+|---|---|---:|---|---:|---|---|
+| full_throttle OFF | OFF | 117 s | 8.79 → 7.82 | 0 | 1000 / 1000 / 1000 | windup at 88.0 s (156/267/238 → 1000 ×3, 915 °/s); 946 °/s at the end |
+| full_throttle ON | ON | 100 s | 8.06 → 7.42 | 1 357 | 210 / 255 / 265 | pin 59.84 s, 0.24 s, I flat, 492 °/s; impact at 98.40 s |
+| ζ 75 %, 124/130 | ON | 244 s | 8.60 → 7.24 | 757 | 322 / 301 / 333 | one pin 47.8 s, 584 °/s |
+
+### Sustained full throttle does not pin the mixer
+
+| flight | t0 | length | vbat mean / min | roll-pitch error p50 / p99 / max | yaw max | inhibit | motor on ceiling |
+|---|---:|---:|---|---|---:|---:|---:|
+| OFF | 57.0 s | 0.6 s | 7.49 / 7.34 | 7 / 23 / 31 | 12 | — | 0 % |
+| OFF | 75.7 s | 3.1 s | 7.12 / 6.89 | 5 / 15 / 23 | 10 | — | 56 % |
+| ON | 23.1 s | 0.8 s | 7.07 / 6.86 | 10 / 25 / 32 | 25 | 0.0 % | 97 % |
+| ON | 47.6 s | 6.1 s | 6.75 / 6.46 | 7 / 23 / 33 | 28 | 0.0 % | 100 % |
+| ON | 98.0 s | 0.7 s | 6.92 / 6.39 | 41 / 2 333 / 2 590 | 2 104 | 32 % | 85 % |
+
+The 6.1 s climb is the test the plan asked for — full stick on a pack at 6.5–6.75 V with a motor on the ceiling the
+whole time — and the inhibit is active in **none** of its frames: the ceiling is reached through the throttle
+constraint, the differential demand still fits (`motorMixRange` ≤ 1), so the mixer reports no clip and z3 keeps
+learning. Attitude hold is the same as OFF (p99 23 vs 15–23 °/s). The last ON interval is not a control event:
+at 98.40 s, tracking within 30 °/s, one frame goes to 1 933/110/1 753 °/s with all P/I/D zeroed and motors
+2047/348/348/2047 (yaw-spin recovery) — an impact at full stick.
+
+So the trade-off as written in ADRC-033 (a long pinned interval with a disturbance inside) does not arise from
+holding throttle. The inhibit acts only when the *demand* exceeds the motor span, i.e. inside the 50–570 ms events
+it was built for, where the measured effect is the removal of the windup. Its exposure is bounded by those
+durations. What remains untested is a sustained clip caused by a sustained demand (a damaged prop or a dead motor),
+where PID's own integrator is equally unable to help.
+
+### ζ 75 % with 124/130
+
+244 s, one pin (47.8 s, I terms 102/190/211 → 175/227/272, 584 °/s), I ≤ 333, nothing else above 350 °/s. It flies;
+one flight, gains and ζ changed together, no comparison possible.
+
+### The 53 Hz notch
+
+Header: `gyro_notch_hz` 53, `gyro_notch_cutoff` 40, no gyro LPF1, LPF2 1000 Hz, dyn notch ×3 from 140 Hz, RPM filter 1
+harmonic. Band amplitudes of the unfiltered gyro over 239 two-second airborne windows of the ζ flight, relative to
+10–25 Hz: roll 25–40 Hz 0.45 (peak 30.0 Hz), pitch 0.62 (38.0 Hz), yaw 40–60 Hz 1.08 (45.5 Hz). The setpoint has no
+line near 50 Hz (40–60 Hz band 0.15–0.16 of its 10–25 Hz content, peak at 30–32 Hz following the gyro), so an RC
+packet-rate origin (jmsweng's hypothesis) is not supported by this log. The energy sits at 30 / 38 / 45 Hz per axis —
+the same band as the loop mode tracked since the 13 Sep addendum — and the notch covers only the top of it. Whether
+the notch helps by removing noise or by reshaping the loop needs a notch-off flight on the same pack; not
+established.
