@@ -1491,3 +1491,9 @@ Verification plan (PR comment 5699684269): (1) 2–3 more OFF/ON pairs on the Pe
 one, same manoeuvre set; (2) the HDZ with the same pairs; (3) a 5" (jmsweng) flown ON — must be a no-op, inhibit count
 from adrcState bits 4|8|16; (4) the trade-off case: a long pinned interval with a real disturbance inside (full
 throttle into prop wash, sustained full-stick climb on a tired pack). Other airframes welcome.
+Status 2026-09-18 (addenda 14–17, reply 5732543007): (1) done — second Petrel pair repeats the first, plus a
+full-throttle pair; (2) HDZ pair flown, flag a no-op there (no pins either way); (3) Pavo20 Pro and TH3 flown ON,
+0 inhibit frames, no-op; Air65 ON, pins without windup; (4) a 6.1 s full-stick climb at 6.5–6.75 V with a motor on
+the ceiling 100 % of the time produced 0 inhibit frames — holding throttle does not clip the mixer, so the
+trade-off exposure is bounded by the 50–570 ms events. Untested: a sustained clip from a sustained demand
+(damaged prop, dead motor). Five airframes, no adverse effect observed. Still opt-in, default OFF.
