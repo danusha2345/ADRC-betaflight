@@ -1512,3 +1512,36 @@ Defaults changed per the D1–D3 vote (jmsweng + 8ksal8; Bob silent): `adrc_grou
 10 → 40, `b0Law` QUADRATIC → SQRT; `adrc_b0_scale_min` 100, `adrc_sat_z3_inhibit` OFF, `adrc_zeta` 100 unchanged.
 Note the deviation from the 11 Sep proposal (ground wc 40 / dgain 1.0): 10 / 4.0 is what was actually flown on
 five airframes, so that is what shipped. Open before "candidate": 5" tap test of the ground-wc default.
+
+## ADRC-034 — PID-profile PG array: size grew without a version bump (found 2026-09-19, fixed in b11)
+
+Found by an adversarial review of b11 (Codex, gpt-6-astra high; verdict kept in `.scratch/b11-review-20260919/`), and
+confirmed in the code: `pidProfiles` is one parameter group holding an array of `PID_PROFILE_COUNT` = 4 elements
+(`PG_REGISTER_ARRAY_WITH_RESET_FN`, pid.c), its stored size is `sizeof(pidProfile_t) * 4`, and `pgLoad()` resets
+the instance and then does a single `memcpy(MIN(size, pgSize))`. b11-exp2…exp8 appended fields to `pidProfile_t`
+(260 → 262 → 264 → 268 bytes) and kept version 13 on the reasoning that an appended tail is safe under a
+size-limited copy. That holds for a single struct and is false for an array: the element stride changes, so
+profiles 2–4 load mis-aligned and profile 1's new tail is filled with the head of the old profile 2. The reviewer
+reproduced it with the real `pgLoad()`: profile 1 `adrc_zeta` 0/0/0 (no D), floor 0 → 20 %, ramp 20 525 ms on
+profile 2. The exp1 "fix" (moving the fields from inside `adrcProfile_t` to the end of `pidProfile_t`) addressed
+the wrong half of the problem, and the release notes of exp2…exp8 promised "saved profiles load unchanged".
+
+Exposure: only an upgrade between builds of different profile size **without** full chip erase and without
+re-pasting a diff. 80 September log headers carrying the tester settings were re-read: every value within its legal
+range, ramp 100 ms in all of them; an in-range wrong value cannot be excluded from headers.
+
+Fix (61d2d881, b11): PG version 13 → 14, so older blobs are rejected and the four profiles reset; the misleading
+comments in pid.h / adrc.h / pid_unittest.cc replaced by the rule "any change to sizeof(pidProfile_t) bumps the
+version"; test `PidProfilesPgVersionRejectsOlderBlobs`. Upstream master is at 12 and the PR's own bump was 13, so
+a later upstream bump to 13/14 with a different layout would collide — re-check on every merge.
+
+Same review, second finding (ADRC-033): `motorMixRange > 1` is computed before `MIXER_DYNAMIC` reshapes the mix,
+which can then clip a motor at range 0.8 with the flag false. b11 adds `adrcMixWillClip()` (any normalised motor
+command outside [0, 1]); four mixer tests now assert the flag (none did), mutation-checked. `adrcResetGate()` now
+clears `mixerSaturated`. Left open by the review and agreed: the inhibit is global across axes and unbounded in
+time; a sustained demand that pins the mixer would block learning on all axes. Default stays OFF.
+
+Process lesson: three of my own review passes and 78 green suites did not catch ADRC-034, because the layout test
+asserted field *order* — the property I believed mattered — not a load of a real four-profile blob. A test that
+encodes the author's mental model cannot find an error in that model; the adversarial pass is not optional for a
+release.
