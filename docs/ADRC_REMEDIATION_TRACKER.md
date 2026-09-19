@@ -1497,3 +1497,18 @@ full-throttle pair; (2) HDZ pair flown, flag a no-op there (no pins either way);
 the ceiling 100 % of the time produced 0 inhibit frames — holding throttle does not clip the mixer, so the
 trade-off exposure is bounded by the 50–570 ms events. Untested: a sustained clip from a sustained demand
 (damaged prop, dead motor). Five airframes, no adverse effect observed. Still opt-in, default OFF.
+
+## b11 cut (2026-09-19)
+
+Branch `adrc-b11` (a709997ec7), tag `adrc-pr15400-b11`, fork/gitlab/forgejo. Built as: `adrc-master-merge-20260915`
++ merge of the tester line through exp8 (e6511d6a) + merge of upstream master 5d3e7c8502 + one defaults commit.
+Conflicts in the second upstream merge: `src/test/Makefile` (both test blocks kept) and `src/main/flight/mixer.c`
+(our `motorStopped` / applied-output block kept on upstream's condition incl. `LAUNCH_MODE`). Upstream's new
+`debug_annotations_unittest` required `//!<` annotations on the eight `DEBUG_SET(DEBUG_ADRC, …)` calls;
+`adrc_mixer_unittest` needed an `autopilotThrottleValid()` stub. `DEBUG_ADRC` = 102 (checked by compiling the
+header). 78 unit-test suites pass, STM32G474 builds. Ahead 92 / behind 0 against upstream master.
+
+Defaults changed per the D1–D3 vote (jmsweng + 8ksal8; Bob silent): `adrc_ground_wc` 0 → 10, `adrc_ground_dgain`
+10 → 40, `b0Law` QUADRATIC → SQRT; `adrc_b0_scale_min` 100, `adrc_sat_z3_inhibit` OFF, `adrc_zeta` 100 unchanged.
+Note the deviation from the 11 Sep proposal (ground wc 40 / dgain 1.0): 10 / 4.0 is what was actually flown on
+five airframes, so that is what shipped. Open before "candidate": 5" tap test of the ground-wc default.
