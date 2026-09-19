@@ -29,7 +29,7 @@ master 5d3e7c8502), ADRC adds ~530 bytes more.
 
 | setting | b10.1 | b11 | why |
 |---|---|---|---|
-| `adrc_ground_wc` / `adrc_ground_dgain` | 0 (off) / — | **10 / 40** | D1: the arm-time lift-off on the ground is the only failure that has damaged a craft; 10 / 4.0 is what five airframes have been flown on since exp4 |
+| `adrc_ground_wc` / `adrc_ground_dgain` | 0 (off) / — | **10 / 40** | D1: the arm-time lift-off on the ground is the only failure that has damaged a craft. 10 / 4.0 is what four airframes (Petrel75, HDZ Petrel75, Air65, Pavo20) flew in the week before b11; the 11 Sep proposal and the earlier logs used 40 / 1.0, where the cap binds at 14–24 rad/s on the whoops. 10 / 4.0 gives every craft 10 |
 | `adrc_b0_law` | QUADRATIC | **SQRT** | D2: QUADRATIC was the worst of the four laws on throttle steps (122–160 °/s peak error vs 42–46 SQRT) |
 | `adrc_hover_throttle` | 35 | 35 | set your real hover value — the schedule is only as good as this number |
 | `adrc_b0_scale_min` | — | 100 (off) | D3: opt-in; 70–90 is what testers settled on for low-throttle feel |
