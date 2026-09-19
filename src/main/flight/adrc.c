@@ -910,16 +910,16 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // int16_t and DEBUG_SET does not range-check, so an over-range value would otherwise WRAP into
     // garbage instead of reading as an honest off-scale rail (fix #12).
     if (axis == FD_ROLL) {
-        DEBUG_SET(DEBUG_ADRC, 0, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 1, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 0, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z1 Roll rate estimate [unit:dps]
+        DEBUG_SET(DEBUG_ADRC, 1, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z2 Roll acceleration estimate [unit:dps2]
+        DEBUG_SET(DEBUG_ADRC, 2, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z3 Roll disturbance estimate divided by adrc_z3_log_scale
     } else if (axis == FD_PITCH) {
-        DEBUG_SET(DEBUG_ADRC, 3, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 4, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
-        DEBUG_SET(DEBUG_ADRC, 7, lrintf((adrcRuntime->liftoff ? 1.0f : -1.0f) * adrcRuntime->b0ThrottleScale * 100.0f));
+        DEBUG_SET(DEBUG_ADRC, 3, lrintf(constrainf(adrcRuntime->z1[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z1 Pitch rate estimate [unit:dps]
+        DEBUG_SET(DEBUG_ADRC, 4, lrintf(constrainf(adrcRuntime->z2[axis], -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z2 Pitch acceleration estimate [unit:dps2]
+        DEBUG_SET(DEBUG_ADRC, 5, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z3 Pitch disturbance estimate divided by adrc_z3_log_scale
+        DEBUG_SET(DEBUG_ADRC, 7, lrintf((adrcRuntime->liftoff ? 1.0f : -1.0f) * adrcRuntime->b0ThrottleScale * 100.0f));  //!< b0 Throttle Scale, negative while the liftoff gate is closed [unit:0.01]
     } else { // FD_YAW
-        DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));
+        DEBUG_SET(DEBUG_ADRC, 6, lrintf(constrainf(adrcRuntime->z3[axis] / adrcRuntime->z3LogScale, -ADRC_DEBUG_LIMIT, ADRC_DEBUG_LIMIT)));  //!< ESO z3 Yaw disturbance estimate divided by adrc_z3_log_scale
     }
 
     return output;
