@@ -268,6 +268,7 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .adrc_ground_dgain = 10,
         .adrc_b0_scale_min = 100,
         .adrc_zeta = { 100, 100, 100 },
+        .adrc_sat_z3_inhibit = 0,
     );
 #ifdef USE_ADRC
     adrcResetProfile(&pidProfile->adrc);
@@ -1090,6 +1091,16 @@ void pidUpdateAdrcAppliedOutput(const pidProfile_t *pidProfile, float axisScale,
         adrcSetAppliedOutput(&pidRuntime.adrc, axis,
             hasAuthority ? constrainf(pidData[axis].Sum, -sumLimit, sumLimit) : 0.0f);
     }
+}
+
+// ADRC-033: mixer clipping flag for the observer's z3 growth inhibit; consumed on the next PID
+// iteration like the applied output above.
+void pidUpdateAdrcMixerSaturation(const pidProfile_t *pidProfile, bool saturated)
+{
+    if (pidProfile->pid_type != PID_TYPE_ADRC) {
+        return;
+    }
+    adrcSetMixerSaturated(&pidRuntime.adrc, saturated);
 }
 
 static FAST_CODE_NOINLINE void updateAdrcSharedState(const pidProfile_t *pidProfile)

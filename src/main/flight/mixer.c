@@ -714,6 +714,7 @@ FAST_CODE_NOINLINE_CRITICAL void mixTable(timeUs_t currentTimeUs)
         mixerAdrcThrottle = 0.0f;
         mixerAdrcCommandedThrottle = 0.0f;
         pidUpdateAdrcAppliedOutput(currentPidProfile, 0.0f, currentPidProfile->pidSumLimitYaw);
+        pidUpdateAdrcMixerSaturation(currentPidProfile, false);
 #endif
         return;
         // if crash flip modeis being applied to the motors, mixing is done
@@ -899,6 +900,8 @@ FAST_CODE_NOINLINE_CRITICAL void mixTable(timeUs_t currentTimeUs)
     mixerAdrcThrottle = motorStopped ? 0.0f : appliedCollectiveThrottle;
     mixerAdrcCommandedThrottle = motorStopped ? 0.0f : commandedCollective;
     pidUpdateAdrcAppliedOutput(currentPidProfile, motorStopped ? 0.0f : appliedAxisScale, yawPidSumLimit);
+    // ADRC-033: the mixer could not deliver the full command this iteration (normalised down).
+    pidUpdateAdrcMixerSaturation(currentPidProfile, motorMixRange > 1.0f);
 #else
     UNUSED(appliedAxisScale);
 #endif

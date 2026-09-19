@@ -342,6 +342,7 @@ typedef struct pidProfile_s {
     uint8_t adrc_ground_dgain;              // x0.1: also cap the ground wc at dgain * b0 / (2 * wo) per axis; 0 = off
     uint8_t adrc_b0_scale_min;              // %: floor of the throttle->b0 schedule below hover (ADRC-031); 100 = scale only up
     uint8_t adrc_zeta[XYZ_AXIS_COUNT];      // %: damping ratio of the virtual PD per axis (ADRC-032); 100 = critical, 0 = no D
+    uint8_t adrc_sat_z3_inhibit;            // ADRC-033: inhibit z3 growth while the mixer is saturated; 0 = off
 } pidProfile_t;
 
 PG_DECLARE_ARRAY(pidProfile_t, PID_PROFILE_COUNT, pidProfiles);
@@ -575,6 +576,7 @@ bool pidAntiGravityEnabled(void);
 // authority signal (zero when the mixer applied no axis command at all - motor stop, Crash Flip);
 // see the definition in pid.c for why the proportional factor is deliberately not applied.
 void pidUpdateAdrcAppliedOutput(const pidProfile_t *pidProfile, float axisScale, float yawSumLimit);
+void pidUpdateAdrcMixerSaturation(const pidProfile_t *pidProfile, bool saturated);
 #endif
 
 #ifdef USE_THRUST_LINEARIZATION

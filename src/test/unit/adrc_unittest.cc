@@ -1389,6 +1389,41 @@ TEST_F(AdrcUnittest, B0ScaleMinBoundaryValueIsNotTreatedAsOff)
 
 // ADRC-032: per-axis damping ratio. 100 % leaves the law untouched; 50 % halves D; 0 % removes D; the ground-wc
 // path scales with it too.
+TEST_F(AdrcUnittest, SatZ3InhibitStopsZ3GrowthOnlyWhileMixerSaturatedAndEnabled)
+{
+    adrcInitConfig(&profile, &runtime, TEST_DT);
+    adrcResetGate(&runtime);
+    runtime.liftoff = true;
+    // Observer error that drives z3 outward: z1 held at 0, gyro at 200 deg/s, no command.
+    auto step = [&]() { runtime.z1[FD_ROLL] = 0.0f; runtime.z2[FD_ROLL] = 0.0f; runtime.z3GrowthInhibitMask = 0;
+        adrcApplyControl(&runtime, FD_ROLL, 200.0f, 0.0f, TEST_DT, 500.0f); };
+
+    // Default (flag off): a saturated mixer does not stop z3 from charging.
+    adrcSetMixerSaturated(&runtime, true);
+    runtime.z3[FD_ROLL] = 0.0f;
+    step();
+    EXPECT_GT(fabsf(runtime.z3[FD_ROLL]), 0.0f);
+    EXPECT_EQ(0u, runtime.z3GrowthInhibitMask);
+
+    // Flag on + saturated: growth suppressed, mask flags it, decay toward zero still runs.
+    adrcSetSatZ3Inhibit(&runtime, true);
+    runtime.z3[FD_ROLL] = 0.0f;
+    step();
+    EXPECT_FLOAT_EQ(0.0f, runtime.z3[FD_ROLL]);
+    EXPECT_EQ(1u << FD_ROLL, runtime.z3GrowthInhibitMask);
+    runtime.z3[FD_ROLL] = 1000.0f; // same sign as the growth direction would push
+    const float before = runtime.z3[FD_ROLL];
+    step();
+    EXPECT_LE(fabsf(runtime.z3[FD_ROLL]), before); // never grows while inhibited
+
+    // Flag on, mixer freed: charging resumes on the next iteration.
+    adrcSetMixerSaturated(&runtime, false);
+    runtime.z3[FD_ROLL] = 0.0f;
+    step();
+    EXPECT_GT(fabsf(runtime.z3[FD_ROLL]), 0.0f);
+    EXPECT_EQ(0u, runtime.z3GrowthInhibitMask);
+}
+
 TEST_F(AdrcUnittest, ZetaScalesTheDTermOnly)
 {
     adrcInitConfig(&profile, &runtime, TEST_DT);

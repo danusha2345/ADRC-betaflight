@@ -384,6 +384,8 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
 
     adrcRuntime->b0ThrottleScale = 1.0f;
     adrcRuntime->b0ScaleMin = 1.0f; // ADRC-031 off until adrcSetB0ScaleMin()
+    adrcRuntime->satZ3Inhibit = false; // ADRC-033 off until adrcSetSatZ3Inhibit()
+    adrcRuntime->mixerSaturated = false;
     adrcRuntime->b0ScaleThrottle = 0.0f;
     // Callers that never learn the pidSum limits (unit-test SetUp paths init the ADRC module in
     // isolation) keep the b9-era divisor; production overwrites this one line below via
@@ -721,6 +723,16 @@ void adrcSetZeta(adrcRuntime_t *adrcRuntime, const uint8_t zetaPercent[XYZ_AXIS_
     }
 }
 
+void adrcSetSatZ3Inhibit(adrcRuntime_t *adrcRuntime, bool enabled)
+{
+    adrcRuntime->satZ3Inhibit = enabled;
+}
+
+void adrcSetMixerSaturated(adrcRuntime_t *adrcRuntime, bool saturated)
+{
+    adrcRuntime->mixerSaturated = saturated;
+}
+
 void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent)
 {
     // Integer decision first: the firmware is built with -ffast-math, and a float clamp at exactly
@@ -817,7 +829,15 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // whenever one of the normal detection paths meets its own conditions again. What ADRC-020 was
     // about - an intact airborne estimate blinded by stick position - cannot happen now, because
     // the stick no longer takes part in the decision at all.
-    const bool inhibitZ3Growth = !adrcRuntime->liftoff;
+    //
+    // ADRC-033 (opt-in): the same inhibit while the mixer clipped on the previous iteration. The
+    // observer is fed the pidsum_limit-clipped u, not what the mixer delivered (scaling u by the
+    // mixer normalisation over-gains the loop, see pidUpdateAdrcAppliedOutput()), so with both
+    // motor ends pinned the undelivered moment is booked as disturbance on every axis at once and
+    // z3 charges to its bound in ~100 ms (Petrel75 "yaw washout", addendum 12). Only the growth
+    // half is dropped; decay toward zero still runs, so a wound-up z3 unwinds during saturation.
+    const bool inhibitZ3Growth = !adrcRuntime->liftoff
+        || (adrcRuntime->satZ3Inhibit && adrcRuntime->mixerSaturated);
     const bool z3GrowthInhibited = inhibitZ3Growth && fabsf(z3Updated) > fabsf(z3Decayed);
     if (z3GrowthInhibited) {
         adrcRuntime->z3GrowthInhibitMask |= 1u << axis;
