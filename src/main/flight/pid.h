@@ -334,9 +334,8 @@ typedef struct pidProfile_s {
     uint16_t chirp_frequency_start_deci_hz; // start frequency in units of 0.1 hz
     uint16_t chirp_frequency_end_deci_hz;   // end frequency in units of 0.1 hz
     uint8_t chirp_time_seconds;             // excitation time
-    // ADRC-030 (experimental). Appended at the END of the struct on purpose: PG_PID_PROFILE stays at
-    // version 13 and pgLoad() restores a b10.1 blob by size-limited memcpy, so anything inserted
-    // earlier would shift the fields after it. Keep new fields below this line.
+    // ADRC tester settings (ADRC-030..033). Adding a field here changes sizeof(pidProfile_t) and therefore the
+    // stride of the pidProfiles PG array: bump the PG version in pid.c whenever this block changes.
     uint8_t adrc_ground_wc;                 // wc [rad/s] while the liftoff gate is closed, all axes, capped at adrc_wc_*; 0 = off
     uint16_t adrc_wc_ramp_ms;               // ramp from adrc_ground_wc to adrc_wc_* after the gate opens; 0 = switch
     uint8_t adrc_ground_dgain;              // x0.1: also cap the ground wc at dgain * b0 / (2 * wo) per axis; 0 = off

@@ -1657,7 +1657,34 @@ TEST(pidControllerTest, testAdrcAppliedOutputRejectsInvalidScaleAndClassicProfil
 }
 
 // ADRC-030: the ground-wc fields must stay the trailing bytes of pidProfile_t so a PG version 13
-// blob saved by b10.1 loads with every earlier field in place (pgLoad() is a size-limited memcpy).
+// (Ordering only. This is NOT a migration guarantee: pidProfiles is a PG array, see PidProfilesPgVersion below.)
+// pidProfiles is one PG array restored by a single memcpy, so a blob written with a different element size must
+// not be loaded at all. b11 bumps the version to 14; a version-13 blob (b10.1, b11-exp2..exp8: 260..268-byte
+// elements) has to leave the defaults in place instead of loading mis-strided.
+extern "C" {
+    extern const pgRegistry_t pidProfiles_Registry;
+}
+TEST(pidProfileLayoutTest, PidProfilesPgVersionRejectsOlderBlobs)
+{
+    EXPECT_EQ(14, pgVersion(&pidProfiles_Registry));
+    // Four 260-byte "old" elements filled with a pattern that would be poison if it were loaded.
+    static uint8_t oldBlob[260 * PID_PROFILE_COUNT];
+    memset(oldBlob, 0xA5, sizeof(oldBlob));
+    EXPECT_FALSE(pgLoad(&pidProfiles_Registry, oldBlob, sizeof(oldBlob), 13));
+    for (int i = 0; i < PID_PROFILE_COUNT; i++) {
+        EXPECT_EQ(10, pidProfilesMutable(i)->adrc_ground_wc);
+        EXPECT_EQ(100, pidProfilesMutable(i)->adrc_zeta[FD_YAW]);
+        EXPECT_EQ(100, pidProfilesMutable(i)->adrc_b0_scale_min);
+    }
+    // Same version, same size: loads.
+    static pidProfile_t cur[PID_PROFILE_COUNT];
+    for (int i = 0; i < PID_PROFILE_COUNT; i++) { resetPidProfile(&cur[i]); cur[i].adrc_ground_wc = 20 + i; }
+    EXPECT_TRUE(pgLoad(&pidProfiles_Registry, cur, sizeof(cur), 14));
+    for (int i = 0; i < PID_PROFILE_COUNT; i++) {
+        EXPECT_EQ(20 + i, pidProfilesMutable(i)->adrc_ground_wc);
+    }
+}
+
 // b11 defaults (D1-D3 of the PR discussion): ground wc on, SQRT law, b0 floor off, the two opt-ins off.
 TEST(pidProfileLayoutTest, B11DefaultsAreTheVotedOnes)
 {

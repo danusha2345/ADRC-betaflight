@@ -324,7 +324,7 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // full-throttle authority cut (~35-50%) independently implies true plant-gain growth from
     // hover to full of ~x2-3, not x8 - cap where validation ends. CLI-tunable for experiments.
     adrcProfile->b0ThrottleScaleMax = 3;
-    // ADRC-021 A/B selector (see adrcB0Law_e). Quadratic = the shipped behavior, kept as default
+    // ADRC-021 A/B selector (see adrcB0Law_e). Quadratic = the law shipped through b10.1; SQRT is the default since b11
     // so a profile reset flies exactly like b4; set sqrt/linear/fixed per PID profile to compare.
     adrcProfile->b0Law = ADRC_B0_LAW_SQRT; // b11 default (D2); QUADRATIC was worst on throttle steps
 }
@@ -471,7 +471,7 @@ uint8_t adrcStateFlags(const adrcRuntime_t *adrcRuntime)
 
 void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t rampMs, uint8_t dGainTenths)
 {
-    // ADRC-030 (experimental, off by default): the arm-time lift with airmode on is a loop through the
+    // ADRC-030 (off through b11-exp8, on by default at 10 since b11): the arm-time lift with airmode on is a loop through the
     // grounded airframe whose gain is set by wc (P ~ wc^2/b0, D ~ 2*wc*wo/b0 at the observer's
     // derivative peak); a tester arm at wc 40 / wo 110 did not lift where 99/110 did. This lets a low
     // wc apply only while the liftoff gate is closed, then ramp to the flight value once it opens.
@@ -511,6 +511,7 @@ void adrcResetGate(adrcRuntime_t *adrcRuntime)
     adrcRuntime->throttleAtIdle = true;
     adrcRuntime->liftoffCause = ADRC_LIFTOFF_CAUSE_NONE;
     adrcRuntime->z3GrowthInhibitMask = 0;
+    adrcRuntime->mixerSaturated = false; // ADRC-033: republished by the next mixTable(); never carry it across a reset
     adrcRuntime->wcBlend = 0.0f;
     adrcRuntime->gateResetCount++;
 }

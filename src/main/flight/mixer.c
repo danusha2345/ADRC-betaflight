@@ -475,6 +475,24 @@ float getMotorOutputRms(void)
 }
 #endif // USE_WING
 
+#ifdef USE_ADRC
+#define ADRC_MIX_CLIP_EPS 0.001f
+// ADRC-033: true when the normalised motor command of any motor falls outside [0, 1], i.e. applyMixToMotors()
+// is about to clip it at an endpoint. motorMixRange > 1 alone misses this for MIXER_DYNAMIC, which reshapes the mix
+// after the range was computed (range 0.8 can still end up clipping at high throttle). Deliberately not FAST_CODE:
+// it only runs for ADRC profiles and ITCM is tight on F7.
+static NOINLINE bool adrcMixWillClip(const float motorMix[MAX_SUPPORTED_MOTORS], const motorMixer_t *activeMixer)
+{
+    for (int i = 0; i < mixerRuntime.motorCount; i++) {
+        const float motorOutput = motorOutputMixSign * motorMix[i] + throttle * activeMixer[i].throttle;
+        if (motorOutput < -ADRC_MIX_CLIP_EPS || motorOutput > 1.0f + ADRC_MIX_CLIP_EPS) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 static void applyMixToMotors(const float motorMix[MAX_SUPPORTED_MOTORS], motorMixer_t *activeMixer)
 {
     // Now add in the desired throttle, but keep in a range that doesn't clip adjusted
@@ -914,8 +932,12 @@ FAST_CODE_NOINLINE_CRITICAL void mixTable(timeUs_t currentTimeUs)
     mixerAdrcThrottle = motorStopped ? 0.0f : appliedCollectiveThrottle;
     mixerAdrcCommandedThrottle = motorStopped ? 0.0f : commandedCollective;
     pidUpdateAdrcAppliedOutput(currentPidProfile, motorStopped ? 0.0f : appliedAxisScale, yawPidSumLimit);
-    // ADRC-033: the mixer could not deliver the full command this iteration (normalised down).
-    pidUpdateAdrcMixerSaturation(currentPidProfile, motorMixRange > 1.0f);
+    // ADRC-033: the mixer could not deliver the full command this iteration - either it normalised the mix down
+    // (range > 1) or a motor is about to be clipped at an endpoint (see adrcMixWillClip()).
+    if (currentPidProfile->pid_type == PID_TYPE_ADRC) {
+        pidUpdateAdrcMixerSaturation(currentPidProfile,
+            !motorStopped && (motorMixRange > 1.0f || adrcMixWillClip(motorMix, activeMixer)));
+    }
 #else
     UNUSED(appliedAxisScale);
 #endif

@@ -124,7 +124,13 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 // Current upstream uses version 12 without adrcProfile_t. The b9/ADRC-029 line uses wrapped
 // version 0 with the ADRC fields. Version 13 is intentionally new to both lineages so an upgrade
 // resets PID profiles instead of copying either incompatible layout into this merged structure.
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 13);
+// Version 14 (b11): pidProfiles is ONE parameter group holding an array of PID_PROFILE_COUNT elements, and pgLoad()
+// restores it with a single memcpy. Growing pidProfile_t therefore changes the element stride, so a blob saved by
+// a build with a smaller element mis-aligns profiles 2..4 and feeds profile 1's new tail with bytes of the old
+// profile 2. b11-exp2..exp8 grew the element (260 -> 262 -> 264 -> 268 bytes) while keeping version 13; that was
+// wrong. Any change to sizeof(pidProfile_t) MUST bump this version: the profiles then reset to defaults on
+// upgrade instead of loading corrupted. (Upstream master is at 12; 13 was the PR's own bump.)
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 14);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {

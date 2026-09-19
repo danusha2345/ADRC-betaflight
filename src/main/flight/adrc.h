@@ -66,7 +66,7 @@ typedef struct adrcProfile_s {
     uint16_t gyroFilterHz;       // low-pass cutoff applied to the ESO's gyro input (not per-axis,
                                  // matching dterm_lpf1/lpf2's single-value convention)
     uint8_t hoverThrottlePercent; // throttle % at hover; b0 is scheduled above hover by the selected
-                                   // b0Law (quadratic by default; not per-axis)
+                                   // b0Law (SQRT by default since b11; not per-axis)
     uint8_t sigmaDecay;           // z3 leaky-decay rate x0.1; 0 = classic pure integrator (not
                                    // per-axis)
     uint16_t tdHz;                // tracking-differentiator corner freq on the setpoint feeding the
@@ -109,10 +109,10 @@ typedef struct adrcProfile_s {
     uint8_t b0Law;              // adrcB0Law_e: which throttle->b0 schedule shape to apply (ADRC-021
                                 // A/B selector, not per-axis)
 } adrcProfile_t;
-// ADRC-030 (experimental) ground wc lives in pidProfile_t (adrc_ground_wc / adrc_wc_ramp_ms), appended
-// at its END rather than here: pgLoad() restores a same-version blob by size-limited memcpy, so any
-// new byte inside adrcProfile_t would shift every pidProfile_t field after it and silently corrupt
-// PID profiles saved by b10.1. Values reach the runtime via adrcSetGroundWc().
+// ADRC-030 ground wc and the later tester settings live at the end of pidProfile_t (see pid.h), and reach the
+// runtime via adrcSetGroundWc() & co. NOTE: where a field sits does not make a size change safe - pidProfiles is
+// one PG *array*, so any change to sizeof(pidProfile_t) moves the element stride and needs a PG version bump
+// (see the comment at PG_REGISTER_ARRAY_WITH_RESET_FN in pid.c).
 
 #ifdef USE_ADRC
 
@@ -176,7 +176,7 @@ typedef struct adrcRuntime_s {
                              // cached copy has no production reader left since the z3 inhibit stopped
                              // keying on the stick (ADRC-026), and is kept for the unit tests and
                              // for anything that wants the per-loop decision after the fact
-    float b0ThrottleScale;  // scale selected by b0Law, clamped to [1, max] (quadratic by default) -
+    float b0ThrottleScale;  // scale selected by b0Law, clamped to [min, max] (SQRT by default since b11) -
                              // updated once per loop, applied per-axis in adrcApplyControl()
     float b0ScaleMin;       // ADRC-031: floor of the b0 schedule below hover, 1.0 = classic "scale only
                              // up"; set from adrc_b0_scale_min via adrcSetB0ScaleMin()

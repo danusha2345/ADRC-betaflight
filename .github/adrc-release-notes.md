@@ -5,9 +5,27 @@
 ## b11 — the tester line on current master, with the defaults voted in the PR
 
 Everything from b11-exp2…exp8 on top of Betaflight master (5d3e7c8502, merged 2026-09-19), plus three default
-changes. **Saved profiles keep their own values; the new defaults apply to a fresh or reset PID profile, and to
-settings that did not exist in the build the profile was saved with** (coming from b10.1 that means ground wc turns
-on). `debug_mode = ADRC` is still 102.
+changes. `debug_mode = ADRC` is still 102.
+
+> ⚠️ **All four PID profiles reset to defaults when you flash b11 — this is deliberate. Save `diff all` first and
+> paste it back afterwards.** The PID-profile parameter group is now version 14.
+>
+> **Erratum for b11-exp2 … exp8.** Those notes said that saved profiles load unchanged because the new settings
+> were appended at the end of the profile. That was wrong. Betaflight stores the four PID profiles as *one* array
+> and restores it with a single copy, so every exp build that grew the profile (260 → 262 → 264 → 268 bytes) while
+> keeping version 13 mis-aligned profiles 2–4 on an upgrade without a full erase, and could fill the new settings
+> of profile 1 with bytes of the old profile 2 (e.g. `adrc_zeta_*` = 0, i.e. no D term, or a b0 floor of 20 %).
+> If you flashed any exp build over another **without** "full chip erase" and without pasting a diff afterwards,
+> check `get adrc_` on every profile you use. Flashing with full chip erase + pasting a diff — what most testers
+> do — was never affected. Found by an adversarial review of b11 before release; from b11 on, a size change bumps
+> the version, so profiles reset instead of loading corrupted.
+
+`adrc_sat_z3_inhibit` also got a better clip detector in b11: besides "the mixer normalised the mix down" it now
+checks whether any motor is about to be clipped at an endpoint, which `mixer_type = DYNAMIC` could do without the
+first condition being true. LEGACY/LINEAR behaviour (what every tester log so far used) is unchanged.
+
+Not built: **NEXUSXR** (STM32F722) — its ITCM RAM overflows on the upstream base itself (240 bytes on pristine
+master 5d3e7c8502), ADRC adds ~530 bytes more.
 
 | setting | b10.1 | b11 | why |
 |---|---|---|---|
@@ -15,7 +33,7 @@ on). `debug_mode = ADRC` is still 102.
 | `adrc_b0_law` | QUADRATIC | **SQRT** | D2: QUADRATIC was the worst of the four laws on throttle steps (122–160 °/s peak error vs 42–46 SQRT) |
 | `adrc_hover_throttle` | 35 | 35 | set your real hover value — the schedule is only as good as this number |
 | `adrc_b0_scale_min` | — | 100 (off) | D3: opt-in; 70–90 is what testers settled on for low-throttle feel |
-| `adrc_sat_z3_inhibit` | — | OFF | ADRC-033, opt-in: removes the all-axis windup while the mixer is pinned ("yaw washout"). Five airframes, four OFF/ON pairs, no adverse effect; a no-op where the mixer does not pin |
+| `adrc_sat_z3_inhibit` | — | OFF | ADRC-033, opt-in: removes the all-axis windup while the mixer is pinned ("yaw washout"). Five airframes, four OFF/ON pairs, no adverse effect; a no-op where the mixer does not pin. The inhibit is global across axes; a *sustained* demand that pins the mixer for seconds (full-rate yaw pirouette on a low-yaw-authority craft) has not been flown — that is why it stays opt-in |
 | `adrc_zeta_roll/pitch/yaw` | — | 100 | ADRC-032, opt-in: no benefit shown in any comparison so far |
 
 Still open before this can be called a candidate: a 5" tap test of the ground-wc default at its flight tune.
