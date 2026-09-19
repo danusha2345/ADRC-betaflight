@@ -1026,3 +1026,31 @@ real difference in motion is yaw 70–120 Hz (0.84 → 1.64 °/s), above the not
 
 Both flights: flag ON, inhibit 386 / 633 frames, I ≤ 299, one excursion each (871 °/s in the last frames of the
 notch-ON log; 411 °/s at 65.2 s of the notch-OFF log).
+
+## Addendum 19, 2026-09-19: yaw wc/wo 125 / 128 / "130" on the Petrel75, flag ON — three clean flights, and what the near-miss looks like (PR comment 5743099204)
+
+Roll/pitch 114/120, ζ 100/100/25, b0 45/29/42, scale_min 90, td 140, limits 1000/1000, no static notch, flag ON. Logs in
+`8ksal8_petrel_20260919_yawsweep/`. The file named `130` carries `yawPID:128,128,42` in its header — the 130 setting
+was not in effect (not saved, or the wrong profile); it is a second 128 flight.
+
+| file | yaw wc/wo (header) | length | vbat | inhibit frames | max \|I\| | roll-pitch error max / p99 (last second excluded) | yaw error max |
+|---|---|---:|---|---:|---|---|---:|
+| 125 | 125/125 | 58 s | 8.48 → 7.95 | 181 | 170 / 240 / 253 | 89 / 34 °/s | 73 |
+| 128 | 128/128 | 112 s | 8.19 → 7.57 | 6 | 137 / 179 / 251 | 178 / 51 | 69 |
+| "130" | 128/128 | 60 s | 8.81 → 8.19 | 19 | 139 / 231 / 192 | 85 / 36 | 57 |
+
+No excursion in any of them (one 367 °/s sample in the final frames of the third log, at landing). None has a
+full-stick interval; all have zero-throttle phases (6–11 s in total).
+
+The tester's "right to the point it would break but doesn't" is at 37.3–37.7 s of the 125 flight, and it is the
+addendum-12 entry frame for frame: throttle 1284 → 1361 with pitch −50 after a zero-throttle phase, pack 7.8 → 7.35 V,
+motor 4 on the 326–341 floor and motor 3 on a 1961–1976 plateau. The inhibit is active for 0.37 s (173 frames,
+`adrcState` 81–93), the I terms stay at −105…−139 / 213…238 / 174…251, the roll/pitch error never exceeds 48 °/s, and
+when the throttle eases at 37.69 s the pin ends with nothing to unwind. With the flag OFF this is the interval in
+which the I terms went to 1000.
+
+So these flights do not show the washout being tuned out by yaw wc/wo: 125 and 128 both fly clean here, the tester
+reports washouts on both values in flights that were not logged or not sent, and the three logs differ mainly in
+how often the mixer pinned (181 / 6 / 19 inhibited frames), i.e. in the flying. What decides between a held pin and
+an excursion with the flag ON is how far and how long the demand exceeds the motor span (addenda 13, 14, 16), not
+the yaw bandwidth. A log of a washout *with the flag ON* at these settings would be the useful next sample.
