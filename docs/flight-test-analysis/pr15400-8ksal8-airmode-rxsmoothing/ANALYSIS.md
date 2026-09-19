@@ -1027,7 +1027,7 @@ real difference in motion is yaw 70–120 Hz (0.84 → 1.64 °/s), above the not
 Both flights: flag ON, inhibit 386 / 633 frames, I ≤ 299, one excursion each (871 °/s in the last frames of the
 notch-ON log; 411 °/s at 65.2 s of the notch-OFF log).
 
-## Addendum 19, 2026-09-19: yaw wc/wo 125 / 128 / "130" on the Petrel75, flag ON — three clean flights, and what the near-miss looks like (PR comment 5743099204)
+## Addendum 19, 2026-09-19: yaw wc/wo 125 / 128 / "130" on the Petrel75, flag ON — three clean flights, and what the near-miss looks like (PR comment 5743099204; reply 5743503176)
 
 Roll/pitch 114/120, ζ 100/100/25, b0 45/29/42, scale_min 90, td 140, limits 1000/1000, no static notch, flag ON. Logs in
 `8ksal8_petrel_20260919_yawsweep/`. The file named `130` carries `yawPID:128,128,42` in its header — the 130 setting
@@ -1043,7 +1043,7 @@ No excursion in any of them (one 367 °/s sample in the final frames of the thir
 full-stick interval; all have zero-throttle phases (6–11 s in total).
 
 The tester's "right to the point it would break but doesn't" is at 37.3–37.7 s of the 125 flight, and it is the
-addendum-12 entry frame for frame: throttle 1284 → 1361 with pitch −50 after a zero-throttle phase, pack 7.8 → 7.35 V,
+addendum-12 entry frame for frame: throttle 1284 → 1361 with pitch −50 after a 1.9 s zero-throttle phase, pack 7.8 → 7.35 V,
 motor 4 on the 326–341 floor and motor 3 on a 1961–1976 plateau. The inhibit is active for 0.37 s (173 frames,
 `adrcState` 81–93), the I terms stay at −105…−139 / 213…238 / 174…251, the roll/pitch error never exceeds 48 °/s, and
 when the throttle eases at 37.69 s the pin ends with nothing to unwind. With the flag OFF this is the interval in
