@@ -994,3 +994,35 @@ packet-rate origin (jmsweng's hypothesis) is not supported by this log. The ener
 the same band as the loop mode tracked since the 13 Sep addendum — and the notch covers only the top of it. Whether
 the notch helps by removing noise or by reshaping the loop needs a notch-off flight on the same pack; not
 established.
+
+## Addendum 18, 2026-09-19: 53 Hz notch on/off on the Petrel75 — it filters the motor trace, not the craft (PR comment 5734755835)
+
+Same tune both flights (122/128, ζ 75/75/75, b0 45/29/42, flag ON, dyn notch ×3 from 140 Hz, LPF2 1000 Hz); only
+`gyro_notch_hz`/`cutoff` 53/40 vs 0/0. Logs in `8ksal8_petrel_20260918_notch/`. `notch.py`: 2 s airborne windows in
+the first 170 s with mean throttle 1250–1600, throttle σ < 80 and |setpoint| < 150 °/s; band RMS from a Hann-windowed
+FFT, median over windows. 46 windows ON (8.05 V mean), 48 OFF (8.19 V).
+
+| signal | flight | 10–25 Hz | 25–40 | 40–70 | 70–120 | 120–250 |
+|---|---|---:|---:|---:|---:|---:|
+| gyro unfiltered, roll (°/s) | notch ON | 3.00 | 1.16 | 1.01 | 1.08 | 2.11 |
+| | notch OFF | 2.33 | 1.04 | 1.19 | 1.07 | 2.49 |
+| gyro unfiltered, pitch | ON | 1.71 | 0.72 | 1.45 | 1.16 | 2.63 |
+| | OFF | 1.55 | 0.68 | 1.59 | 1.08 | 3.51 |
+| gyro unfiltered, yaw | ON | 0.52 | 0.35 | 0.66 | 0.84 | 1.35 |
+| | OFF | 0.44 | 0.29 | 0.62 | 1.64 | 1.68 |
+| motor, mean of four (DShot units) | ON | 17.2 | 8.5 | 10.2 | 14.2 | 18.6 |
+| | OFF | 13.6 | 10.6 | 28.9 | 22.3 | 23.4 |
+
+Mean |gyro − setpoint| roll/pitch/yaw: 3.7 / 2.7 / 2.1 °/s with the notch, 3.6 / 3.1 / 2.6 without. Current in the same
+windows: 4.43 A vs 4.44 A (35.0 W vs 35.9 W) at the same mean throttle (1409 vs 1424).
+
+Reading: without the notch the 40–70 Hz content of the *motor command* is 2.8× larger (and 1.6× in 70–120 Hz), which
+is why that log "looks the worst" — but the craft's own motion in that band, the unfiltered gyro, moves by
+−6 … +18 %, tracking error is unchanged within a degree per second, and the current is identical. The notch was
+cleaning the trace, not the flight; the tester's impression ("not noticed in the footage, might even feel a little
+better") matches. This also retires the suggestion in addendum 17 that the notch might be reshaping a loop mode: a
+loop resonance being suppressed would show as a large change in the unfiltered gyro, and there is none. The one
+real difference in motion is yaw 70–120 Hz (0.84 → 1.64 °/s), above the notch's upper edge and small in absolute terms.
+
+Both flights: flag ON, inhibit 386 / 633 frames, I ≤ 299, one excursion each (871 °/s in the last frames of the
+notch-ON log; 411 °/s at 65.2 s of the notch-OFF log).
