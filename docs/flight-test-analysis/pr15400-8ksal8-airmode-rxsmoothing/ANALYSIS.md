@@ -995,7 +995,7 @@ the same band as the loop mode tracked since the 13 Sep addendum — and the not
 the notch helps by removing noise or by reshaping the loop needs a notch-off flight on the same pack; not
 established.
 
-## Addendum 18, 2026-09-19: 53 Hz notch on/off on the Petrel75 — it filters the motor trace, not the craft (PR comment 5734755835)
+## Addendum 18, 2026-09-19: 53 Hz notch on/off on the Petrel75 — it filters the motor trace, not the craft (PR comment 5734755835; reply 5740475090)
 
 Same tune both flights (122/128, ζ 75/75/75, b0 45/29/42, flag ON, dyn notch ×3 from 140 Hz, LPF2 1000 Hz); only
 `gyro_notch_hz`/`cutoff` 53/40 vs 0/0. Logs in `8ksal8_petrel_20260918_notch/`. `notch.py`: 2 s airborne windows in
