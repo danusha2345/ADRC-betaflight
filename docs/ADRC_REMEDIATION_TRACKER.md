@@ -1510,8 +1510,12 @@ header). 78 unit-test suites pass, STM32G474 builds. Ahead 92 / behind 0 against
 
 Defaults changed per the D1–D3 vote (jmsweng + 8ksal8; Bob silent): `adrc_ground_wc` 0 → 10, `adrc_ground_dgain`
 10 → 40, `b0Law` QUADRATIC → SQRT; `adrc_b0_scale_min` 100, `adrc_sat_z3_inhibit` OFF, `adrc_zeta` 100 unchanged.
-Note the deviation from the 11 Sep proposal (ground wc 40 / dgain 1.0): 10 / 4.0 is what was actually flown on
-five airframes, so that is what shipped. Open before "candidate": 5" tap test of the ground-wc default.
+Note the deviation from the 11 Sep proposal (ground wc 40 / dgain 1.0): 10 / 4.0 shipped. Correction 2026-09-19:
+the first version of this entry, the release notes and the announcement said 10 / 4.0 had been flown on five
+airframes since exp4. The log headers say otherwise: four airframes (Petrel75, HDZ Petrel75, Air65, Pavo20) in the
+last week; the TH3 and most earlier September logs flew 40 / 1.0, where the cap binds at 14–24 rad/s on the two
+Petrels (10 on a stock 5"). Both have clean arms. The choice of 10 / 4.0 is ours, not the vote's, and is stated as
+such in the announcement (PR comment 5744161762). Open before "candidate": 5" tap test of the ground-wc default.
 
 ## ADRC-034 — PID-profile PG array: size grew without a version bump (found 2026-09-19, fixed in b11)
 
