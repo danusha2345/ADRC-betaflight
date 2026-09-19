@@ -85,8 +85,9 @@ The bands come from tap tests on one Air65 at two tunes; they are an ordering, n
 other craft has been tap-tested at a known `G_D` yet. `2·wc·wo/b0` is the continuous-time peak of the D path; the
 forward-Euler implementation is a few percent above it at typical `dT`.
 
-`adrc_ground_wc` (b11-exp2+) lowers `wc` while the gate is closed and ramps it back over `adrc_wc_ramp_ms` after
-liftoff; `adrc_ground_dgain` (exp4+, default 1.0) additionally caps the ground `wc` at `dgain · b0 / (2·wo)` so the
+`adrc_ground_wc` (b11-exp2+; **on by default at 10 since b11**) lowers `wc` while the gate is closed and ramps it back
+over `adrc_wc_ramp_ms` after liftoff; `adrc_ground_dgain` (exp4+, default 1.0 through exp8, **4.0 since b11**, where
+it does not bind at ground wc 10 on any tune flown so far) additionally caps the ground `wc` at `dgain · b0 / (2·wo)` so the
 default works per tune (b0 differs 2× between two Air65 tunes). **Acceptance test for any tune: three taps, each burst
 dead within ~1 s, no motor at 2047.** With airmode the gate does not close on landing — disarm on touchdown.
 
@@ -98,6 +99,34 @@ samples; the well-tuned axes in the same logs sat at 1.08–1.14 and 0.04–0.05
 (AOS 3.5) roll bounced back in every flight and *more* b0 on roll made it worse: roll wants less. Fit per axis
 (the fitter does), do not split by percentage.
 
+## 5a. When the mixer is pinned ("washout")
+
+On whoop-class craft the mixer regularly runs out of span: one motor on the idle floor (zero-throttle airmode) and
+one on the ceiling — and the ceiling is not 2047 on a fresh pack, `vbat_sag_compensation` lowers it (a flat plateau
+at ~1760 at 8.3 V on a 2S Petrel75). While both ends are pinned the commanded moment is not delivered, the observer
+books the shortfall as disturbance on all three axes at once, and z3 runs to its bound (`pidsum_limit · b0`) in
+100–180 ms; the craft then departs by 500–1 100 °/s and recovers in 0.2–0.8 s. It looks like a yaw problem because
+yaw has the least authority and sits at the bound longest. It is not: yaw wc/wo 110…130, ζ 0…100, the b0 floor,
+ground wc and `pidsum_limit` 400…1000 all leave it unchanged.
+
+`adrc_sat_z3_inhibit = ON` (b11-exp8+, default OFF) lets z3 move only toward zero while the mixer clipped on the
+previous loop. Measured on five airframes (addenda 12–19 of the 8ksal8 campaign): I terms ≤ 333 instead of 1000, a
+0.37 s pin held within 48 °/s, no effect at all on craft that do not pin, and sustained full throttle does not
+trigger it (the ceiling alone is not a clip). Whether the inhibit is active is in the log: `adrcState` bits 4|8|16
+with the gate open. What it cannot fix is a pin with no authority left — full stick on a pack at 3.2–3.4 V/cell
+under load; that is the pack. Not yet flown: a sustained *demand* that pins the mixer for seconds (a full-rate yaw
+pirouette on a craft with little yaw authority).
+
+## 5b. Filters
+
+ADRC's observer is the filter; every low-pass ahead of it is delay it has to work around, and delay caps `wo`.
+What has held across every craft tuned in this corpus (65 mm to 3.5"): RPM filter, a dynamic notch (3 notches, min
+frequency set per craft), no static gyro LPF1, LPF2 only where the gyro rate is above the loop rate, no D-term
+filters (there is no D-term path in ADRC). A static notch at ~53 Hz was tried and removed: on/off in matched calm
+windows it cut the 40–70 Hz content of the *motor command* 2.8× and changed nothing else — unfiltered gyro in that
+band −6…+18 %, tracking error within 1 °/s, current 4.43 vs 4.44 A (addendum 18). A cleaner trace is not a better
+flight.
+
 ## 6. Checklist
 
 0. Read the motor spectrum over the whole 10–150 Hz range, not the feel: the largest analysis errors in this
@@ -107,7 +136,8 @@ samples; the well-tuned axes in the same logs sat at 1.08–1.14 and 0.04–0.05
 2. Decide `thrust_linear` first, then fit `b0` with it. Treat the fitted b0 and wc/wo as one gain: if you lower
    b0 below the fit you have raised the gain and must lower wc/wo to match (and vice versa).
 3. Sweep `wo` up until the motor line appears; stay ~10 % under. `wc ≈ 0.9 · wo`. Same law for the sweep as for
-   flying (FIXED vs SQRT move the knee by ~10 wo).
+   flying (FIXED vs SQRT move the knee by ~10 wo; SQRT is the default since b11).
 4. Tap test on the ground with airmode on. If it rails, lower `adrc_ground_wc` (or rely on `adrc_ground_dgain`).
 5. `adrc_sigma_decay` 0 vs 3 and `adrc_b0_scale_max` 3–5 are not measurable on these craft; leave them.
 6. Check the pack before blaming the tune: a pack at 2.5–3.0 V/cell moves every metric.
+7. Whoop-class or anything that flies zero-throttle into punches: `adrc_sat_z3_inhibit = ON` (section 5a).
