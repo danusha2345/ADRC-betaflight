@@ -264,9 +264,9 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .chirp_frequency_start_deci_hz = 2,
         .chirp_frequency_end_deci_hz = 6000,
         .chirp_time_seconds = 20,
-        .adrc_ground_wc = 0,
+        .adrc_ground_wc = 10,           // b11 default (D1): low wc while the liftoff gate is closed
         .adrc_wc_ramp_ms = 100,
-        .adrc_ground_dgain = 10,
+        .adrc_ground_dgain = 40,        // b11 default (D1): cap non-binding at ground wc 10 on the flown tunes
         .adrc_b0_scale_min = 100,
         .adrc_zeta = { 100, 100, 100 },
         .adrc_sat_z3_inhibit = 0,

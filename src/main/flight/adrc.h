@@ -50,8 +50,8 @@ typedef enum {
 // that needs a controlled same-craft A/B, one law per PID profile. The winner ships alone; this
 // enum does not go upstream.
 typedef enum {
-    ADRC_B0_LAW_QUADRATIC = 0, // (throttle/hover)^2 - the shipped law, kept as default
-    ADRC_B0_LAW_SQRT,          // sqrt(throttle/hover)
+    ADRC_B0_LAW_QUADRATIC = 0, // (throttle/hover)^2 - the law shipped through b10.1
+    ADRC_B0_LAW_SQRT,          // sqrt(throttle/hover) - default since b11
     ADRC_B0_LAW_LINEAR,        // throttle/hover
     ADRC_B0_LAW_FIXED,         // no throttle scheduling (scale held at 1)
 } adrcB0Law_e;

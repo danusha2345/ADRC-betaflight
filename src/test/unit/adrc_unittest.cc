@@ -444,6 +444,7 @@ TEST_F(AdrcUnittest, InhibitedZ3StillDecaysFromAWoundUpValue)
 
 TEST_F(AdrcUnittest, B0ThrottleScaleTracksSquareOfThrottleRatioAboveHover)
 {
+    profile.b0Law = ADRC_B0_LAW_QUADRATIC; // the law under test; the b11 default is SQRT
     profile.hoverThrottlePercent = 35;
     profile.b0ThrottleScaleMax = 9; // raise the ceiling out of the way - the quadratic law itself is under test
 
@@ -514,6 +515,7 @@ TEST_F(AdrcUnittest, B0ThrottleScaleClampsToMax)
 
 TEST_F(AdrcUnittest, B0ThrottleScaleMaxIsConfigurable)
 {
+    profile.b0Law = ADRC_B0_LAW_QUADRATIC; // the law under test; the b11 default is SQRT
     profile.hoverThrottlePercent = 10; // ratio = 10, ratio^2 = 100 at full throttle
     profile.b0ThrottleScaleMax = 20;
     simulatedThrottle = 1.0f;
@@ -523,6 +525,7 @@ TEST_F(AdrcUnittest, B0ThrottleScaleMaxIsConfigurable)
 
 TEST_F(AdrcUnittest, B0ThrottleScaleReleasesGraduallyOnThrottleChop)
 {
+    profile.b0Law = ADRC_B0_LAW_QUADRATIC; // the law under test; the b11 default is SQRT
     // A throttle chop must not collapse the scale within one loop: the z3 that adapted through
     // the inflated b0 during the high-throttle phase over-applies the moment the divisor snaps
     // back to 1, swinging the craft against the punch (flight-measured ~90 deg/s uncommanded

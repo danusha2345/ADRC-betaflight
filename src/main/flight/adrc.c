@@ -326,7 +326,7 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     adrcProfile->b0ThrottleScaleMax = 3;
     // ADRC-021 A/B selector (see adrcB0Law_e). Quadratic = the shipped behavior, kept as default
     // so a profile reset flies exactly like b4; set sqrt/linear/fixed per PID profile to compare.
-    adrcProfile->b0Law = ADRC_B0_LAW_QUADRATIC;
+    adrcProfile->b0Law = ADRC_B0_LAW_SQRT; // b11 default (D2); QUADRATIC was worst on throttle steps
 }
 
 void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime, float dT)

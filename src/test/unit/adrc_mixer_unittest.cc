@@ -525,6 +525,11 @@ float getCosTiltAngle(void)
     return 1.0f;
 }
 
+bool autopilotThrottleValid(void)
+{
+    return true;
+}
+
 float getAutopilotThrottle(void)
 {
     return testAutopilotThrottle;

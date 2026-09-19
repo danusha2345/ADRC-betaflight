@@ -2,6 +2,24 @@
 
 ⚠️ **Experimental. Bench-test before flying. Use at your own risk.**
 
+## b11 — the tester line on current master, with the defaults voted in the PR
+
+Everything from b11-exp2…exp8 on top of Betaflight master (5d3e7c8502, merged 2026-09-19), plus three default
+changes. **Saved profiles keep their own values; the new defaults apply to a fresh or reset PID profile, and to
+settings that did not exist in the build the profile was saved with** (coming from b10.1 that means ground wc turns
+on). `debug_mode = ADRC` is still 102.
+
+| setting | b10.1 | b11 | why |
+|---|---|---|---|
+| `adrc_ground_wc` / `adrc_ground_dgain` | 0 (off) / — | **10 / 40** | D1: the arm-time lift-off on the ground is the only failure that has damaged a craft; 10 / 4.0 is what five airframes have been flown on since exp4 |
+| `adrc_b0_law` | QUADRATIC | **SQRT** | D2: QUADRATIC was the worst of the four laws on throttle steps (122–160 °/s peak error vs 42–46 SQRT) |
+| `adrc_hover_throttle` | 35 | 35 | set your real hover value — the schedule is only as good as this number |
+| `adrc_b0_scale_min` | — | 100 (off) | D3: opt-in; 70–90 is what testers settled on for low-throttle feel |
+| `adrc_sat_z3_inhibit` | — | OFF | ADRC-033, opt-in: removes the all-axis windup while the mixer is pinned ("yaw washout"). Five airframes, four OFF/ON pairs, no adverse effect; a no-op where the mixer does not pin |
+| `adrc_zeta_roll/pitch/yaw` | — | 100 | ADRC-032, opt-in: no benefit shown in any comparison so far |
+
+Still open before this can be called a candidate: a 5" tap test of the ground-wc default at its flight tune.
+
 ## b11-exp8 — ADRC-033 z3 growth inhibit while the mixer is saturated (opt-in, default off)
 
 Adds `adrc_sat_z3_inhibit` (OFF/ON, default OFF). Five "yaw washout" events in seven

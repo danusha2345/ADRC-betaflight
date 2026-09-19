@@ -1658,6 +1658,23 @@ TEST(pidControllerTest, testAdrcAppliedOutputRejectsInvalidScaleAndClassicProfil
 
 // ADRC-030: the ground-wc fields must stay the trailing bytes of pidProfile_t so a PG version 13
 // blob saved by b10.1 loads with every earlier field in place (pgLoad() is a size-limited memcpy).
+// b11 defaults (D1-D3 of the PR discussion): ground wc on, SQRT law, b0 floor off, the two opt-ins off.
+TEST(pidProfileLayoutTest, B11DefaultsAreTheVotedOnes)
+{
+    pidProfile_t p;
+    resetPidProfile(&p);
+    EXPECT_EQ(10, p.adrc_ground_wc);
+    EXPECT_EQ(100, p.adrc_wc_ramp_ms);
+    EXPECT_EQ(40, p.adrc_ground_dgain);
+    EXPECT_EQ(100, p.adrc_b0_scale_min);
+    EXPECT_EQ(0, p.adrc_sat_z3_inhibit);
+    EXPECT_EQ(100, p.adrc_zeta[FD_ROLL]);
+    EXPECT_EQ(100, p.adrc_zeta[FD_PITCH]);
+    EXPECT_EQ(100, p.adrc_zeta[FD_YAW]);
+    EXPECT_EQ(ADRC_B0_LAW_SQRT, p.adrc.b0Law);
+    EXPECT_EQ(35, p.adrc.hoverThrottlePercent);
+}
+
 TEST(pidProfileLayoutTest, AdrcGroundWcFieldsAreAppendedAtTheEnd)
 {
     EXPECT_GT(offsetof(pidProfile_t, adrc_ground_wc), offsetof(pidProfile_t, chirp_time_seconds));
