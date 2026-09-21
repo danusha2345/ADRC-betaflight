@@ -1055,7 +1055,7 @@ how often the mixer pinned (181 / 6 / 19 inhibited frames), i.e. in the flying. 
 an excursion with the flag ON is how far and how long the demand exceeds the motor span (addenda 13, 14, 16), not
 the yaw bandwidth. A log of a washout *with the flag ON* at these settings would be the useful next sample.
 
-## Addendum 20, 2026-09-21: washouts with the flag ON, full-rate yaw spins OFF/ON, and a standing pitch trim on the whoops (PR comments 5744339206, 5744460509, 5744644285, 5744912670)
+## Addendum 20, 2026-09-21: washouts with the flag ON, full-rate yaw spins OFF/ON, and a standing pitch trim on the whoops (PR comments 5744339206, 5744460509, 5744644285, 5744912670; reply 5764698602)
 
 All four Petrel75 logs are still exp8 (e6511d6a9): 114/120 roll-pitch, yaw 128/128, ζ 100/100/25, scale_min 90,
 limits 1000/1000. Logs in `8ksal8_petrel_20260919_on_washout_yawspin/`.
@@ -1109,7 +1109,8 @@ pitch I term of 42–70. Every washout entry in addenda 12–20 is "pitch forwar
 motor on the floor and a rear one on the ceiling: the trim is spent in exactly the direction the manoeuvre then asks
 for. The crafts that do not pin (Pavo20, TH3) carry half the spread. Caveat: "calm" here includes steady forward
 flight, so part of the moment may be aerodynamic (camera-tilt drag) rather than CG; a pure hover log would separate
-them. If it is CG, moving the pack forward is the cheapest fix for the washouts there is.
+them. It is a front/rear pair, not a single arm, so it is not a one-sided load. If it is CG, moving the pack forward is
+the cheapest fix for the washouts there is.
 
 ### Two tester reports
 
