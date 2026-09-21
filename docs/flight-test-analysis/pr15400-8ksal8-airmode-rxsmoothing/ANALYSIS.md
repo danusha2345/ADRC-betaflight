@@ -1054,3 +1054,71 @@ reports washouts on both values in flights that were not logged or not sent, and
 how often the mixer pinned (181 / 6 / 19 inhibited frames), i.e. in the flying. What decides between a held pin and
 an excursion with the flag ON is how far and how long the demand exceeds the motor span (addenda 13, 14, 16), not
 the yaw bandwidth. A log of a washout *with the flag ON* at these settings would be the useful next sample.
+
+## Addendum 20, 2026-09-21: washouts with the flag ON, full-rate yaw spins OFF/ON, and a standing pitch trim on the whoops (PR comments 5744339206, 5744460509, 5744644285, 5744912670)
+
+All four Petrel75 logs are still exp8 (e6511d6a9): 114/120 roll-pitch, yaw 128/128, ζ 100/100/25, scale_min 90,
+limits 1000/1000. Logs in `8ksal8_petrel_20260919_on_washout_yawspin/`.
+
+### Washouts with the flag ON are the no-authority kind
+
+| log | event | inhibit | I terms through the pin | roll-pitch error | pack under load |
+|---|---|---|---|---:|---|
+| 128_2 | 33.5–33.8 s | active (`adrcState` 81–93) | −142/202/224 → −112/142/200, decaying | 675 °/s | 7.5–7.7 V |
+| 128_2 | 162.9–163.2 s | active | −102/222/211 → −84/199/194 | 661 °/s | 6.95–7.2 V |
+| partial_wash | 56.2–56.5 s | active | 111/241/206 → 161/251/227 | 236 °/s ("partial") | 6.85 V |
+
+Same entry as always (pitch −55…−78 at throttle 1320–1490, front-left motor on the 318–348 floor, rear-left on a
+1914–1933 or 2028–2047 plateau). The integrators do not move; roll and pitch leave on P alone (pidSum roll −659,
+pitch +895 at the peak of the first) and are back within 0.25 s. This answers the question left open in addendum 19:
+with the flag ON a washout still happens when the demand exceeds the motor span, it is just no longer amplified. The
+partial_wash log ends in an impact (79.2 s, I terms zeroed frames, tumble).
+
+### Full-rate yaw spins do not pin the mixer
+
+14 spin intervals of 0.6–1.7 s at the rate limit (setpoint 780 °/s), six OFF and eight ON, five of them at full
+throttle with a motor on the ceiling 85–100 % of the time:
+
+| | yaw gyro (median) | roll-pitch error p99 / max | inhibit active | max yaw I |
+|---|---:|---|---:|---:|
+| OFF | 779–782 °/s | 25–41 / 34–62 °/s | — | 265–411 |
+| ON | 778–781 °/s | 20–34 / 27–49 °/s | 0.0–0.7 % (single frames) | 163–404 |
+
+The Petrel has the yaw authority to hold 780 °/s even at full stick, so the "sustained demand pins the mixer and the
+global inhibit blocks learning on every axis" case of ADRC-033 was not reached by the manoeuvre proposed for it.
+It stays untested; what is now known is that neither sustained throttle (addendum 17) nor a sustained full-rate yaw
+gets there on this craft.
+
+### A standing pitch trim uses a quarter to a third of the motor span on the whoops
+
+Per-motor mean command and eRPM over calm samples (gate open, throttle 1250–1600, all setpoints and rates < 40 °/s):
+
+| craft | motors 1 / 2 / 3 / 4 | spread, % of mean | eRPM spread | mean I roll / pitch / yaw |
+|---|---|---:|---:|---|
+| Petrel75 (128_2) | 1028 / 866 / 1010 / 776 | 27 % | 23 % | −15 / 55 / 10 |
+| Petrel75 (yaw spin ON) | 857 / 734 / 880 / 625 | 33 % | 31 % | −13 / 55 / 20 |
+| Petrel75 (15 Sep) | 972 / 758 / 985 / 666 | 38 % | 34 % | −10 / 70 / 13 |
+| HDZ Petrel75 | 899 / 702 / 940 / 724 | 29 % | 24 % | 9 / 59 / 3 |
+| Air65 | 923 / 699 / 824 / 717 | 28 % | 23 % | −10 / 42 / −15 |
+| Pavo20 Pro | 872 / 795 / 855 / 769 | 13 % | 10 % | −6 / 21 / −1 |
+| TH3 | 1015 / 970 / 1056 / 910 | 15 % | 13 % | −3 / 25 / 14 |
+
+On the three whoops the rear pair (motors 1, 3) runs 200–320 DShot units above the front pair in steady flight, with
+eRPM following the command (the motors are healthy; it is a moment the craft needs, not a weak motor) and a standing
+pitch I term of 42–70. Every washout entry in addenda 12–20 is "pitch forward + throttle up" and ends with a front
+motor on the floor and a rear one on the ceiling: the trim is spent in exactly the direction the manoeuvre then asks
+for. The crafts that do not pin (Pavo20, TH3) carry half the spread. Caveat: "calm" here includes steady forward
+flight, so part of the moment may be aerodynamic (camera-tilt drag) rather than CG; a pure hover log would separate
+them. If it is CG, moving the pack forward is the cheapest fix for the washouts there is.
+
+### Two tester reports
+
+- 8ksal8's screenshot (CLI rejecting `adrc_ground_wc`, `adrc_wc_ramp_ms`, `adrc_ground_dgain`, `adrc_b0_scale_min`,
+  `adrc_zeta_*`, `adrc_sat_z3_inhibit` as INVALID NAME while accepting `adrc_b0_law`): that firmware is not b11 and
+  not any exp build — it has the b10.1 setting set. The released
+  `betaflight_2026.12.0-alpha_STM32G474_CRAZYBEE473.hex` of b11 was downloaded and checked: it contains all the names
+  and reports revision 61d2d881a. All logs sent since are still e6511d6a9 (exp8).
+- jmsweng, 5": tap test with `adrc_ground_wc` 10 and 40 — no fly-away, no bounce after lifting the tail and dropping
+  it. This was the last open item before calling b11 a candidate. He also flew home on a prop with a missing blade
+  without a noticeable handling change (no log, Blackbox full), proposes wc/wo 80/90 as defaults with b0 from the
+  fitter ×2, and published https://jmsweng.github.io/ADRC-utils/ (sandbox, in-browser fitter, quick-start).
