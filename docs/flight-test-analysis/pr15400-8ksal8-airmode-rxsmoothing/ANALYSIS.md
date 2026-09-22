@@ -1134,13 +1134,14 @@ tune lowered to 84/88; TH3 is now a 2.5" Usmile frame, not a whoop.
 ### Rear/front motor trim: true hover vs cruise
 
 Per-motor mean command over calm samples (gate open, throttle 1200–1700, all setpoints and rates < 40 °/s), with the
-mean pitch attitude of those samples from the logged quaternion:
+mean pitch attitude of those samples from the logged quaternion (Blackbox logs x, y, z with w ≥ 0; the first
+pass of this table read them as w, x, y, which flipped the sign but not the magnitude):
 
 | log | pitch attitude | rear − front, DShot | % of mean | eRPM rear − front | pitch I |
 |---|---:|---:|---:|---:|---:|
-| Petrel75 hover (b11) | +2.0° | 107 | 14 % | 14 % | 30 |
-| Air65 hover (b11) | −0.1° | 82 | 12 % | 5 % | 22 |
-| Petrel75 sweep, 7 flights (cruise) | −16 … −26° | 181–260 | 23–31 % | 20–28 % | 51–71 |
+| Petrel75 hover (b11) | 2° | 107 | 14 % | 14 % | 30 |
+| Air65 hover (b11) | 0° | 82 | 12 % | 5 % | 22 |
+| Petrel75 sweep, 7 flights (cruise) | 16–26° nose-down | 181–260 | 23–31 % | 20–28 % | 51–71 |
 
 8ksal8's reading was right and mine (addendum 20) mostly wrong: two thirds of the spread I attributed to CG is the
 aft pair holding a 16–26° nose-down cruise, which is what "calm" flight on a whoop looks like. What remains at true
