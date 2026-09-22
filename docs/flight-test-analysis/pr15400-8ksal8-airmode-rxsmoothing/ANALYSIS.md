@@ -1124,7 +1124,7 @@ the cheapest fix for the washouts there is.
   without a noticeable handling change (no log, Blackbox full), proposes wc/wo 80/90 as defaults with b0 from the
   fitter ×2, and published https://jmsweng.github.io/ADRC-utils/ (sandbox, in-browser fitter, quick-start).
 
-## Addendum 21, 2026-09-22: hover logs settle the trim question (mostly aerodynamic); Petrel75 rebuilt props-in (PR comments 5770236852, 5770744580)
+## Addendum 21, 2026-09-22: hover logs settle the trim question (mostly aerodynamic); Petrel75 rebuilt props-in (PR comments 5770236852, 5770744580; reply 5778772992)
 
 Logs in `8ksal8_petrel_20260922_propsin_hover/`. 8ksal8 confirmed the "missing settings" screenshot was a
 Configurator "flash online" (PR head) instead of "flash local"; the hover logs and two of the sweep flights are on
