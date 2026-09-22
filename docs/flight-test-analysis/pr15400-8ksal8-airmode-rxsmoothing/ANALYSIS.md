@@ -712,7 +712,7 @@ the tester in this batch; logs in `8ksal8_petrel_20260915_yawwash/` (SHA256SUMS)
 per-flight summary), `sat.py` (saturation episodes, I-term growth, recovery time), `washtl.py` (timeline around an
 instant). `blackbox_decode` misreads this header's `P interval`, so its frame statistics are wrong; the columns are fine.
 
-| log | wc/wo (r,p / y) | b0 (r,p,y) | scale_min | ground wc / dgain | length | vbat start → end | events \|err\| > 350 °/s | both-end saturation ≥ 30 ms |
+| log | wc/wo (r,p / y) | b0/100 (r,p,y) | scale_min | ground wc / dgain | length | vbat start → end | events \|err\| > 350 °/s | both-end saturation ≥ 30 ms |
 |---|---|---|---:|---|---:|---|---:|---:|
 | yaw_washout_004 | 95/100 / 120/100 | 41,26,38 | 70 | 40 / 1.0 (set by mistake, per tester) | 147 s | 8.06 → 7.27 | 3 | 2 |
 | b0min70_wc_110_001 | 95/100 / 110/100 | 41,26,38 | 70 | 10 / 4.0 | 296 s | 8.83 → 7.28 | 2 | 5 (one event) |
@@ -804,7 +804,7 @@ sagging 2S) are.
 
 ## Addendum 13, 2026-09-16: exp8 A/B — `adrc_sat_z3_inhibit` OFF/ON, and a `adrc_zeta_yaw` 100/50/0 sweep (PR comments 5697366799, 5698224382; reply 5699641368)
 
-Six flights on b11-exp8 (e6511d6a), Petrel75 2S, 117/123 all axes, b0 45/29/42, scale_min 80, ground wc 10 / dgain
+Six flights on b11-exp8 (e6511d6a), Petrel75 2S, 117/123 all axes, b0/100 45/29/42, scale_min 80, ground wc 10 / dgain
 4.0, td 140, limits 1000/1000. Logs in `8ksal8_petrel_20260916_exp8_ab/`. Inhibit activity is read directly from
 `adrcState` bits 4|8|16 (`z3_inhibited_rpy`), so "did the flag act" is measured, not inferred.
 
@@ -851,7 +851,7 @@ scenario that would test it and intends to. Default stays OFF until someone has.
 
 ## Addendum 14, 2026-09-16: Air65 (1S) on exp8 with the inhibit ON — the same picture on a second craft (PR comment 5700091124; reply 5700665475)
 
-Two flights, Air65 1S, wc/wo 97/110, b0 89/53/35, ground wc 10 / dgain 4.0, td 120, limits 500/1000, flag ON in
+Two flights, Air65 1S, wc/wo 97/110, b0/100 89/53/35, ground wc 10 / dgain 4.0, td 120, limits 500/1000, flag ON in
 both. Logs in `8ksal8_air65_20260916_exp8/`. The tester: "it happened on my Air65", then with ζ yaw 50 and yaw
 wc/wo 114/120 "could not duplicate".
 
@@ -880,7 +880,7 @@ remains on a 1S at 3.1–3.2 V under load is the ceiling, as on the Petrel.
 
 ## Addendum 15, 2026-09-17: Pavo20 Pro (3S, F405) on exp8 with the flag ON — a no-op for 230 s (PR comment 5716907562; reply 5719036744)
 
-One flight, 231.6 s, wc/wo 72/110, b0 32/20/48, SQRT law, hover 38, scale_min 100, ground wc 10 / dgain 4.0, td 0,
+One flight, 231.6 s, wc/wo 72/110, b0/100 32/20/48, SQRT law, hover 38, scale_min 100, ground wc 10 / dgain 4.0, td 0,
 limits 500/400, `adrc_sat_z3_inhibit` ON, pack 12.38 → 10.03 V. Log in `8ksal8_pavo20_20260917_exp8/`.
 
 - **0–230 s:** the inhibit never fires (0 of 222 846 airborne frames), although a motor touches ≥ 2040 in 862 frames —
@@ -907,7 +907,7 @@ frames with roll/pitch error > 350 °/s, and each pin with the I terms before/af
 | Petrel75 | ON | same | 72 s | 8.55 → 7.88 | 402 | 364 | 193 / 230 / 248 | 112 | one pin at 31.2 s, I flat, 563 °/s on P alone |
 | HDZ Petrel75 | ON | 95/100, 500/400 | 95 s | 8.46 → 7.66 | 0 | 0 | 137 / 205 / 222 | 0 | clean |
 | HDZ Petrel75 | OFF | same | 78 s (+8 ground logs) | 8.43 → 7.64 | 0 | 187 | 230 / 365 / 395 | 63 | clean to 76.4 s, then an impact at full throttle |
-| TH3 | ON | 81/90, 1000/1000, LINEAR hover 5 | 180 s | 8.44 → 7.33 | 0 | 0 | 137 / 176 / 161 | 0 | clean; 19 982 frames at the ceiling, no clip |
+| TH3 | ON | 81/90, 1000/1000, FIXED hover 5 | 180 s | 8.44 → 7.33 | 0 | 0 | 137 / 176 / 161 | 0 | clean; 19 982 frames at the ceiling, no clip |
 | TH3 | OFF | same | 106 s | 8.25 → 7.46 | 0 | 677 | 1000 / 1000 / 1000 | 885 | clean to 104.7 s, then an impact and a tumble |
 
 ### Petrel75, second pair: same result as the first
@@ -946,7 +946,7 @@ pack), comparing attitude hold OFF vs ON.
 
 ## Addendum 17, 2026-09-18: full-throttle runs OFF/ON on the Petrel75 (the trade-off attempt), a ζ 75 % flight, and the 53 Hz notch (PR comments 5731090482, 5731702346; reply 5732543007)
 
-Petrel75 2S on e6511d6a, 117/120 all axes (ζ flight: 124/130, ζ 75/75/75), b0 45/29/42, scale_min 80, td 140,
+Petrel75 2S on e6511d6a, 117/120 all axes (ζ flight: 124/130, ζ 75/75/75), b0/100 45/29/42, scale_min 80, td 140,
 limits 1000/1000, `vbat_sag_compensation` 100. Logs in `8ksal8_petrel_20260918_fullthrottle/`; `fullthr.py` lists
 every interval with the stick ≥ 1950 for ≥ 0.4 s.
 
@@ -997,7 +997,7 @@ established.
 
 ## Addendum 18, 2026-09-19: 53 Hz notch on/off on the Petrel75 — it filters the motor trace, not the craft (PR comment 5734755835; reply 5740475090)
 
-Same tune both flights (122/128, ζ 75/75/75, b0 45/29/42, flag ON, dyn notch ×3 from 140 Hz, LPF2 1000 Hz); only
+Same tune both flights (122/128, ζ 75/75/75, b0/100 45/29/42, flag ON, dyn notch ×3 from 140 Hz, LPF2 1000 Hz); only
 `gyro_notch_hz`/`cutoff` 53/40 vs 0/0. Logs in `8ksal8_petrel_20260918_notch/`. `notch.py`: 2 s airborne windows in
 the first 170 s with mean throttle 1250–1600, throttle σ < 80 and |setpoint| < 150 °/s; band RMS from a Hann-windowed
 FFT, median over windows. 46 windows ON (8.05 V mean), 48 OFF (8.19 V).
@@ -1029,7 +1029,7 @@ notch-ON log; 411 °/s at 65.2 s of the notch-OFF log).
 
 ## Addendum 19, 2026-09-19: yaw wc/wo 125 / 128 / "130" on the Petrel75, flag ON — three clean flights, and what the near-miss looks like (PR comment 5743099204; reply 5743503176)
 
-Roll/pitch 114/120, ζ 100/100/25, b0 45/29/42, scale_min 90, td 140, limits 1000/1000, no static notch, flag ON. Logs in
+Roll/pitch 114/120, ζ 100/100/25, b0/100 45/29/42, scale_min 90, td 140, limits 1000/1000, no static notch, flag ON. Logs in
 `8ksal8_petrel_20260919_yawsweep/`. The file named `130` carries `yawPID:128,128,42` in its header — the 130 setting
 was not in effect (not saved, or the wrong profile); it is a second 128 flight.
 
@@ -1164,3 +1164,13 @@ the sweep is too short per cell to rank the floors and no attempt is made here.
 wc/wo defaults left as they are. Proposes a weight suspended under one motor on his 2.5" as the "sustained clip from
 a sustained demand" test instead of the missing-blade flight — that is the right shape for it (a standing one-sided
 moment that does not go away), provided it is heavy enough to pin a motor at hover; OFF and ON on the same weight.
+
+## Correction 2026-09-22 to addenda 12–21: b0 figures and one law
+
+The b0 figures quoted in addenda 12–21 ("b0 45/29/42" and the like) were read from the `rollPID/pitchPID/yawPID`
+header lines. Those are the classic P/I/D fields, not the ADRC settings; the ADRC values are in the `adrcWC`,
+`adrcWO` and `adrcB0` lines. In all 42 logs from 10 Sep on, the testers' classic P/I equal `adrc_wc`/`adrc_wo`
+exactly and the classic D equals `adrc_b0`/100 (to within one count), so every wc/wo quoted is correct and every b0
+is the real value divided by 100 (e.g. Petrel75 4145/2657/3826, not 41/26/38). The text now says "b0/100". No
+conclusion depended on the absolute b0. Separately, addendum 16 called the TH3's law LINEAR; its header says
+`adrc_b0_law:3`, which is FIXED.

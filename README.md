@@ -92,12 +92,14 @@ The reasoning behind every knob, the knee, the gain multipliers and the ground t
 | Craft | wc / wo | b0 (r / p / y) | notes |
 | :--- | :---: | :---: | :--- |
 | 5" freestyle, 1750 kV, 4S (jmsweng) | 80 / 90 | from the fitter | flies home on a prop with a missing blade |
-| Petrel75 2S whoop (8ksal8) | 84 / 88 | 41 / 26 / 38 | props-in, HQ props; floor 40, LPF1 off / LPF2 525 |
-| Air65 1S (8ksal8) | 95 / 106 | 80 / 55 / 36 | |
-| Pavo20 Pro 3S (8ksal8) | 72 / 110 | 32 / 20 / 48 | |
-| 2.5" (8ksal8, ex-TH3) | 81 / 90 | 49 / 29 / 19 | FIXED law (hover 5); ground wc 40 / 1.0 |
+| Petrel75 2S whoop (8ksal8) | 84 / 88 | 4145 / 2657 / 3826 | props-in, HQ props; floor 40, LPF1 off / LPF2 525 |
+| Air65 1S (8ksal8) | 95 / 106 | 8048 / 5548 / 3614 | FIXED law |
+| Pavo20 Pro 3S (8ksal8) | 72 / 110 | 3221 / 2013 / 4832 | |
+| 2.5" (8ksal8, ex-TH3) | 81 / 90 | 4912 / 2947 / 1965 | FIXED law (hover 5); ground wc 40 / 1.0 |
 
-The whoops and the 5" fly `adrc_ground_wc` 10 / `adrc_ground_dgain` 4.0 (the b11 defaults). Whoops that fly zero-throttle into punches want
+The whoops and the 5" fly `adrc_ground_wc` 10 / `adrc_ground_dgain` 4.0 (the b11 defaults).
+b0 values are the `adrc_b0_*` CLI values (the `adrcB0` log header line). The `rollPID/pitchPID/yawPID` header lines
+are the classic P/I/D fields; testers keep them at wc / wo / b0÷100, so do not copy b0 from there. Whoops that fly zero-throttle into punches want
 `adrc_sat_z3_inhibit = ON` (see the guide, §5a).
 
 ---
