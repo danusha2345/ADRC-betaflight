@@ -3,7 +3,10 @@
 Evidence and source scope: PR #15400 through head `6317fe2a`, fork tester builds
 `adrc-pr15400-b9` (`919116fed`) and `adrc-pr15400-b10.1` (`923932bdee`), the
 published Air65/Petrel filter and yaw sweeps, and the short Air65 check through
-2026-08-30. ADRC is experimental and remains behind a hard tester gate. This
+2026-08-30. **Still valid for b11** (2026-09-19): the signal path and the Blackbox
+contract are unchanged; b11 adds `adrc_sat_z3_inhibit` (its activity is in `adrcState` bits 4|8|16) and, on the
+`adrc-b11` branch, upstream's `debug_mode_name` header line. For what the filters *do* on a whoop, see the
+notch on/off comparison (addendum 18) and `ADRC_GAIN_GUIDE.md` §5b. ADRC is experimental and remains behind a hard tester gate. This
 document describes the current signal path and logging contract; it does not
 select a universal tune or prescribe a flight programme.
 

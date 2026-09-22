@@ -1,3 +1,7 @@
+> **Historical (b10 / b10.1, August 2026).** The current build is b11; its integration record is in
+> [`B10.1_TO_B11.md`](B10.1_TO_B11.md). Kept because the PG-13 migration boundary described here still applies to
+> anyone coming from b9.
+
 # ADRC b10: интеграция с Betaflight master 2026-08-28
 
 ## Исходная линия
