@@ -6,15 +6,17 @@ Maintained by @danusha2345; the full internal runbook (bench logs, local build
 matrices, per-craft configs) is kept out of the PR tree — this is the complete
 list of findings, their status, and what remains open.
 
-**Evidence sync: 2026-08-28.** The public evidence tree is current through the
-repeated Air65/Petrel yaw sweeps, the pinned `jmsweng` fitter audit, the Air65
-equal-`wo` working points, the new-frame TH3 flights and the restrained Mamba
-`wo` campaign. Fork release `adrc-pr15400-b7` is withdrawn by b8; b10.1 is the
-latest published tester build. It carries b9, ADRC-029 and the exact
-observability port on current Betaflight master, plus release-integrity tests
-and fail-closed packaging. ADRC remains
-experimental and behind a hard tester gate; none of the working tunes below is
-a universal default.
+**Evidence sync: 2026-09-22.** The public evidence tree is current through the
+September 8ksal8 campaign (addenda 1–21 in
+`flight-test-analysis/pr15400-8ksal8-airmode-rxsmoothing/ANALYSIS.md`: five
+airframes, four OFF/ON pairs for ADRC-033, the exp5/exp6 floor fix, the notch
+and hover comparisons) and jmsweng's 5" tap test of the ground-wc default.
+**b11 is the latest published tester build** (`adrc-pr15400-b11`, 61d2d881,
+2026-09-19): the tester line through exp8 merged with Betaflight master
+5d3e7c85, with the D1–D3 defaults voted in the PR thread. What changed since
+b10.1 and why is on one page in [`B10.1_TO_B11.md`](B10.1_TO_B11.md). ADRC
+remains experimental and behind a hard tester gate; the b11 defaults are the
+first ones with flight evidence on more than one craft, not universal ones.
 
 All remediation SHAs in the table below are reachable from the current PR head
 on `bvandevliet:adrc-toggle`. The review baseline was the previous, pre-rebase
@@ -54,6 +56,12 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-017 | ESO state and liftoff gate survived disarm→arm (with default `pid_at_min_throttle=ON` the only reset branch was dead code); ground-wound `z3` up to the ±524k rail carried into the next arm | DONE | `04813845dc` | `testAdrcArmTransitionStartsFreshEpoch` fails pre-fix | **Verified in flight 2026-07-12** (second arm of the same power cycle starts gate-closed, `z3 ≈ 0`) | — |
 | ADRC-018 | Remediation regression: feeding the ESO the authority-*scaled* command (`scale·u`) silently re-defined b0's calibration frame — loop over-gained by `1/scale` at low throttle → sustained 24–26 Hz roll/pitch limit cycle | IMPLEMENTED | `c718282ad6` | Characterization tests (unscaled-feedback expectations) fail pre-fix | **b4 verification flight (2026-07-14, byte-identical tune): the always-on over-gain did not reproduce** — one full 41 s b4 flight is baseline-clean (1.1 deg/s across the hover band ≈ pre-remediation 0.8, through punches and 670 deg/s flips), which no b3 log achieved. A mode-specific (acro vs air) A/B is *not* establishable — airmode state is not recoverable from these logs (switch-based, not in headers/flags). An *episodic* ring at the same 26 Hz remains in disturbance-rich low-collective states — tracked separately as ADRC-024 | ADRC-024 |
 | ADRC-019 | b0 throttle schedule read the raw post-mixer collective: (1) mixer constrain tracks the loop's own axis activity → gain modulation at the resonance (`debug[7]` swinging 1.0↔2.8 at steady stick); (2) throttle chop collapsed the scale 3→1 in ~80 ms, faster than the ESO re-adapts → punch-chop rebound | IMPLEMENTED | `79f8b6041d` | Release-gradient and modulation-ripple characterization tests fail pre-fix | **b4 flight, split verdict**: (1) modulation FIXED — steady-window `debug[7]` swing p90 0.27–0.29 vs pre-fix 1.0↔2.8; (2) punch rebound NOT improved — post-chop pitch peaks: b4 per-log medians 45–97 deg/s (pooled 76, max 181) vs b3's 80 (max 95); the LPF alone is demonstrably not sufficient (though these flights can't fully exclude the release rate as a factor — no controlled A/B), and the rebound coincides with the z3 transient (consistent mechanism, causation not yet established) — tracked as ADRC-025 | ADRC-025 |
+| ADRC-030 | Arm-time lift-off on the ground with airmode: the ground loop closes through the airframe and the mixer with gain `2·wc·wo/b0`, and a whoop lifts itself on arm | DONE | `629f6b6b2d`, `33004f5c6d`, `83a12fc30b` | Gate-blend/ramp tests; layout test | Air65 arm-time lift gone at 99/110; clean arms on five airframes; 5" tap test at 10 and 40 (jmsweng, 2026-09-19) | on by default since b11 (`adrc_ground_wc` 10) |
+| ADRC-030b | Ground `wc` unbounded per tune; cap it at `dgain·b0/(2·wo)` | DONE | `0aac46b87e` | Cap tests | Tap tests ordered by `2·wc·wo/b0` on two tunes | `adrc_ground_dgain` 40 since b11 (cap does not bind on flown tunes) |
+| ADRC-031 | b0 schedule pinned at 1 below hover under-gains the loop at low throttle (cured by testers with `thrust_linear` / hover 5) | DONE | `699fbaad38`, `6143baff4e`, `80b790bc37` | Floor tests incl. the boundary value under `-ffast-math` (exp5 bug: 20 acted as off) | 70–90 on Petrel75/HDZ/AOS 3.5; no measurable effect on the pinned-mixer events | opt-in, default 100 |
+| ADRC-032 | Damping ratio fixed at critical; yaw `wc` cannot rise without yaw D | IMPLEMENTED | `715f909f04` | `ZetaScalesTheDTermOnly` | ζ yaw 100/50/0 and 75 flown (addenda 13, 17, 19): no benefit shown in any comparison | opt-in; candidate for **not** carrying into the PR line |
+| ADRC-033 | "Yaw washout": with the mixer pinned the ESO books the undelivered moment as disturbance on all three axes; z3 hits the `pidsum_limit` bound in 100–180 ms, then a 500–1100 °/s excursion | IMPLEMENTED | `e6511d6a95`, `61d2d881af` (DYNAMIC clip detector, reset) | Unit test + four mixer tests asserting the flag, mutation-checked | Five airframes, four OFF/ON pairs: I ≤ 333 vs 1000, a 0.37 s pin held within 48 °/s, no-op where the mixer never pins; full throttle and 780 °/s yaw spins do not pin | opt-in, default OFF; sustained-clip case (weight under a motor) not yet flown |
+| ADRC-034 | PID-profile PG array grew (260→268 bytes, exp2…exp8) without a version bump; profiles 2–4 mis-stride on upgrade without full erase | DONE | `61d2d881af` (PG version 14) | `PidProfilesPgVersionRejectsOlderBlobs` | 80 September log headers re-read, all values in range | erratum posted on exp2…exp8 notes and in the PR; b11 resets profiles on upgrade |
 
 ## Open items
 
@@ -1374,8 +1382,16 @@ resets PID profiles too.
 
 ## Current tester-build and evidence status
 
-[`adrc-pr15400-b10.1`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10.1)
-(`923932bdee`) is the latest published fork tester build. It is a maintenance
+[`adrc-pr15400-b11`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b11)
+(`61d2d881af`, 2026-09-19) is the latest published fork tester build: the tester line through b11-exp8 merged
+with Betaflight master 5d3e7c85, defaults per the PR vote (`adrc_ground_wc` 10 / `adrc_ground_dgain` 40 on, SQRT
+law, floor and the two opt-ins off), PID-profile PG version 14 (**profiles reset on upgrade** — ADRC-034),
+`DEBUG_ADRC` still 102, 629 board hex files (NEXUSXR skipped: ITCM overflow on pristine master). Reviewed
+adversarially before release; the two findings are fixed in the released commit. Branch `adrc-b11` additionally
+carries upstream #15718 (`debug_mode_name` in the log header) for the next tag. Details: `B10.1_TO_B11.md`.
+
+Earlier: [`adrc-pr15400-b10.1`](https://github.com/danusha2345/ADRC-betaflight/releases/tag/adrc-pr15400-b10.1)
+(`923932bdee`) was the previous published fork tester build. It is a maintenance
 rebuild of b10: the control law, defaults, PG 13 and Blackbox wire schema are
 unchanged. b10 merged the b9 + ADRC-029 line into Betaflight master
 `e8580ad977` (2026-08-28, 118 upstream commits after the ADRC line's base) and
@@ -1441,28 +1457,47 @@ boundaries rather than prescribing a new flight matrix.
   says it is too early to select a law and that LINEAR might tune equally well;
   this supports retaining the experimental selector rather than declaring a
   default.
-- Decide with the PR author whether and how to rebase the upstream-scoped ADRC
-  patchset onto current Betaflight. The b10/b10.1 tester branch is not directly
-  pushable as PR #15400: it also carries fork-only b0-law and release-line work.
+- ~~Decide with the PR author whether and how to rebase the upstream-scoped ADRC
+  patchset onto current Betaflight~~ — **the merge is done on the fork side**
+  (`adrc-b11`, a `git merge` of master into the tester line, no rebase, no
+  conflicts of substance; ahead 93 / behind 0 on 2026-09-19). What remains is
+  Bob's choice between merging master into `adrc-toggle` himself or taking
+  `adrc-b11` as a PR against it (asked 2026-09-19, PR comment 5744161762).
 - ADRC-028 mechanism remains open; no universal default is accepted from the
   current high-`wo` corpus. Production protection/automatic derating is
   deliberately deferred and is not part of the observability patch.
-- One new-format Blackbox log is eventually needed to validate the on-hardware
-  `adrc_z3_log_scale` and exact observability fields; this is not a prescribed
-  flight programme.
+- ~~One new-format Blackbox log is eventually needed to validate the on-hardware
+  `adrc_z3_log_scale` and exact observability fields~~ — **done**: every
+  September log carries the b9+ header and `adrcState` bits are read directly
+  (addenda 12–21).
+- ~~b0 law production choice~~ — **SQRT is the b11 default** by the D2 vote
+  (jmsweng + 8ksal8, no objection); the selector stays.
+- ADRC-033 sustained-clip case (a weight under one motor, OFF/ON) — planned by
+  jmsweng on his 2.5"; the only open flight item before "candidate".
+- Configurator (bvandevliet/betaflight-configurator#1) and Blackbox Explorer
+  (betaflight/blackbox-log-viewer#944) support for the b11 settings and fields
+  — PRs open 2026-09-22.
 - F411 8 kHz DWT cycle benchmark on real hardware (ADRC-012).
 
 
-## ADRC-032 — per-axis damping ratio (candidate, 2026-09-15)
+## Post-b10.1 items (the b11 line)
+
+Detailed entries for the rows ADRC-032…034 above, plus the b11 cut. ADRC-030/031 have no long entry: their
+reasoning is in `ADRC_GAIN_GUIDE.md` §4 and §3 and in the addenda cited in the table.
+
+### ADRC-032 — per-axis damping ratio (implemented 2026-09-15, b11-exp7, opt-in)
 
 The virtual PD is `P = wc²·e/b0`, `D = 2·wc·z2/b0`, i.e. critically damped (ζ = 1) with no way to change the ratio.
 Classic Betaflight yaw runs D = 0 and is tuned by raising P/I; on whoops the yaw axis has the lowest noise floor and
 the tester's "yaw washout" (Petrel75, 14 Sep, addendum 11 follow-up) is a mixer-saturation event where the yaw
 demand steals the authority roll needs. Raising yaw `wc` under ADRC raises yaw D with it. Proposal: `adrc_zeta_*`
 per axis (percent, default 100 = today's law, 0 = PD without D), applied as `kd = 2·ζ·wc` in the flight law and in
-the ground-wc path. Fields appended to `pidProfile_t`, PG version unchanged. Status: planned for b11-exp7.
+the ground-wc path. Fields appended to `pidProfile_t` (PG version bumped in b11, see ADRC-034). Status: implemented in
+b11-exp7 (715f909f); ζ yaw 100 / 50 / 0 and ζ 75 on all axes flown by 8ksal8 (addenda 13, 17, 19) — no measurable
+benefit in any comparison, and the yaw washout it was proposed for turned out to be ADRC-033. My read: keep it in
+the tester line, do not carry it into the PR line unless someone shows a case.
 
-## ADRC-033 — z3 growth inhibit while the mixer cannot deliver the command (implemented 2026-09-16, b11-exp8, opt-in)
+### ADRC-033 — z3 growth inhibit while the mixer cannot deliver the command (implemented 2026-09-16, b11-exp8, opt-in)
 
 Five "yaw washout" events in seven Petrel75 logs (addendum 12 of the 8ksal8 campaign) share one sequence: the mixer
 pinned (a motor on the ceiling and one on the floor, or all on the ceiling at full throttle), then the ESO charging z3
@@ -1498,7 +1533,7 @@ the ceiling 100 % of the time produced 0 inhibit frames — holding throttle doe
 trade-off exposure is bounded by the 50–570 ms events. Untested: a sustained clip from a sustained demand
 (damaged prop, dead motor). Five airframes, no adverse effect observed. Still opt-in, default OFF.
 
-## b11 cut (2026-09-19)
+### b11 cut (2026-09-19)
 
 Branch `adrc-b11` (a709997ec7), tag `adrc-pr15400-b11`, fork/gitlab/forgejo. Built as: `adrc-master-merge-20260915`
 + merge of the tester line through exp8 (e6511d6a) + merge of upstream master 5d3e7c8502 + one defaults commit.
@@ -1517,7 +1552,7 @@ last week; the TH3 and most earlier September logs flew 40 / 1.0, where the cap 
 Petrels (10 on a stock 5"). Both have clean arms. The choice of 10 / 4.0 is ours, not the vote's, and is stated as
 such in the announcement (PR comment 5744161762). Open before "candidate": 5" tap test of the ground-wc default.
 
-## ADRC-034 — PID-profile PG array: size grew without a version bump (found 2026-09-19, fixed in b11)
+### ADRC-034 — PID-profile PG array: size grew without a version bump (found 2026-09-19, fixed in b11)
 
 Found by an adversarial review of b11 (Codex, gpt-6-astra high; verdict kept in `.scratch/b11-review-20260919/`), and
 confirmed in the code: `pidProfiles` is one parameter group holding an array of `PID_PROFILE_COUNT` = 4 elements
@@ -1550,6 +1585,6 @@ asserted field *order* — the property I believed mattered — not a load of a 
 encodes the author's mental model cannot find an error in that model; the adversarial pass is not optional for a
 release.
 
-## One-page summary for the PR (2026-09-22)
+### One-page summary for the PR (2026-09-22)
 
 `docs/B10.1_TO_B11.md`: what changed between b10.1 (= PR head) and b11, why, and the evidence, for whoever merges.
