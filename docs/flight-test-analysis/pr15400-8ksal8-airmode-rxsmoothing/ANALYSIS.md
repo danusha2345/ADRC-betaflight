@@ -1123,3 +1123,43 @@ the cheapest fix for the washouts there is.
   it. This was the last open item before calling b11 a candidate. He also flew home on a prop with a missing blade
   without a noticeable handling change (no log, Blackbox full), proposes wc/wo 80/90 as defaults with b0 from the
   fitter ×2, and published https://jmsweng.github.io/ADRC-utils/ (sandbox, in-browser fitter, quick-start).
+
+## Addendum 21, 2026-09-22: hover logs settle the trim question (mostly aerodynamic); Petrel75 rebuilt props-in (PR comments 5770236852, 5770744580)
+
+Logs in `8ksal8_petrel_20260922_propsin_hover/`. 8ksal8 confirmed the "missing settings" screenshot was a
+Configurator "flash online" (PR head) instead of "flash local"; the hover logs and two of the sweep flights are on
+b11 (61d2d881a), the rest still exp8. The Petrel75 was gone over (motor screws, lighter HQ props, **props-in**), the
+tune lowered to 84/88; TH3 is now a 2.5" Usmile frame, not a whoop.
+
+### Rear/front motor trim: true hover vs cruise
+
+Per-motor mean command over calm samples (gate open, throttle 1200–1700, all setpoints and rates < 40 °/s), with the
+mean pitch attitude of those samples from the logged quaternion:
+
+| log | pitch attitude | rear − front, DShot | % of mean | eRPM rear − front | pitch I |
+|---|---:|---:|---:|---:|---:|
+| Petrel75 hover (b11) | +2.0° | 107 | 14 % | 14 % | 30 |
+| Air65 hover (b11) | −0.1° | 82 | 12 % | 5 % | 22 |
+| Petrel75 sweep, 7 flights (cruise) | −16 … −26° | 181–260 | 23–31 % | 20–28 % | 51–71 |
+
+8ksal8's reading was right and mine (addendum 20) mostly wrong: two thirds of the spread I attributed to CG is the
+aft pair holding a 16–26° nose-down cruise, which is what "calm" flight on a whoop looks like. What remains at true
+hover is 12–14 % of the mean command and a standing pitch I of 22–30 on both whoops — real, small, and not what
+spends the motor span before a washout. The washout entry remains "already nose-down in cruise, then pitch further
+and throttle up".
+
+### Props-in Petrel75, b0-floor / filter sweep
+
+Eight flights, `adrc_b0_scale_min` 30 / 40 / 50 × filter sets (LPF1 250 + LPF2 500 + dyn notch ×3 vs LPF1 off + LPF2
+525 + no dyn notch). No washout in any of them (inhibit 0–105 frames, both-end 0–89 frames, I ≤ 274). The one
+excursion (40_1 at 39.46 s, 772 °/s) is a single-frame gyro jump at full throttle with the I terms zeroed — an
+impact. Whether props-in or the lighter props removed the washouts cannot be separated from the lower tune and the
+new filters; the tester "so far cannot get it to washout". He prefers 40 with LPF1 off / LPF2 525 / no dyn notch;
+the sweep is too short per cell to rank the floors and no attempt is made here.
+
+### jmsweng
+
+`adrc_ground_wc` 10 accepted as the default on the 5" (no takeoff oddity at 10 or 40); quick-start to be updated;
+wc/wo defaults left as they are. Proposes a weight suspended under one motor on his 2.5" as the "sustained clip from
+a sustained demand" test instead of the missing-blade flight — that is the right shape for it (a standing one-sided
+moment that does not go away), provided it is heavy enough to pin a motor at hover; OFF and ON on the same weight.
