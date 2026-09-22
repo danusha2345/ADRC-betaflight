@@ -1549,3 +1549,7 @@ Process lesson: three of my own review passes and 78 green suites did not catch 
 asserted field *order* — the property I believed mattered — not a load of a real four-profile blob. A test that
 encodes the author's mental model cannot find an error in that model; the adversarial pass is not optional for a
 release.
+
+## One-page summary for the PR (2026-09-22)
+
+`docs/B10.1_TO_B11.md`: what changed between b10.1 (= PR head) and b11, why, and the evidence, for whoever merges.
