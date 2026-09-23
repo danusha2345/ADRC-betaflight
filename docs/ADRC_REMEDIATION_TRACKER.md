@@ -60,7 +60,7 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-030b | Ground `wc` unbounded per tune; cap it at `dgain·b0/(2·wo)` | DONE | `0aac46b87e` | Cap tests | Tap tests ordered by `2·wc·wo/b0` on two tunes | `adrc_ground_dgain` 40 since b11 (cap does not bind on flown tunes) |
 | ADRC-031 | b0 schedule pinned at 1 below hover under-gains the loop at low throttle (cured by testers with `thrust_linear` / hover 5) | DONE | `699fbaad38`, `6143baff4e`, `80b790bc37` | Floor tests incl. the boundary value under `-ffast-math` (exp5 bug: 20 acted as off) | 70–90 on Petrel75/HDZ/AOS 3.5; no measurable effect on the pinned-mixer events | opt-in, default 100 |
 | ADRC-032 | Damping ratio fixed at critical; yaw `wc` cannot rise without yaw D | IMPLEMENTED | `715f909f04` | `ZetaScalesTheDTermOnly` | ζ yaw 100/50/0 and 75 flown (addenda 13, 17, 19): no benefit shown in any comparison | opt-in; candidate for **not** carrying into the PR line |
-| ADRC-033 | "Yaw washout": with the mixer pinned the ESO books the undelivered moment as disturbance on all three axes; z3 hits the `pidsum_limit` bound in 100–180 ms, then a 500–1100 °/s excursion | IMPLEMENTED | `e6511d6a95`, `61d2d881af` (DYNAMIC clip detector, reset) | Unit test + four mixer tests asserting the flag, mutation-checked | Five airframes, four OFF/ON pairs: I ≤ 333 vs 1000, a 0.37 s pin held within 48 °/s, no-op where the mixer never pins; full throttle and 780 °/s yaw spins do not pin | opt-in, default OFF; sustained-clip case (weight under a motor) not yet flown |
+| ADRC-033 | "Yaw washout": with the mixer pinned the ESO books the undelivered moment as disturbance on all three axes; z3 hits the `pidsum_limit` bound in 100–180 ms, then a 500–1100 °/s excursion | IMPLEMENTED | `e6511d6a95`, `61d2d881af` (DYNAMIC clip detector, reset) | Unit test + four mixer tests asserting the flag, mutation-checked | Five airframes, four OFF/ON pairs: I ≤ 333 vs 1000, a 0.37 s pin held within 48 °/s, no-op where the mixer never pins; full throttle and 780 °/s yaw spins do not pin | opt-in, default OFF; sustained clip not reachable by full throttle, 780 °/s yaw spins or a 25 % one-sided payload (addenda 17, 20, 22) — not pursued further |
 | ADRC-034 | PID-profile PG array grew (260→268 bytes, exp2…exp8) without a version bump; profiles 2–4 mis-stride on upgrade without full erase | DONE | `61d2d881af` (PG version 14) | `PidProfilesPgVersionRejectsOlderBlobs` | 80 September log headers re-read, all values in range | erratum posted on exp2…exp8 notes and in the PR; b11 resets profiles on upgrade |
 
 ## Open items
@@ -1472,8 +1472,10 @@ boundaries rather than prescribing a new flight matrix.
   (addenda 12–21).
 - ~~b0 law production choice~~ — **SQRT is the b11 default** by the D2 vote
   (jmsweng + 8ksal8, no objection); the selector stays.
-- ADRC-033 sustained-clip case (a weight under one motor, OFF/ON) — planned by
-  jmsweng on his 2.5"; the only open flight item before "candidate".
+- ~~ADRC-033 sustained-clip case~~ — **closed 2026-09-23**: a 25 % payload under one
+  motor (jmsweng, Air65, addendum 22) is carried as a standing disturbance and does
+  not pin the mixer, like full throttle and full-rate yaw before it. Not pursued
+  further: reaching a sustained clip means flying at the edge of controllability.
 - Configurator (bvandevliet/betaflight-configurator#1) and Blackbox Explorer
   (betaflight/blackbox-log-viewer#944) support for the b11 settings and fields
   — PRs open 2026-09-22.

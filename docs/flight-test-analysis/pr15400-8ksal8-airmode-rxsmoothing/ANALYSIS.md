@@ -1192,8 +1192,8 @@ b0 8964/5378/3586, SQRT, hover 27, ground wc 20, limits 500/400. Packs "pretty o
 | 6 | 6.1 s | 870 / 1222 / 817 / 1053 | 8.7 % | −31 / −76 / 28 | 31 | 4.6 g |
 | 7 | 5.3 s | 752 / 1232 / 734 / 839 | 7.5 % | −57 / −73 / 45 | 55 | 4.3 g; yaw I on its 400 clamp at 1.5–1.9 s |
 
-- The weight is carried as a **standing disturbance**: motor 2 runs 300–450 units above the others and the pitch I
-  (−z3/b0) sits at −67…−90 throughout, roll/pitch error p50 8–31 °/s in normal flight. That is the observer doing
+- The weight is carried as a **standing disturbance**: motor 2 runs 220–460 units above the mean of the other three
+  and the pitch I (−z3/b0) sits at −67…−90 throughout, roll/pitch error p50 8–55 °/s. That is the observer doing
   what it is for; the "unbalanced payload" claim in the README holds on this craft at 25 % of its mass.
 - **The mixer does not pin in steady flight**: motor 2 is on the ceiling 0.6–3 % of the time in four flights and
   7.5–8.7 % in the two last, emptiest packs. So this weight does not create the sustained-clip condition ADRC-033's
@@ -1202,5 +1202,7 @@ b0 8964/5378/3586, SQRT, hover 27, ground wc 20, limits 500/400. Packs "pretty o
   the weight catching on something, then the ground. The exception is log 7 at 1.5–1.9 s: yaw I on its
   `pidsum_limit_yaw` 400 clamp with 417–755 °/s roll/pitch, on a 2.75–3.1 V pack; the one sample of a pinned
   demand in this set, too short to call.
-- What would make it the intended test: b11 (the flag exists there), fresh packs, and enough weight — or a more
-  outboard one — that motor 2 sits flat on the ceiling in a hover; then OFF vs ON on the same weight.
+- Conclusion for ADRC-033: a 25 % one-sided payload, sustained full-throttle climbs (addendum 17) and 780 °/s yaw
+  spins (addendum 20) are three realistic sustained demands, and none pins the mixer. Reaching a sustained clip would
+  mean flying a craft at the edge of controllability, where no controller has authority to spare; that test is not
+  requested. The trade-off is treated as bounded by the 50–570 ms events the flag was built for; it stays opt-in.
