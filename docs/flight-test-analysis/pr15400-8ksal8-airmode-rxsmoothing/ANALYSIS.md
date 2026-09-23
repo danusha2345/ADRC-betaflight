@@ -1175,7 +1175,7 @@ is the real value divided by 100 (e.g. Petrel75 4145/2657/3826, not 41/26/38). T
 conclusion depended on the absolute b0. Separately, addendum 16 called the TH3's law LINEAR; its header says
 `adrc_b0_law:3`, which is FIXED.
 
-## Addendum 22, 2026-09-23: jmsweng's Air65 with a weight under motor 2 — the observer carries it; the mixer does not pin (PR comment 5784714486)
+## Addendum 22, 2026-09-23: jmsweng's Air65 with a weight under motor 2 — the observer carries it; the mixer does not pin (PR comment 5784714486; reply 5788710280)
 
 One Blackbox file, seven logs (six with enough airtime), Air65 1S, a washer of ~25 % of the craft's mass tied under
 motor 2, indoors, the longest flight in angle mode line-of-sight. **Firmware `33004f5c6` = b11-exp2**: there is no
