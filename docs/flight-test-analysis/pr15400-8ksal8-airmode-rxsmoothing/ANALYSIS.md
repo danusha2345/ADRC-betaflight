@@ -1174,3 +1174,33 @@ exactly and the classic D equals `adrc_b0`/100 (to within one count), so every w
 is the real value divided by 100 (e.g. Petrel75 4145/2657/3826, not 41/26/38). The text now says "b0/100". No
 conclusion depended on the absolute b0. Separately, addendum 16 called the TH3's law LINEAR; its header says
 `adrc_b0_law:3`, which is FIXED.
+
+## Addendum 22, 2026-09-23: jmsweng's Air65 with a weight under motor 2 — the observer carries it; the mixer does not pin (PR comment 5784714486)
+
+One Blackbox file, seven logs (six with enough airtime), Air65 1S, a washer of ~25 % of the craft's mass tied under
+motor 2, indoors, the longest flight in angle mode line-of-sight. **Firmware `33004f5c6` = b11-exp2**: there is no
+`adrc_sat_z3_inhibit` in that build, so this is the OFF side only. Tune from the ADRC header lines: wc/wo 99/110,
+b0 8964/5378/3586, SQRT, hover 27, ground wc 20, limits 500/400. Packs "pretty old": 3.2–3.6 V/cell at the start,
+**2.25–2.7 V/cell minimum under load** in every flight. Archive in `jmsweng_air65_weight_20260922/`.
+
+| log | airtime | motor 1 / 2 / 3 / 4 mean | motor 2 at ceiling | mean I roll / pitch / yaw | roll-pitch error p50 | ends in |
+|---|---:|---|---:|---|---:|---|
+| 1 | 4.6 s | 682 / 1002 / 755 / 906 | 2.9 % | −1 / −67 / 20 | 17 | 1.6 g, 1.1 s before log end |
+| 2 | 5.7 s | 795 / 1158 / 840 / 1039 | 0.6 % | −7 / −75 / 24 | 25 | 0.7 s before end, 2.5 V |
+| 4 | 8.0 s | 778 / 1194 / 668 / 936 | 0.7 % | −48 / −90 / 18 | 15 | 7.3 g impact |
+| 5 (angle) | 21 s | 740 / 1168 / 694 / 937 | 1.1 % | −38 / −88 / 22 | 8 | 11.8 g impact |
+| 6 | 6.1 s | 870 / 1222 / 817 / 1053 | 8.7 % | −31 / −76 / 28 | 31 | 4.6 g |
+| 7 | 5.3 s | 752 / 1232 / 734 / 839 | 7.5 % | −57 / −73 / 45 | 55 | 4.3 g; yaw I on its 400 clamp at 1.5–1.9 s |
+
+- The weight is carried as a **standing disturbance**: motor 2 runs 300–450 units above the others and the pitch I
+  (−z3/b0) sits at −67…−90 throughout, roll/pitch error p50 8–31 °/s in normal flight. That is the observer doing
+  what it is for; the "unbalanced payload" claim in the README holds on this craft at 25 % of its mass.
+- **The mixer does not pin in steady flight**: motor 2 is on the ceiling 0.6–3 % of the time in four flights and
+  7.5–8.7 % in the two last, emptiest packs. So this weight does not create the sustained-clip condition ADRC-033's
+  trade-off is about; to reach it the weight would have to leave no headroom at hover.
+- Every excursion above 350 °/s is in the last 0.4–1.1 s of its log and five of six carry a 1.6–11.8 g spike —
+  the weight catching on something, then the ground. The exception is log 7 at 1.5–1.9 s: yaw I on its
+  `pidsum_limit_yaw` 400 clamp with 417–755 °/s roll/pitch, on a 2.75–3.1 V pack; the one sample of a pinned
+  demand in this set, too short to call.
+- What would make it the intended test: b11 (the flag exists there), fresh packs, and enough weight — or a more
+  outboard one — that motor 2 sits flat on the ceiling in a hover; then OFF vs ON on the same weight.
