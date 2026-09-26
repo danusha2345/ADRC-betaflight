@@ -1603,3 +1603,4 @@ Bob (PR owner) agreed on 26 Sep to take b11 as a PR against `adrc-toggle`, no ob
 `debug_mode_name` line → upstream's, `blackbox_unittest.cc` both kept, `src/config` → upstream), fork release
 workflow/notes removed, ADRC-032 removed, PG 15. Fast-forward for `adrc-toggle` (all of Bob's commits are
 ancestors). 88 unit-test suites; G474/F722/F405/H743/F411 build; `DEBUG_ADRC` = 102.
+Opened as **bvandevliet/betaflight#1** (2026-09-26).
