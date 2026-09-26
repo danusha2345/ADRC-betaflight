@@ -130,7 +130,9 @@ PG_RESET_TEMPLATE(pidConfig_t, pidConfig,
 // profile 2. b11-exp2..exp8 grew the element (260 -> 262 -> 264 -> 268 bytes) while keeping version 13; that was
 // wrong. Any change to sizeof(pidProfile_t) MUST bump this version: the profiles then reset to defaults on
 // upgrade instead of loading corrupted. (Upstream master is at 12; 13 was the PR's own bump.)
-PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 14);
+// Version 15: the PR line drops ADRC-032 (adrc_zeta_*), which moves adrc_sat_z3_inhibit; a version-14 blob from
+// the b11 tester build must reset, not load shifted.
+PG_REGISTER_ARRAY_WITH_RESET_FN(pidProfile_t, PID_PROFILE_COUNT, pidProfiles, PG_PID_PROFILE, 15);
 
 void resetPidProfile(pidProfile_t *pidProfile)
 {
@@ -274,7 +276,6 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .adrc_wc_ramp_ms = 100,
         .adrc_ground_dgain = 40,        // b11 default (D1): cap non-binding at ground wc 10 on the flown tunes
         .adrc_b0_scale_min = 100,
-        .adrc_zeta = { 100, 100, 100 },
         .adrc_sat_z3_inhibit = 0,
     );
 #ifdef USE_ADRC

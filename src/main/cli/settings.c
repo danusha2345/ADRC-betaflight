@@ -1509,9 +1509,6 @@ const clivalue_t valueTable[] = {
     { PARAM_NAME_ADRC_WC_RAMP_MS,            VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 5000 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc_wc_ramp_ms) },
     { PARAM_NAME_ADRC_GROUND_DGAIN,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 100 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc_ground_dgain) },
     { PARAM_NAME_ADRC_B0_SCALE_MIN,          VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 20, 100 },  PG_PID_PROFILE, offsetof(pidProfile_t, adrc_b0_scale_min) },
-    { PARAM_NAME_ADRC_ZETA_ROLL , VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 200 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc_zeta[FD_ROLL]) },
-    { PARAM_NAME_ADRC_ZETA_PITCH, VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 200 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc_zeta[FD_PITCH]) },
-    { PARAM_NAME_ADRC_ZETA_YAW  , VAR_UINT8  | PROFILE_VALUE, .config.minmaxUnsigned = { 0, 200 },   PG_PID_PROFILE, offsetof(pidProfile_t, adrc_zeta[FD_YAW]) },
     { PARAM_NAME_ADRC_SAT_Z3_INHIBIT, VAR_UINT8 | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_PID_PROFILE, offsetof(pidProfile_t, adrc_sat_z3_inhibit) },
 #endif
 

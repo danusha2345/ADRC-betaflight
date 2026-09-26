@@ -142,7 +142,6 @@ typedef struct adrcCoefficient_s {
     float kp;      // = wc*wc (virtual PD control law proportional gain)
     float kd;      // = 2*wc (virtual PD control law derivative gain)
     float groundWc; // wc while the gate is closed; == wc unless adrcSetGroundWc() lowered it (ADRC-030)
-    float zeta;     // ADRC-032: damping ratio of the virtual PD, kd = 2*zeta*wc; 1.0 = critical (the original law)
     float beta1;   // = 3*wo (ESO observer gain)
     float beta2;   // = 3*wo*wo (ESO observer gain)
     float beta3;   // = wo*wo*wo (ESO observer gain)
@@ -234,9 +233,6 @@ void adrcSetGroundWc(adrcRuntime_t *adrcRuntime, uint8_t groundWc, uint16_t ramp
 // Applies only while the liftoff gate is open: on the ground the schedule stays >= 1 so the
 // closed-gate loop gain bounded by ADRC-030/030b is not multiplied. Call after adrcInitConfig().
 void adrcSetB0ScaleMin(adrcRuntime_t *adrcRuntime, uint8_t minPercent);
-// ADRC-032 (experimental): per-axis damping ratio of the virtual PD in percent (100 = critical damping, the
-// original law; 0 = P only, the classic Betaflight yaw with D = 0). Call after adrcInitConfig().
-void adrcSetZeta(adrcRuntime_t *adrcRuntime, const uint8_t zetaPercent[XYZ_AXIS_COUNT]);
 void adrcSetSatZ3Inhibit(adrcRuntime_t *adrcRuntime, bool enabled);
 void adrcSetMixerSaturated(adrcRuntime_t *adrcRuntime, bool saturated);
 
