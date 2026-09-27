@@ -1399,9 +1399,9 @@ ported the exact observability contract from `aa93b5e680`, including the b9
 applied-collective gate cause. b10.1 adds schema/wire regression tests and makes
 the release workflow fail closed on attempted board-build failures. The
 integration record, migration boundaries, test results and memory margins are in
-[`ADRC_B10_INTEGRATION.md`](ADRC_B10_INTEGRATION.md). The PR author's
-`adrc-toggle` branch remains at `6317fe2aad`; b10 is deliberately fork-side and
-does not silently choose a rebase/merge strategy for the upstream PR.
+[`ADRC_B10_INTEGRATION.md`](ADRC_B10_INTEGRATION.md). At the time the PR author's
+`adrc-toggle` branch was at `6317fe2aad`; b10 was deliberately fork-side. (Since
+2026-09-27 `adrc-toggle` carries the b11 PR line, see below.)
 Release CI finished with 615 supported board configs built, zero failures, 14
 explicit platform-SDK/output skips and 15 generic builds (630 unique assets).
 
@@ -1460,9 +1460,12 @@ boundaries rather than prescribing a new flight matrix.
 - ~~Decide with the PR author whether and how to rebase the upstream-scoped ADRC
   patchset onto current Betaflight~~ — **the merge is done on the fork side**
   (`adrc-b11`, a `git merge` of master into the tester line, no rebase, no
-  conflicts of substance; ahead 93 / behind 0 on 2026-09-19). What remains is
-  Bob's choice between merging master into `adrc-toggle` himself or taking
-  `adrc-b11` as a PR against it (asked 2026-09-19, PR comment 5744161762).
+  conflicts of substance; ahead 93 / behind 0 on 2026-09-19). Bob chose the PR
+  route (26 Sep) and **merged bvandevliet/betaflight#1 into `adrc-toggle` on
+  2026-09-27** (merge commit 0f493054bb, tree identical to `adrc-b11-pr`), so
+  #15400 now carries the b11 PR line.
+- Official upstream CI on the new head: the PR workflow run 36307966666 is waiting
+  for maintainer approval (asked in PR comment 5856995046, 2026-09-27).
 - ADRC-028 mechanism remains open; no universal default is accepted from the
   current high-`wo` corpus. Production protection/automatic derating is
   deliberately deferred and is not part of the observability patch.
@@ -1603,4 +1606,6 @@ Bob (PR owner) agreed on 26 Sep to take b11 as a PR against `adrc-toggle`, no ob
 `debug_mode_name` line → upstream's, `blackbox_unittest.cc` both kept, `src/config` → upstream), fork release
 workflow/notes removed, ADRC-032 removed, PG 15. Fast-forward for `adrc-toggle` (all of Bob's commits are
 ancestors). 88 unit-test suites; G474/F722/F405/H743/F411 build; `DEBUG_ADRC` = 102.
-Opened as **bvandevliet/betaflight#1** (2026-09-26).
+Opened as **bvandevliet/betaflight#1** (2026-09-26); **merged by Bob on 2026-09-27** (merge commit 0f493054bb, tree
+identical to aed66441f8). #15400 head is now 0f493054bb (27 files, +5170/−27 against master); still draft; CI run
+awaiting maintainer approval.
