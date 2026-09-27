@@ -1609,3 +1609,14 @@ ancestors). 88 unit-test suites; G474/F722/F405/H743/F411 build; `DEBUG_ADRC` = 
 Opened as **bvandevliet/betaflight#1** (2026-09-26); **merged by Bob on 2026-09-27** (merge commit 0f493054bb, tree
 identical to aed66441f8). #15400 head is now 0f493054bb (27 files, +5170/−27 against master); still draft; CI run
 awaiting maintainer approval.
+
+**2026-09-27, conflict with master.** Upstream #15196 (chirp for the angle controller) appended `chirp_repeat` to
+`pidProfile_t` exactly where the ADRC tail lives, so #15400 turned "dirty". Resolved in branch `adrc-b11-sync`
+(fa705b72cd: master ba2d0c2249 merged into `adrc-toggle`, `chirp_repeat` ahead of the ADRC tail), opened as
+**bvandevliet/betaflight#2**, noted in PR comment 5857898512. 88 suites, five MCU builds.
+
+**PG version ceiling.** The PG version is a 4-bit field (`pg/pg.h`: `PGR_PGN_VERSION_MASK 0xf000`; `pgVersion()`
+is `pgn >> 12`). 15 is the maximum; a 16 wraps to 0 (caught as `-Wconstant-conversion`). The PR line therefore
+keeps 15 for the new layout; the pre-`chirp_repeat` 15 layout existed only as the PR head for a day and was never
+released. When ADRC lands on master (at 12) the maintainers must pick a number no released `pidProfiles` layout
+with a different stride has used — raised with them in the same comment.
