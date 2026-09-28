@@ -62,7 +62,7 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-032 | Damping ratio fixed at critical; yaw `wc` cannot rise without yaw D | CLOSED (tester line only) | `715f909f04`; removed from the PR line in `aed66441f8` | `ZetaScalesTheDTermOnly` (tester line) | ζ yaw 100/50/0 and 75 flown (addenda 13, 17, 19): no benefit shown in any comparison | kept in `adrc-b11`, **not in `adrc-b11-pr`** |
 | ADRC-033 | "Yaw washout": with the mixer pinned the ESO books the undelivered moment as disturbance on all three axes; z3 hits the `pidsum_limit` bound in 100–180 ms, then a 500–1100 °/s excursion | IMPLEMENTED | `e6511d6a95`, `61d2d881af` (DYNAMIC clip detector, reset) | Unit test + four mixer tests asserting the flag, mutation-checked | Five airframes, four OFF/ON pairs: I ≤ 333 vs 1000, a 0.37 s pin held within 48 °/s, no-op where the mixer never pins; full throttle and 780 °/s yaw spins do not pin | opt-in, default OFF; sustained clip not reachable by full throttle, 780 °/s yaw spins or a 25 % one-sided payload (addenda 17, 20, 22) — not pursued further |
 | ADRC-034 | PID-profile PG array grew (260→268 bytes, exp2…exp8) without a version bump; profiles 2–4 mis-stride on upgrade without full erase | DONE | `61d2d881af` (PG version 14), `aed66441f8` (15 on the PR line) | `PidProfilesPgVersionRejectsOlderBlobs` | 80 September log headers re-read, all values in range | erratum posted on exp2…exp8 notes and in the PR; b11 resets profiles on upgrade |
-| ADRC-035 | `adrcInitConfig()` reset the b0-schedule low-pass (`b0ScaleThrottle = 0`); a same-type re-init while armed (AUX adjustment ranges) snapped the b0 scale to its floor in one loop | FIXED on branch | `b7e489dfe5` (`adrc-cr-fixes`, on top of `adrc-toggle`) | `SameTypeReinitKeepsTheB0Schedule` (red before, green after) | none; code-path finding (CodeRabbit on 1492457e29) | not in any tester build; bvandevliet/betaflight#3 |
+| ADRC-035 | `adrcInitConfig()` reset the b0-schedule low-pass (`b0ScaleThrottle = 0`); a same-type re-init while armed (AUX adjustment ranges) snapped the b0 scale to its floor in one loop | FIXED on branch | `b7e489dfe5` (`adrc-cr-fixes`, on top of `adrc-toggle`) | `SameTypeReinitKeepsTheB0Schedule` (red before, green after) | none; code-path finding (CodeRabbit on 1492457e29) | not in any tester build; merged into `adrc-toggle` 2026-09-28 (bvandevliet/betaflight#3, #15400 head 1eabcb3877) |
 
 ## Open items
 
@@ -1470,7 +1470,9 @@ boundaries rather than prescribing a new flight matrix.
   the PR workflow on head 1492457e29 (run 36346231748) passed.
 - CodeRabbit's review of 1492457e29: two findings, both valid — `DEBUG_ADRC`
   ordering and ADRC-035. Fixed in branch `adrc-cr-fixes` (b7e489dfe5), opened as
-  **bvandevliet/betaflight#3** (2026-09-28); both CodeRabbit threads answered.
+  **bvandevliet/betaflight#3** (2026-09-28), merged by Bob the same day; CodeRabbit
+  resolved both threads and approved. The PR workflow on head 1eabcb3877 (run
+  36455744783) waits for maintainer approval.
 - ADRC-028 mechanism remains open; no universal default is accepted from the
   current high-`wo` corpus. Production protection/automatic derating is
   deliberately deferred and is not part of the observability patch.
@@ -1642,3 +1644,8 @@ PR for review; the upstream PR workflow passed on that head (run 36346231748). C
 
 b7e489dfe5: 88 suites, F405/F722/F411/H743/G474 build, merges cleanly with master b47a06ff57. Opened as **bvandevliet/betaflight#3**
 (2026-09-28, MERGEABLE); replies in both CodeRabbit threads on #15400.
+
+**2026-09-28: merged.** Bob merged bvandevliet/betaflight#3 (#15400 head 1eabcb3877, tree identical to b7e489dfe5).
+CodeRabbit re-reviewed: "no actionable comments", both threads resolved, review state APPROVED. PR state is
+REVIEW_REQUIRED (human maintainer review). The PR workflow on the new head (run 36455744783) is again
+`action_required`, i.e. waiting for a maintainer to approve the run. Still merges cleanly with master 744f95fa31.
