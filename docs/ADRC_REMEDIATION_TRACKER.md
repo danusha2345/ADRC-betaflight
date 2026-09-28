@@ -62,6 +62,7 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-032 | Damping ratio fixed at critical; yaw `wc` cannot rise without yaw D | CLOSED (tester line only) | `715f909f04`; removed from the PR line in `aed66441f8` | `ZetaScalesTheDTermOnly` (tester line) | ζ yaw 100/50/0 and 75 flown (addenda 13, 17, 19): no benefit shown in any comparison | kept in `adrc-b11`, **not in `adrc-b11-pr`** |
 | ADRC-033 | "Yaw washout": with the mixer pinned the ESO books the undelivered moment as disturbance on all three axes; z3 hits the `pidsum_limit` bound in 100–180 ms, then a 500–1100 °/s excursion | IMPLEMENTED | `e6511d6a95`, `61d2d881af` (DYNAMIC clip detector, reset) | Unit test + four mixer tests asserting the flag, mutation-checked | Five airframes, four OFF/ON pairs: I ≤ 333 vs 1000, a 0.37 s pin held within 48 °/s, no-op where the mixer never pins; full throttle and 780 °/s yaw spins do not pin | opt-in, default OFF; sustained clip not reachable by full throttle, 780 °/s yaw spins or a 25 % one-sided payload (addenda 17, 20, 22) — not pursued further |
 | ADRC-034 | PID-profile PG array grew (260→268 bytes, exp2…exp8) without a version bump; profiles 2–4 mis-stride on upgrade without full erase | DONE | `61d2d881af` (PG version 14), `aed66441f8` (15 on the PR line) | `PidProfilesPgVersionRejectsOlderBlobs` | 80 September log headers re-read, all values in range | erratum posted on exp2…exp8 notes and in the PR; b11 resets profiles on upgrade |
+| ADRC-035 | `adrcInitConfig()` reset the b0-schedule low-pass (`b0ScaleThrottle = 0`); a same-type re-init while armed (AUX adjustment ranges) snapped the b0 scale to its floor in one loop | FIXED on branch | `b7e489dfe5` (`adrc-cr-fixes`, on top of `adrc-toggle`) | `SameTypeReinitKeepsTheB0Schedule` (red before, green after) | none; code-path finding (CodeRabbit on 1492457e29) | not in any tester build; PR to Bob pending approval |
 
 ## Open items
 
@@ -1464,8 +1465,12 @@ boundaries rather than prescribing a new flight matrix.
   route (26 Sep) and **merged bvandevliet/betaflight#1 into `adrc-toggle` on
   2026-09-27** (merge commit 0f493054bb, tree identical to `adrc-b11-pr`), so
   #15400 now carries the b11 PR line.
-- Official upstream CI on the new head: the PR workflow run 36307966666 is waiting
-  for maintainer approval (asked in PR comment 5856995046, 2026-09-27).
+- ~~Official upstream CI on the new head~~ — **green**: Bob merged
+  bvandevliet/betaflight#2 and took #15400 out of draft (2026-09-27 20:17 UTC);
+  the PR workflow on head 1492457e29 (run 36346231748) passed.
+- CodeRabbit's review of 1492457e29: two findings, both valid — `DEBUG_ADRC`
+  ordering and ADRC-035. Fixed in branch `adrc-cr-fixes` (b7e489dfe5); the PR to
+  `adrc-toggle` is drafted, not yet opened.
 - ADRC-028 mechanism remains open; no universal default is accepted from the
   current high-`wo` corpus. Production protection/automatic derating is
   deliberately deferred and is not part of the observability patch.
@@ -1620,3 +1625,19 @@ is `pgn >> 12`). 15 is the maximum; a 16 wraps to 0 (caught as `-Wconstant-conve
 keeps 15 for the new layout; the pre-`chirp_repeat` 15 layout existed only as the PR head for a day and was never
 released. When ADRC lands on master (at 12) the maintainers must pick a number no released `pidProfiles` layout
 with a different stride has used — raised with them in the same comment.
+
+**2026-09-27 evening: #15400 out of draft.** Bob merged bvandevliet/betaflight#2 (head 1492457e29) and published the
+PR for review; the upstream PR workflow passed on that head (run 36346231748). CodeRabbit then raised two findings:
+
+- `DEBUG_ADRC` before `DEBUG_PITOT` shifts every newer upstream mode (PITOT…FLIGHT_PLAN) by one, so saved
+  `debug_mode` indices and index-based decoders would change meaning. The b9-ordinal choice protected tester
+  configs; for upstream, master's indices win. `adrc-cr-fixes` appends `DEBUG_ADRC` before `DEBUG_COUNT` (111 on
+  master b47a06ff57). The viewer labels by the `debug_mode_name` header, so nothing to change there. Testers upgrading
+  with a saved `debug_mode = ADRC` need `set debug_mode = ADRC` once; analysis scripts should key on
+  `debug_mode_name`, not on `debug_mode == 102`.
+- ADRC-035: `adrcInitConfig()` reset `b0ThrottleScale`/`b0ScaleThrottle`, and `pidInitConfig()` runs it while armed
+  for adjustment ranges → the collective low-pass restarted from 0 and the scale dropped to its floor within one
+  loop (1.0 by default, down to 0.2 with `adrc_b0_scale_min` < 100) — the collapse the ~80 ms low-pass exists to
+  prevent. Now left alone like `wcBlend`; boot is covered by zero-init, non-finite values by the per-loop sanity.
+
+b7e489dfe5: 88 suites, F405/F722/F411/H743/G474 build, merges cleanly with master b47a06ff57.
