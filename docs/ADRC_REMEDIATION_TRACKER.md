@@ -1649,3 +1649,8 @@ b7e489dfe5: 88 suites, F405/F722/F411/H743/G474 build, merges cleanly with maste
 CodeRabbit re-reviewed: "no actionable comments", both threads resolved, review state APPROVED. PR state is
 REVIEW_REQUIRED (human maintainer review). The PR workflow on the new head (run 36455744783) is again
 `action_required`, i.e. waiting for a maintainer to approve the run. Still merges cleanly with master 744f95fa31.
+
+**2026-10-01: submodule conflict.** Master bumped `src/config` (afe6a86dc5) and #15400 turned CONFLICTING. The cause
+was ours: since aed66441f8 the PR line carried a stray `src/config` pointer change (d78c5a2351 instead of master's).
+Branch `adrc-sync-1001` (28f8e09e6a) merges master and takes its pointer, so the PR no longer touches `src/config`
+(26 files against master). 88 suites, five MCU builds; PR to `adrc-toggle` drafted, awaiting approval.
