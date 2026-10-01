@@ -1,0 +1,138 @@
+
+### 30_1_btfl_001: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  8 moves: plant fit b_acc  173.5, tau 27.0 ms, delay  0.0 ms (b_acc/tau = 1.55·b0), replay err  6.5 % of peak (no-lag plant: 13.6 %); wo·tau 2.4, wo·(tau+d) 2.4
+        peak gyro / peak setpoint: log 1.139 (IQR 1.08–1.16) | model as coded 1.046 (IQR 1.03–1.07) | motor-pole variant 1.008 (IQR 1.00–1.05) | share > 1.10: log 62 % / coded 12 % / mp 0 %
+  pitch 5 moves: plant fit b_acc   53.1, tau 20.0 ms, delay  0.0 ms (b_acc/tau = 1.00·b0), replay err  8.8 % of peak (no-lag plant: 19.7 %); wo·tau 1.8, wo·(tau+d) 1.8
+        peak gyro / peak setpoint: log 1.165 (IQR 1.00–1.26) | model as coded 1.068 (IQR 0.98–1.10) | motor-pole variant 1.016 (IQR 0.95–1.03) | share > 1.10: log 60 % / coded 40 % / mp 20 %
+
+### 30_2_no_dyn_notch_btfl_003: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  14 moves: plant fit b_acc  199.0, tau 48.0 ms, delay  0.0 ms (b_acc/tau = 1.00·b0), replay err  5.7 % of peak (no-lag plant: 15.5 %); wo·tau 4.2, wo·(tau+d) 4.2
+        peak gyro / peak setpoint: log 1.112 (IQR 1.01–1.15) | model as coded 1.022 (IQR 0.98–1.05) | motor-pole variant 0.997 (IQR 0.97–1.02) | share > 1.10: log 50 % / coded 14 % / mp 14 %
+  pitch 24 moves: plant fit b_acc   95.7, tau 15.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  6.2 % of peak (no-lag plant:  8.0 %); wo·tau 1.3, wo·(tau+d) 1.3
+        peak gyro / peak setpoint: log 1.045 (IQR 0.98–1.18) | model as coded 0.984 (IQR 0.95–1.12) | motor-pole variant 0.949 (IQR 0.92–1.07) | share > 1.10: log 42 % / coded 29 % / mp 21 %
+
+### 30_3_lowpass1_dyn_btfl_001: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  27 moves: plant fit b_acc  149.2, tau 15.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  5.0 % of peak (no-lag plant:  8.1 %); wo·tau 1.3, wo·(tau+d) 1.3
+        peak gyro / peak setpoint: log 1.118 (IQR 1.06–1.22) | model as coded 1.033 (IQR 1.00–1.11) | motor-pole variant 0.992 (IQR 0.96–1.08) | share > 1.10: log 63 % / coded 30 % / mp 19 %
+  pitch 29 moves: plant fit b_acc   51.0, tau  8.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  7.6 % of peak (no-lag plant:  8.9 %); wo·tau 0.7, wo·(tau+d) 0.7
+        peak gyro / peak setpoint: log 1.060 (IQR 0.97–1.13) | model as coded 1.024 (IQR 0.98–1.07) | motor-pole variant 0.962 (IQR 0.92–1.01) | share > 1.10: log 34 % / coded 17 % / mp 10 %
+
+### 40_1_btfl_002: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  11 moves: plant fit b_acc  128.5, tau 20.0 ms, delay  0.0 ms (b_acc/tau = 1.55·b0), replay err  4.4 % of peak (no-lag plant: 10.0 %); wo·tau 1.8, wo·(tau+d) 1.8
+        peak gyro / peak setpoint: log 1.194 (IQR 1.03–1.26) | model as coded 1.057 (IQR 1.01–1.17) | motor-pole variant 1.008 (IQR 0.97–1.12) | share > 1.10: log 64 % / coded 36 % / mp 36 %
+  pitch 5 moves: plant fit b_acc   70.1, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  8.7 % of peak (no-lag plant: 12.8 %); wo·tau 1.0, wo·(tau+d) 1.0
+        peak gyro / peak setpoint: log 1.119 (IQR 1.07–1.24) | model as coded 1.077 (IQR 1.02–1.16) | motor-pole variant 0.996 (IQR 0.99–1.10) | share > 1.10: log 60 % / coded 40 % / mp 40 %
+
+### 40_2_lowpass1_dyn_btfl_002: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  6 moves: plant fit b_acc  111.9, tau 27.0 ms, delay  0.0 ms (b_acc/tau = 1.00·b0), replay err  5.2 % of peak (no-lag plant: 13.3 %); wo·tau 2.4, wo·(tau+d) 2.4
+        peak gyro / peak setpoint: log 1.090 (IQR 1.05–1.11) | model as coded 1.045 (IQR 1.01–1.05) | motor-pole variant 1.011 (IQR 0.99–1.02) | share > 1.10: log 33 % / coded 17 % / mp 0 %
+  pitch 10 moves: plant fit b_acc   51.0, tau  8.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  7.7 % of peak (no-lag plant:  9.0 %); wo·tau 0.7, wo·(tau+d) 0.7
+        peak gyro / peak setpoint: log 1.032 (IQR 0.96–1.14) | model as coded 1.014 (IQR 0.96–1.09) | motor-pole variant 0.972 (IQR 0.92–1.01) | share > 1.10: log 40 % / coded 30 % / mp 10 %
+
+### 50_1_btfl_001: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  7 moves: plant fit b_acc  149.2, tau 15.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  5.4 % of peak (no-lag plant:  7.5 %); wo·tau 1.3, wo·(tau+d) 1.3
+        peak gyro / peak setpoint: log 1.179 (IQR 1.02–1.22) | model as coded 1.070 (IQR 0.98–1.19) | motor-pole variant 1.035 (IQR 0.95–1.15) | share > 1.10: log 71 % / coded 43 % / mp 43 %
+  pitch 9 moves: plant fit b_acc   70.1, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  6.2 % of peak (no-lag plant:  7.7 %); wo·tau 1.0, wo·(tau+d) 1.0
+        peak gyro / peak setpoint: log 1.075 (IQR 1.01–1.13) | model as coded 1.025 (IQR 1.01–1.06) | motor-pole variant 0.964 (IQR 0.94–0.99) | share > 1.10: log 44 % / coded 11 % / mp 0 %
+
+### 50_2_lowpass1_dyn_btfl_001: Petrel75 wc 84/84 wo 88/88 b0 4145/2657, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  12 moves: plant fit b_acc  149.2, tau 15.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  6.0 % of peak (no-lag plant:  9.3 %); wo·tau 1.3, wo·(tau+d) 1.3
+        peak gyro / peak setpoint: log 1.171 (IQR 1.00–1.27) | model as coded 1.077 (IQR 0.95–1.14) | motor-pole variant 1.024 (IQR 0.93–1.09) | share > 1.10: log 67 % / coded 50 % / mp 25 %
+  pitch 15 moves: plant fit b_acc   70.1, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  7.0 % of peak (no-lag plant:  8.4 %); wo·tau 1.0, wo·(tau+d) 1.0
+        peak gyro / peak setpoint: log 1.144 (IQR 1.01–1.23) | model as coded 1.042 (IQR 0.97–1.13) | motor-pole variant 0.980 (IQR 0.93–1.09) | share > 1.10: log 60 % / coded 27 % / mp 27 %
+
+### AOS35_v5_btfl_001: AOS 3.5 wc 90/90 wo 100/100 b0 7010/4206, PID 4000 Hz, log 506 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  14 moves: plant fit b_acc  266.4, tau 20.0 ms, delay  0.0 ms (b_acc/tau = 1.90·b0), replay err  5.6 % of peak (no-lag plant:  8.3 %); wo·tau 2.0, wo·(tau+d) 2.0
+        peak gyro / peak setpoint: log 1.073 (IQR 1.05–1.15) | model as coded 1.031 (IQR 1.01–1.06) | motor-pole variant 1.005 (IQR 0.99–1.04) | share > 1.10: log 43 % / coded 21 % / mp 14 %
+  pitch 13 moves: plant fit b_acc  100.9, tau 48.0 ms, delay  0.0 ms (b_acc/tau = 0.50·b0), replay err  4.7 % of peak (no-lag plant: 21.9 %); wo·tau 4.8, wo·(tau+d) 4.8
+        peak gyro / peak setpoint: log 0.990 (IQR 0.96–1.11) | model as coded 1.002 (IQR 0.94–1.10) | motor-pole variant 0.983 (IQR 0.92–1.08) | share > 1.10: log 31 % / coded 23 % / mp 23 %
+
+### Air64_b11_z3_in__on_btfl_003: AIR65 R wc 97/97 wo 110/110 b0 8964/5378, PID 3205 Hz, log 791 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  7 moves: plant fit b_acc  172.1, tau  8.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  6.3 % of peak (no-lag plant:  6.9 %); wo·tau 0.9, wo·(tau+d) 0.9
+        peak gyro / peak setpoint: log 1.094 (IQR 1.03–1.15) | model as coded 1.075 (IQR 1.02–1.12) | motor-pole variant 1.051 (IQR 1.00–1.06) | share > 1.10: log 29 % / coded 43 % / mp 14 %
+  pitch 18 moves: plant fit b_acc  112.4, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 1.90·b0), replay err  6.2 % of peak (no-lag plant:  7.9 %); wo·tau 1.2, wo·(tau+d) 1.2
+        peak gyro / peak setpoint: log 1.083 (IQR 0.98–1.19) | model as coded 1.053 (IQR 0.98–1.13) | motor-pole variant 0.990 (IQR 0.93–1.09) | share > 1.10: log 44 % / coded 33 % / mp 22 %
+
+### Air64_b11_z3_in__on_zyaw_50_higher_yaw_wc_wo_btfl_005: AIR65 R wc 97/97 wo 110/110 b0 8964/5378, PID 3205 Hz, log 790 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  19 moves: plant fit b_acc  236.6, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err 12.9 % of peak (no-lag plant: 15.0 %); wo·tau 1.2, wo·(tau+d) 1.2
+        peak gyro / peak setpoint: log 1.099 (IQR 1.03–1.18) | model as coded 1.026 (IQR 0.99–1.04) | motor-pole variant 0.974 (IQR 0.94–1.00) | share > 1.10: log 47 % / coded 5 % / mp 0 %
+  pitch 29 moves: plant fit b_acc  142.0, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  9.6 % of peak (no-lag plant: 10.7 %); wo·tau 1.2, wo·(tau+d) 1.2
+        peak gyro / peak setpoint: log 1.155 (IQR 1.04–1.21) | model as coded 1.059 (IQR 0.98–1.10) | motor-pole variant 1.007 (IQR 0.96–1.05) | share > 1.10: log 66 % / coded 24 % / mp 7 %
+
+### Notch_off_btfl_001: Petrel75 wc 122/122 wo 128/128 b0 4565/2926, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  27 moves: plant fit b_acc  142.4, tau 48.0 ms, delay  0.0 ms (b_acc/tau = 0.65·b0), replay err  4.3 % of peak (no-lag plant: 10.8 %); wo·tau 6.1, wo·(tau+d) 6.1
+        peak gyro / peak setpoint: log 1.067 (IQR 0.99–1.13) | model as coded 1.036 (IQR 0.97–1.07) | motor-pole variant 1.030 (IQR 0.97–1.06) | share > 1.10: log 37 % / coded 11 % / mp 11 %
+  pitch 25 moves: plant fit b_acc   77.2, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  5.7 % of peak (no-lag plant:  6.5 %); wo·tau 1.4, wo·(tau+d) 1.4
+        peak gyro / peak setpoint: log 1.052 (IQR 1.01–1.14) | model as coded 1.018 (IQR 0.96–1.06) | motor-pole variant 0.982 (IQR 0.94–1.03) | share > 1.10: log 32 % / coded 16 % / mp 12 %
+
+### Notch_on_btfl_001: Petrel75 wc 122/122 wo 128/128 b0 4565/2926, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  11 moves: plant fit b_acc  109.6, tau 48.0 ms, delay  5.0 ms (b_acc/tau = 0.50·b0), replay err  4.5 % of peak (no-lag plant: 15.4 %); wo·tau 6.1, wo·(tau+d) 6.8
+        peak gyro / peak setpoint: log 1.056 (IQR 1.01–1.16) | model as coded 1.006 (IQR 0.97–1.09) | motor-pole variant 1.015 (IQR 0.98–1.07) | share > 1.10: log 36 % / coded 18 % / mp 18 %
+  pitch 19 moves: plant fit b_acc   35.1, tau  5.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  4.9 % of peak (no-lag plant:  5.3 %); wo·tau 0.6, wo·(tau+d) 0.6
+        peak gyro / peak setpoint: log 1.045 (IQR 0.98–1.12) | model as coded 1.032 (IQR 0.97–1.07) | motor-pole variant 0.976 (IQR 0.94–1.01) | share > 1.10: log 32 % / coded 16 % / mp 5 %
+
+### Pavo20_pro_b11x8_btfl_001: Pavo20 Pro II wc 72/72 wo 110/110 b0 3221/2013, PID 4000 Hz, log 986 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  21 moves: plant fit b_acc  239.6, tau 48.0 ms, delay  0.0 ms (b_acc/tau = 1.55·b0), replay err  6.7 % of peak (no-lag plant: 12.0 %); wo·tau 5.3, wo·(tau+d) 5.3
+        peak gyro / peak setpoint: log 1.095 (IQR 1.05–1.22) | model as coded 1.008 (IQR 0.94–1.07) | motor-pole variant 0.991 (IQR 0.94–1.05) | share > 1.10: log 48 % / coded 19 % / mp 19 %
+  pitch 12 moves: plant fit b_acc   67.9, tau 27.0 ms, delay  0.0 ms (b_acc/tau = 1.25·b0), replay err  4.5 % of peak (no-lag plant: 12.6 %); wo·tau 3.0, wo·(tau+d) 3.0
+        peak gyro / peak setpoint: log 1.014 (IQR 0.96–1.20) | model as coded 0.981 (IQR 0.95–1.12) | motor-pole variant 0.965 (IQR 0.93–1.09) | share > 1.10: log 33 % / coded 33 % / mp 17 %
+
+### Petral75_b11_x5_b0_fixed_scale_100_btfl_3: Petrel75 wc 95/95 wo 100/100 b0 4458/2858, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  27 moves: plant fit b_acc  200.6, tau 36.0 ms, delay  0.0 ms (b_acc/tau = 1.25·b0), replay err  6.6 % of peak (no-lag plant: 16.0 %); wo·tau 3.6, wo·(tau+d) 3.6
+        peak gyro / peak setpoint: log 1.109 (IQR 0.98–1.23) | model as coded 1.020 (IQR 0.93–1.16) | motor-pole variant 1.004 (IQR 0.92–1.14) | share > 1.10: log 52 % / coded 37 % / mp 33 %
+  pitch 17 moves: plant fit b_acc  128.6, tau 36.0 ms, delay  0.0 ms (b_acc/tau = 1.25·b0), replay err  5.0 % of peak (no-lag plant: 16.0 %); wo·tau 3.6, wo·(tau+d) 3.6
+        peak gyro / peak setpoint: log 1.045 (IQR 0.98–1.18) | model as coded 1.007 (IQR 0.91–1.09) | motor-pole variant 0.993 (IQR 0.89–1.07) | share > 1.10: log 29 % / coded 24 % / mp 18 %
+
+### Petral75_b11_x5_b0_linear_scale_85_btfl_2: Petrel75 wc 95/95 wo 100/100 b0 4458/2858, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  24 moves: plant fit b_acc  169.4, tau 20.0 ms, delay  0.0 ms (b_acc/tau = 1.90·b0), replay err  6.0 % of peak (no-lag plant: 11.8 %); wo·tau 2.0, wo·(tau+d) 2.0
+        peak gyro / peak setpoint: log 1.047 (IQR 0.96–1.15) | model as coded 0.999 (IQR 0.89–1.08) | motor-pole variant 0.973 (IQR 0.89–1.06) | share > 1.10: log 42 % / coded 21 % / mp 12 %
+  pitch 30 moves: plant fit b_acc  102.9, tau 15.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  6.5 % of peak (no-lag plant:  9.9 %); wo·tau 1.5, wo·(tau+d) 1.5
+        peak gyro / peak setpoint: log 1.095 (IQR 1.01–1.19) | model as coded 1.038 (IQR 0.98–1.09) | motor-pole variant 1.001 (IQR 0.95–1.05) | share > 1.10: log 47 % / coded 23 % / mp 10 %
+
+### Petral75_b11_x5_b0_sqrt_scale_85_btfl_1: Petrel75 wc 95/95 wo 100/100 b0 4458/2858, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.0, pidsum 500
+  roll  29 moves: plant fit b_acc  117.7, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  8.5 % of peak (no-lag plant: 10.7 %); wo·tau 1.1, wo·(tau+d) 1.1
+        peak gyro / peak setpoint: log 1.110 (IQR 0.98–1.18) | model as coded 1.041 (IQR 0.96–1.07) | motor-pole variant 0.993 (IQR 0.92–1.02) | share > 1.10: log 55 % / coded 21 % / mp 10 %
+  pitch 13 moves: plant fit b_acc   89.2, tau 48.0 ms, delay  5.0 ms (b_acc/tau = 0.65·b0), replay err  5.1 % of peak (no-lag plant: 21.8 %); wo·tau 4.8, wo·(tau+d) 5.3
+        peak gyro / peak setpoint: log 1.060 (IQR 0.94–1.13) | model as coded 1.050 (IQR 0.90–1.13) | motor-pole variant 1.032 (IQR 0.91–1.13) | share > 1.10: log 38 % / coded 31 % / mp 31 %
+
+### Petrel75_partial_wash_btfl_004: Petrel75 wc 114/114 wo 120/120 b0 4565/2926, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  5 moves: plant fit b_acc  120.5, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  4.3 % of peak (no-lag plant:  7.0 %); wo·tau 1.3, wo·(tau+d) 1.3
+        peak gyro / peak setpoint: log 0.994 (IQR 0.86–1.23) | model as coded 0.954 (IQR 0.88–1.13) | motor-pole variant 0.958 (IQR 0.89–1.10) | share > 1.10: log 40 % / coded 40 % / mp 20 %
+  pitch 9 moves: plant fit b_acc   56.2, tau  8.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  4.3 % of peak (no-lag plant:  5.2 %); wo·tau 1.0, wo·(tau+d) 1.0
+        peak gyro / peak setpoint: log 1.057 (IQR 0.93–1.16) | model as coded 1.031 (IQR 0.94–1.10) | motor-pole variant 0.989 (IQR 0.92–1.06) | share > 1.10: log 33 % / coded 33 % / mp 11 %
+
+### Petrel_z3inhbt_off_full_throttle_btfl_001: Petrel75 wc 117/117 wo 123/123 b0 4565/2926, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  10 moves: plant fit b_acc  219.1, tau 20.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  4.2 % of peak (no-lag plant:  5.6 %); wo·tau 2.5, wo·(tau+d) 2.5
+        peak gyro / peak setpoint: log 1.040 (IQR 1.02–1.06) | model as coded 0.999 (IQR 0.99–1.01) | motor-pole variant 0.986 (IQR 0.97–1.00) | share > 1.10: log 20 % / coded 0 % / mp 0 %
+  pitch 12 moves: plant fit b_acc   56.2, tau  8.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  3.5 % of peak (no-lag plant:  4.1 %); wo·tau 1.0, wo·(tau+d) 1.0
+        peak gyro / peak setpoint: log 1.070 (IQR 1.01–1.11) | model as coded 1.046 (IQR 1.01–1.11) | motor-pole variant 1.014 (IQR 0.96–1.05) | share > 1.10: log 33 % / coded 33 % / mp 17 %
+
+### Petrel_z3inhbt_on_full_throttle_btfl_002: Petrel75 wc 117/117 wo 123/123 b0 4565/2926, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  13 moves: plant fit b_acc   95.4, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 1.90·b0), replay err  4.3 % of peak (no-lag plant:  6.0 %); wo·tau 1.4, wo·(tau+d) 1.4
+        peak gyro / peak setpoint: log 1.035 (IQR 1.00–1.06) | model as coded 1.026 (IQR 1.00–1.04) | motor-pole variant 0.982 (IQR 0.96–1.00) | share > 1.10: log 15 % / coded 8 % / mp 0 %
+  pitch 7 moves: plant fit b_acc   77.2, tau 11.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  4.0 % of peak (no-lag plant:  5.0 %); wo·tau 1.4, wo·(tau+d) 1.4
+        peak gyro / peak setpoint: log 1.066 (IQR 1.03–1.08) | model as coded 1.050 (IQR 1.00–1.06) | motor-pole variant 1.002 (IQR 0.97–1.01) | share > 1.10: log 14 % / coded 14 % / mp 0 %
+
+### Petrel_z3inhbt_on_tradeoff_btfl_002: Petrel75 wc 124/124 wo 130/130 b0 4565/2926, PID 4000 Hz, log 1009 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  28 moves: plant fit b_acc  205.4, tau 36.0 ms, delay  0.0 ms (b_acc/tau = 1.25·b0), replay err  6.2 % of peak (no-lag plant: 10.3 %); wo·tau 4.7, wo·(tau+d) 4.7
+        peak gyro / peak setpoint: log 1.091 (IQR 1.00–1.14) | model as coded 1.020 (IQR 0.97–1.06) | motor-pole variant 1.004 (IQR 0.96–1.05) | share > 1.10: log 43 % / coded 4 % / mp 4 %
+  pitch 25 moves: plant fit b_acc   56.2, tau  8.0 ms, delay  0.0 ms (b_acc/tau = 2.40·b0), replay err  6.1 % of peak (no-lag plant:  7.2 %); wo·tau 1.0, wo·(tau+d) 1.0
+        peak gyro / peak setpoint: log 1.086 (IQR 1.00–1.15) | model as coded 1.016 (IQR 0.99–1.06) | motor-pole variant 0.986 (IQR 0.96–1.02) | share > 1.10: log 40 % / coded 16 % / mp 8 %
+
+### TH3_z3_inhbt_off_btfl_012: THIII+ Freestyle wc 81/81 wo 90/90 b0 4912/2947, PID 4000 Hz, log 1007 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  22 moves: plant fit b_acc   88.4, tau 36.0 ms, delay  0.0 ms (b_acc/tau = 0.50·b0), replay err  5.5 % of peak (no-lag plant: 25.6 %); wo·tau 3.2, wo·(tau+d) 3.2
+        peak gyro / peak setpoint: log 1.097 (IQR 0.97–1.31) | model as coded 1.057 (IQR 0.93–1.24) | motor-pole variant 1.028 (IQR 0.91–1.20) | share > 1.10: log 50 % / coded 36 % / mp 36 %
+  pitch 7 moves: plant fit b_acc  201.6, tau 36.0 ms, delay  0.0 ms (b_acc/tau = 1.90·b0), replay err  4.3 % of peak (no-lag plant:  7.2 %); wo·tau 3.2, wo·(tau+d) 3.2
+        peak gyro / peak setpoint: log 1.046 (IQR 1.03–1.15) | model as coded 0.997 (IQR 0.98–1.04) | motor-pole variant 0.974 (IQR 0.95–1.02) | share > 1.10: log 43 % / coded 14 % / mp 0 %
+
+### TH3_z3_inhbt_on_btfl_010: THIII+ Freestyle wc 81/81 wo 90/90 b0 4912/2947, PID 4000 Hz, log 1007 Hz, lpf 0, sigma 0.0, pidsum 1000
+  roll  13 moves: plant fit b_acc  114.9, tau 36.0 ms, delay  5.0 ms (b_acc/tau = 0.65·b0), replay err  5.7 % of peak (no-lag plant: 19.7 %); wo·tau 3.2, wo·(tau+d) 3.7
+        peak gyro / peak setpoint: log 1.117 (IQR 1.03–1.21) | model as coded 1.057 (IQR 1.01–1.11) | motor-pole variant 1.016 (IQR 1.00–1.12) | share > 1.10: log 62 % / coded 31 % / mp 31 %
+  pitch 25 moves: plant fit b_acc   44.2, tau 15.0 ms, delay 10.0 ms (b_acc/tau = 1.00·b0), replay err  4.7 % of peak (no-lag plant: 15.4 %); wo·tau 1.3, wo·(tau+d) 2.2
+        peak gyro / peak setpoint: log 1.046 (IQR 0.96–1.22) | model as coded 1.053 (IQR 0.93–1.14) | motor-pole variant 1.022 (IQR 0.86–1.08) | share > 1.10: log 36 % / coded 32 % / mp 24 %
+
+### Yaw_spin_on_btfl_001: Petrel75 wc 114/114 wo 120/120 b0 4565/2926, PID 4000 Hz, log 1008 Hz, lpf 0, sigma 0.3, pidsum 1000
+  roll  7 moves: plant fit b_acc   82.2, tau 36.0 ms, delay  0.0 ms (b_acc/tau = 0.50·b0), replay err  4.6 % of peak (no-lag plant: 18.5 %); wo·tau 4.3, wo·(tau+d) 4.3
+        peak gyro / peak setpoint: log 1.138 (IQR 1.04–1.19) | model as coded 1.095 (IQR 1.01–1.13) | motor-pole variant 1.067 (IQR 1.01–1.10) | share > 1.10: log 71 % / coded 43 % / mp 29 %
+  pitch 6 moves: plant fit b_acc   58.5, tau 20.0 ms, delay  0.0 ms (b_acc/tau = 1.00·b0), replay err  4.8 % of peak (no-lag plant: 14.1 %); wo·tau 2.4, wo·(tau+d) 2.4
+        peak gyro / peak setpoint: log 1.127 (IQR 1.11–1.17) | model as coded 1.062 (IQR 1.02–1.08) | motor-pole variant 1.018 (IQR 0.99–1.04) | share > 1.10: log 83 % / coded 17 % / mp 17 %

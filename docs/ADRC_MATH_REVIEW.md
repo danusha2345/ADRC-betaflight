@@ -92,6 +92,43 @@ the D gain). τ is obtainable from the same step-response logs the b0 fitter use
 is at its 4-bit ceiling, so the field would have to replace one (`adrc_td_hz`, see §5). **Status: model only;
 needs a tester A/B on one craft with debug_mode = ADRC before anything else.**
 
+### 2b. Checked against the logs (2026-10-01)
+
+23 tester logs with `debug_mode = ADRC` (Petrel75 ×17, Air65 ×2, THIII+ ×2, AOS 3.5, Pavo20; all 8ksal8's,
+b11-exp8…b11), 726 stick moves (setpoint change ≥ 150 °/s within 100 ms, gate open). For every move the loop model
+— the law exactly as coded with that log's wc/wo/b0, `adrc_gyro_lpf_hz`, `adrc_sigma_decay` and pidsum limit — is
+driven by the logged setpoint from the logged ESO state (z2, z3, u) against the lagged plant, and the plant
+(b_acc, τ, delay) is chosen per log and axis to minimise the median RMS error between simulated and logged gyro
+(`docs/tools/adrc_math_review/log_check3.py`, output in `logcheck3_out.txt`). Peak ratio = (peak gyro − start) /
+(peak setpoint − start) over the move.
+
+| | median | IQR |
+|---|---|---|
+| logged peak ratio | **1.085** | 1.05–1.12 |
+| model as coded, fitted lagged plant | 1.033 | 1.02–1.05 |
+| motor-pole variant, same plant and moves | 0.996 | 0.98–1.02 |
+| replay error, lagged plant | 5.6 % of peak | 4.7–6.5 % |
+| replay error, no-lag plant (gain re-fitted) | 7.0 % | 6.1–8.3 % — lagged better in 45 of 46 log/axis cases |
+| fitted τ | 15 ms | 11–36 ms |
+| wo·τ at the flown wo | 1.5 | 1.2–3.2 |
+
+Per craft (roll / pitch, logged → coded → motor-pole): Petrel75 1.11/1.07 → 1.03/1.03 → 1.00/0.99;
+Air65 1.10/1.12 → 1.05/1.06 → 1.01/1.00; THIII+ 1.11/1.05 → 1.06/1.03 → 1.02/1.00; AOS 3.5 1.07/0.99 → 1.03/1.00 →
+1.01/0.98; Pavo20 1.10/1.01 → 1.01/0.98 → 0.99/0.97. Share of moves with more than 10 % overshoot: logged 40–55 %,
+coded model 20–30 %, motor-pole variant 10–15 %.
+
+Reading: the flown tunes do carry 5–12 % overshoot on ordinary stick moves (less than the 8–18 % of the ideal step
+in §2, as a ramp excites less); a plant with a motor lag explains the logged responses better than one without,
+consistently; the model as coded reproduces the shape but under-predicts the overshoot by ~0.05 (the gyro filter
+chain, dyn notch, RPM filter and ESC are not in it, and the grid mostly chose zero extra delay); and the motor-pole
+law, on the same plant and the same inputs, removes most of what the model does reproduce. What the logs cannot do
+is pin τ: stick moves have no energy above ~5 Hz, so b_acc and τ trade off along a ridge (the fitted b_acc/τ runs
+0.5–2.4 × the configured b0, often at the grid edge). A Betaflight **chirp** flight (upstream's in-flight system
+identification, now also on the angle controller via #15196) on one ADRC craft would give the plant transfer
+function directly and settle τ, b0 and the delay in one log. Also worth noting: all 23 logs run
+`adrc_gyro_lpf_hz = 0`, and 17 of them `adrc_sigma_decay = 0` — the tester already flies the pure integrator and no
+pre-ESO filter.
+
 ## 3. Stability ceiling and noise: what wc, wo and b0 actually trade
 
 Loop margins (plant as above, gyro lpf1 250 + lpf2 500 + ADRC pt2 150, b0 matched):
