@@ -1,0 +1,191 @@
+u/(-y) numerator  : s**2*(3*w_c**2*w_o + 6*w_c*w_o**2 + w_o**3) + s*(3*w_c**2*w_o**2 + 2*w_c*w_o**3) + w_c**2*w_o**3
+u/(-y) denominator: b_0*s**3 + s**2*(2*b_0*w_c + 3*b_0*w_o) + s*(b_0*w_c**2 + 6*b_0*w_c*w_o + 3*b_0*w_o**2)
+equivalent PID:  Kp = w_c*w_o**2*(3*w_c + 2*w_o)/(b_0*(w_c**2 + 6*w_c*w_o + 3*w_o**2))   Ki = w_c**2*w_o**3/(b_0*(w_c**2 + 6*w_c*w_o + 3*w_o**2))   Kd = w_o*(3*w_c**2 + 6*w_c*w_o + w_o**2)/(b_0*(w_c**2 + 6*w_c*w_o + 3*w_o**2))
+filter: s^2 + a1 s + a0,  a1 = 2*w_c + 3*w_o   a0 = w_c**2 + 6*w_c*w_o + 3*w_o**2
+  default 60/100/2000: Kp=1.638 Ki=25.86 Kd=0.0408  -> BF-style P=51 I=106 D=77; filter wn=264 rad/s (42 Hz) zeta=0.80
+  Air65 99/110/5378: Kp=1.033 Ki=21.77 Kd=0.0196  -> BF-style P=32 I=89 D=37; filter wn=334 rad/s (53 Hz) zeta=0.79
+  5in 103/140/3000: Kp=2.542 Ki=62.23 Kd=0.0413  -> BF-style P=79 I=255 D=78; filter wn=395 rad/s (63 Hz) zeta=0.79
+
+== stability margins; plant w' = b_acc T, tau T' = u - T; b0 = b_acc/tau (matched); gyro lpf1 250 Hz + lpf2 500 Hz + ADRC pt2 150 Hz
+                  tune tau ms  PM deg  GM dB  f_gc Hz
+             (60, 100)     10    74.9   12.1      5.2
+             (60, 100)     20    60.1    9.8     10.6
+             (60, 100)     30    47.2    8.9     11.9
+             (99, 110)     10    73.3   10.3      9.5
+             (99, 110)     20    47.8    8.2     14.9
+             (99, 110)     30    37.7    7.5     15.9
+            (103, 140)     10    67.0    9.2     13.4
+            (103, 140)     20    41.6    7.4     18.0
+            (103, 140)     30    33.0    6.7     18.8
+            (122, 128)     10    65.8    9.1     13.7
+            (122, 128)     20    40.7    7.3     18.3
+            (122, 128)     30    32.2    6.6     19.1
+            (140, 150)     10    57.5    8.1     17.7
+            (140, 150)     20    34.9    6.5     21.6
+            (140, 150)     30    27.6    5.8     22.3
+
+== b0 mismatch at 60/100, tau 20 ms (b0 fixed 2000, plant b_acc varied)
+  b/b0 = 0.5: PM   56.2 deg, GM  15.8 dB, f_gc    4.6 Hz
+  b/b0 = 0.7: PM   64.0 deg, GM  12.9 dB, f_gc    6.7 Hz
+  b/b0 = 1.0: PM   60.1 deg, GM   9.8 dB, f_gc   10.6 Hz
+  b/b0 = 1.5: PM   42.8 deg, GM   6.3 dB, f_gc   16.9 Hz
+  b/b0 = 2.0: PM   26.6 deg, GM   3.8 dB, f_gc   22.0 Hz
+  b/b0 = 3.0: PM    2.2 deg, GM   0.3 dB, f_gc   29.9 Hz
+
+== gyro-noise gain into pidsum, per path (white noise through gyro filters + ADRC pt2), RMS of u per unit RMS noise
+  default      P(kp z1/b0)=0.230  D(kd z2/b0)=0.537  I(z3/b0)=0.225  total=0.850   | classic BF P45 D30 (D via 100 Hz pt1): P=0.349 D=1.774
+       10 Hz: |P|=1.74 |D|=1.84 |I|=0.84 |u/y|=2.66
+       20 Hz: |P|=1.80 |D|=3.12 |I|=1.02 |u/y|=4.77
+       50 Hz: |P|=1.47 |D|=4.10 |I|=1.16 |u/y|=6.41
+      100 Hz: |P|=0.71 |D|=2.29 |I|=0.63 |u/y|=3.59
+  Air65        P(kp z1/b0)=0.232  D(kd z2/b0)=0.348  I(z3/b0)=0.151  total=0.551   | classic BF P45 D30 (D via 100 Hz pt1): P=0.349 D=1.774
+       10 Hz: |P|=1.68 |D|=1.30 |I|=0.48 |u/y|=1.34
+       20 Hz: |P|=1.71 |D|=1.77 |I|=0.43 |u/y|=2.39
+       50 Hz: |P|=1.53 |D|=2.56 |I|=0.49 |u/y|=4.01
+      100 Hz: |P|=0.81 |D|=1.66 |I|=0.31 |u/y|=2.67
+  5in 103/140  P(kp z1/b0)=0.493  D(kd z2/b0)=0.886  I(z3/b0)=0.442  total=1.414   | classic BF P45 D30 (D via 100 Hz pt1): P=0.349 D=1.774
+       10 Hz: |P|=3.32 |D|=2.53 |I|=1.34 |u/y|=2.98
+       20 Hz: |P|=3.38 |D|=3.68 |I|=1.18 |u/y|=5.14
+       50 Hz: |P|=3.26 |D|=6.22 |I|=1.49 |u/y|=9.59
+      100 Hz: |P|=1.95 |D|=4.77 |I|=1.08 |u/y|=7.49
+
+== setpoint step 100 deg/s at 50 ms, default 60/100/2000, plant tau 20 ms matched; rise 10-90 %, overshoot
+  F_bf=     0: rise  68.7 ms, overshoot  10.5 deg/s, settle(2%) 233.1 ms
+  F_bf=   120: rise  68.7 ms, overshoot  10.5 deg/s, settle(2%) 232.9 ms
+  F_bf=   436: rise  68.7 ms, overshoot  10.5 deg/s, settle(2%) 232.9 ms
+== same, Air65 99/110/5378, tau 10 ms
+  F_bf=     0: rise  52.2 ms, overshoot  16.0 deg/s
+  F_bf=   120: rise  52.2 ms, overshoot  16.0 deg/s
+== disturbance step 20000 deg/s^2 (torque bump) at 0.2 s, no setpoint; default tune; peak and 90 % recovery
+  default : peak  497.7 deg/s at 299.9 ms, back within 10 % after 299.9 ms
+  Air65   : peak  257.9 deg/s at 36.4 ms, back within 10 % after 117.9 ms
+  wo 150  : peak  469.4 deg/s at 299.9 ms, back within 10 % after 299.9 ms
+== max wc with PM >= 40 deg (wo = 1.2 wc, b0 matched, pt2 150 Hz), vs motor time constant tau
+  tau    5 ms (motor pole   200 rad/s): max wc  255  (wc*tau = 1.28; PM 47 deg GM 6.1 dB)
+  tau   10 ms (motor pole   100 rad/s): max wc  175  (wc*tau = 1.75; PM 41 deg GM 6.3 dB)
+  tau   15 ms (motor pole    67 rad/s): max wc  135  (wc*tau = 2.02; PM 41 deg GM 6.9 dB)
+  tau   20 ms (motor pole    50 rad/s): max wc  110  (wc*tau = 2.20; PM 42 deg GM 7.4 dB)
+  tau   30 ms (motor pole    33 rad/s): max wc   85  (wc*tau = 2.55; PM 41 deg GM 8.0 dB)
+  tau   40 ms (motor pole    25 rad/s): max wc   70  (wc*tau = 2.80; PM 41 deg GM 8.5 dB)
+
+== noise: classic BF defaults P45 D30 with dterm lpf1 75 Hz (dyn min) + lpf2 150 Hz pt1, vs ADRC; RMS per unit white gyro noise
+  classic: P=0.349 D=0.881 P+D=1.181
+  ADRC default : total=0.850
+  Air65        : total=0.551
+  5in 103/140  : total=1.414
+
+== setpoint response vs wo (wc 60, b0 2000, tau 20 ms matched): the ESO must track f = -w'/tau during the step
+  wo  60 (wo*tau 1.2): rise  88.2 ms, overshoot  14.4 %
+  wo  80 (wo*tau 1.6): rise  75.9 ms, overshoot  12.3 %
+  wo 100 (wo*tau 2.0): rise  68.7 ms, overshoot  10.5 %
+  wo 150 (wo*tau 3.0): rise  60.1 ms, overshoot   7.1 %
+  wo 200 (wo*tau 4.0): rise  56.4 ms, overshoot   4.9 %
+  wo 300 (wo*tau 6.0): rise  53.8 ms, overshoot   2.4 %
+   same at tau 10 ms:
+  wo  60 (wo*tau 0.6): rise 109.0 ms, overshoot  22.3 %
+  wo 100 (wo*tau 1.0): rise  80.1 ms, overshoot  17.6 %
+  wo 150 (wo*tau 1.5): rise  66.8 ms, overshoot  13.3 %
+
+== feedforward with a realistic stick ramp (0 -> 300 deg/s over 40 ms), default tune, tau 20 ms: lag of rate behind setpoint at end of ramp, overshoot
+  F=  0: rate at end of ramp   76.2 of 300 (lag 223.8), overshoot   30.2, peak |u|   141
+  F= 60: rate at end of ramp   93.9 of 300 (lag 206.1), overshoot   30.4, peak |u|   151
+  F=120: rate at end of ramp  111.6 of 300 (lag 188.4), overshoot   31.1, peak |u|   160
+  F=200: rate at end of ramp  135.3 of 300 (lag 164.7), overshoot   32.8, peak |u|   208
+  F=300: rate at end of ramp  164.9 of 300 (lag 135.1), overshoot   37.0, peak |u|   311
+
+== disturbance step 2000 deg/s^2 (10 % of authority at b_acc 40) at 0.2 s; peak and 90 % recovery
+  default : peak  28.2 deg/s at 24.2 ms, within 10 % of peak after 131.2 ms
+  wo 150  : peak  21.6 deg/s at 17.5 ms, within 10 % of peak after  96.8 ms
+  Air65   : peak  25.8 deg/s at 36.4 ms, within 10 % of peak after 117.9 ms
+
+== observer gain |z1/y| peak (P path resonance) and |z2/y| peak
+  wo 80: |z1/y|max=0.98 at 125 rad/s;  |z2/y|max=54 at 217 rad/s (= 0.68 wo)
+  wo 100: |z1/y|max=1.01 at 152 rad/s;  |z2/y|max=71 at 253 rad/s (= 0.71 wo)
+  wo 150: |z1/y|max=1.05 at 211 rad/s;  |z2/y|max=115 at 333 rad/s (= 0.76 wo)
+== model-assisted ESO (motor pole in the observer): step 100 deg/s, wc 60 / wo 100 / b0 2000, plant tau 20 ms
+  plain (current code)  : rise  69.0 ms, overshoot  10.4 %
+  tau_model = tau       : rise  52.8 ms, overshoot  -0.0 %
+  tau_model = 0.7 tau   : rise  39.2 ms, overshoot  -0.1 %
+  tau_model = 1.5 tau   : rise  59.8 ms, overshoot   2.9 %
+  tau_model = 2 tau     : rise  62.4 ms, overshoot   4.7 %
+   same, plant tau 10 ms (b_acc 20):
+  plain                 : rise  80.4 ms, overshoot  17.6 %
+  tau_model = tau       : rise  52.1 ms, overshoot  -0.0 %
+  tau_model = 2 tau     : rise  68.6 ms, overshoot   7.6 %
+   Air65 99/110/5378, plant tau 8 ms:
+  plain                 : rise  55.9 ms, overshoot  18.5 %
+  tau_model = tau       : rise  30.0 ms, overshoot  -0.0 %
+
+== disturbance 2000 deg/s^2 with MESO (wc 60/wo 100, tau 20 ms): peak, z3 at end (should be ~ -2000 for the true disturbance only)
+  plain           : peak  28.1 deg/s, z3(end)    99105
+  tau_model = tau : peak  30.8 deg/s, z3(end)    98667
+
+== continuous-time cross-check (RK45, ideal sampling-free loop) of the plain law: overshoot vs wo at tau 20 ms
+  wo 100: overshoot  10.3 %   (discrete sim gave  10.4 %)
+  wo 150: overshoot   7.1 %   (discrete sim gave   7.1 %)
+  wo 300: overshoot   2.5 %   (discrete sim gave   2.4 %)
+
+== pre-ESO pt2 (adrc_gyro_lpf_hz 150): noise RMS gain and phase margin with / without, under default gyro filters and under loose ones (lpf1 off, lpf2 500)
+  gyro lpf1 250 + lpf2 500   pt2 150 Hz: noise gain 0.850, PM 60.1 deg, GM 9.8 dB
+  gyro lpf1 250 + lpf2 500   pt2   0 Hz: noise gain 0.960, PM 65.3 deg, GM 12.3 dB
+  lpf1 off, lpf2 500         pt2 150 Hz: noise gain 0.891, PM 62.5 deg, GM 10.8 dB
+  lpf1 off, lpf2 500         pt2   0 Hz: noise gain 1.052, PM 67.7 deg, GM 13.8 dB
+== model-assisted ESO (motor pole in the observer): step 100 deg/s, wc 60 / wo 100 / b0 2000, plant tau 20 ms
+  plain (current code)  : rise  69.0 ms, overshoot  10.4 %
+  tau_model = tau       : rise  52.8 ms, overshoot  -0.0 %
+  tau_model = 0.7 tau   : rise  39.2 ms, overshoot  -0.1 %
+  tau_model = 1.5 tau   : rise  59.8 ms, overshoot   2.9 %
+  tau_model = 2 tau     : rise  62.4 ms, overshoot   4.7 %
+   same, plant tau 10 ms (b_acc 20):
+  plain                 : rise  80.4 ms, overshoot  17.6 %
+  tau_model = tau       : rise  52.1 ms, overshoot  -0.0 %
+  tau_model = 2 tau     : rise  68.6 ms, overshoot   7.6 %
+   Air65 99/110/5378, plant tau 8 ms:
+  plain                 : rise  55.9 ms, overshoot  18.5 %
+  tau_model = tau       : rise  30.0 ms, overshoot  -0.0 %
+
+== disturbance 2000 deg/s^2 with MESO (wc 60/wo 100, tau 20 ms): peak, z3 at end (should be ~ -2000 for the true disturbance only)
+  plain           : peak  28.1 deg/s, z3(end)    99105
+  tau_model = tau : peak  30.8 deg/s, z3(end)    98667
+
+== continuous-time cross-check (RK45, ideal sampling-free loop) of the plain law: overshoot vs wo at tau 20 ms
+  wo 100: overshoot  10.3 %   (discrete sim gave  10.4 %)
+  wo 150: overshoot   7.1 %   (discrete sim gave   7.1 %)
+  wo 300: overshoot   2.5 %   (discrete sim gave   2.4 %)
+
+== pre-ESO pt2 (adrc_gyro_lpf_hz 150): noise RMS gain and phase margin with / without, under default gyro filters and under loose ones (lpf1 off, lpf2 500)
+  gyro lpf1 250 + lpf2 500   pt2 150 Hz: noise gain 0.850, PM 60.1 deg, GM 9.8 dB
+  gyro lpf1 250 + lpf2 500   pt2   0 Hz: noise gain 0.960, PM 65.3 deg, GM 12.3 dB
+  lpf1 off, lpf2 500         pt2 150 Hz: noise gain 0.891, PM 62.5 deg, GM 10.8 dB
+  lpf1 off, lpf2 500         pt2   0 Hz: noise gain 1.052, PM 67.7 deg, GM 13.8 dB
+== plain law: step overshoot / rise for flown tunes vs motor time constant (b0 matched = b_acc/tau)
+        tune tau  8ms tau 12ms tau 20ms tau 30ms
+    (40, 70) 24.7%/140ms  19.4%/125ms  13.6%/111ms   9.9%/102ms
+    (70, 80) 22.2%/ 87ms  17.3%/ 77ms  12.1%/ 68ms   8.8%/ 62ms
+   (92, 120) 17.9%/ 56ms  13.5%/ 50ms   9.0%/ 45ms   6.2%/ 43ms
+  (106, 120) 17.6%/ 50ms  13.3%/ 45ms   8.9%/ 41ms   6.2%/ 38ms
+   (99, 110) 18.5%/ 56ms  14.0%/ 50ms   9.5%/ 45ms   6.7%/ 42ms
+  (103, 140) 16.3%/ 47ms  12.1%/ 43ms   7.9%/ 39ms   5.4%/ 37ms
+  (122, 128) 16.7%/ 44ms  12.5%/ 39ms   8.3%/ 36ms   5.8%/ 33ms
+   (60, 100) 20.3%/ 85ms  15.5%/ 77ms  10.4%/ 69ms   7.3%/ 65ms
+
+== margins and noise, plain vs motor-pole ESO (tau_model = tau), b0 matched
+      tune   tau | plain PM    GM  noise |  MESO PM    GM  noise
+ (60, 100)   10ms |     74.9  12.1  0.850 |     51.6  14.3  0.475
+ (60, 100)   20ms |     60.1   9.8  0.850 |     45.1  10.9  0.651
+ (60, 100)   30ms |     47.2   8.9  0.850 |     38.7   9.6  0.716
+ (99, 110)   10ms |     73.3  10.3  1.483 |     48.3  10.8  1.126
+ (99, 110)   20ms |     47.8   8.2  1.483 |     36.4   8.4  1.295
+ (99, 110)   30ms |     37.7   7.5  1.483 |     30.7   7.5  1.356
+(103, 140)   10ms |     67.0   9.2  2.122 |     44.8  10.1  1.608
+(103, 140)   20ms |     41.6   7.4  2.122 |     32.9   7.7  1.855
+(103, 140)   30ms |     33.0   6.7  2.122 |     27.6   6.9  1.942
+(140, 150)   10ms |     57.5   8.1  3.012 |     38.8   8.2  2.532
+(140, 150)   20ms |     34.9   6.5  3.012 |     27.1   6.4  2.761
+(140, 150)   30ms |     27.6   5.8  3.012 |     22.7   5.7  2.843
+
+== MESO with b0 mismatch (60/100, tau 20 ms, tau_model exact): overshoot and PM
+  b/b0 0.7: MESO overshoot   4.6 %, PM  47.7 (plain PM  64.0)
+  b/b0 1.0: MESO overshoot  -0.0 %, PM  45.1 (plain PM  60.1)
+  b/b0 1.5: MESO overshoot  -0.0 %, PM  36.8 (plain PM  42.8)
+  b/b0 2.0: MESO overshoot  -0.0 %, PM  27.1 (plain PM  26.6)
