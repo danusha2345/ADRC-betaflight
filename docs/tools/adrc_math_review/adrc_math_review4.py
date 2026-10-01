@@ -12,7 +12,7 @@ for (wc,wo) in [(40,70),(70,80),(92,120),(106,120),(99,110),(103,140),(122,128),
 
 def controller_meso(wc, wo, b0, inv_tau, sigma=0.3, gyro_lpf_hz=150.0, dt=DT):
     kp, kd = wc*wc, 2*wc - inv_tau; b1,b2,b3 = 3*wo, 3*wo**2, wo**3
-    om = 2*np.pi*gyro_lpf_hz*CUT_PT2*dt; k = om/(om+1)
+    om = 2*np.pi*gyro_lpf_hz*CUT_PT2*dt; k = om/(om+1) if gyro_lpf_hz > 0 else 1.0
     n=6; A=np.zeros((n,n)); B=np.zeros((n,2))
     A[0,0]=1-k; B[0,0]=k; A[1,:]=A[0,:]*k; A[1,1]+=1-k; B[1,:]=B[0,:]*k
     e_x=np.zeros(n); e_x[2]=1; e_x-=A[1,:]; e_u=-B[1,:]

@@ -8,3 +8,7 @@
   `blackbox_decode --save-headers` (raw units). `log_check.py` holds the loaders; `nolag_fit.py` is the no-lag
   baseline with its gain re-fitted. `logcheck3_out.txt`, `logcheck3_rows.json`, `nolag_rows.json`: results on
   the 23 logs of 2026-10-01 (8ksal8, Petrel75 / Air65 / THIII+ / AOS 3.5 / Pavo20).
+- `chirp_id.py`: plant identification from a Betaflight chirp flight on ADRC (H = S_ry/S_ru, fits: lag+delay,
+  lag, two lags, lead+lag+delay), margins and closed-loop T from the measured plant, model comparison and step
+  prediction. `chirp_out2.txt`: 8ksal8's `US25` (THIII+ 2.5") chirp of 2026-10-01. (`adrc_math_review4.py`
+  updated: the motor-pole controller now handles `adrc_gyro_lpf_hz = 0`.)

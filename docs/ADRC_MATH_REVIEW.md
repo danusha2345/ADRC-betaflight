@@ -129,6 +129,37 @@ function directly and settle τ, b0 and the delay in one log. Also worth noting:
 `adrc_gyro_lpf_hz = 0`, and 14 of them `adrc_sigma_decay = 0` — the tester already flies the pure integrator and no
 pre-ESO filter.
 
+### 2c. Chirp confirmation (8ksal8, US25 = THIII+ 2.5", 2026-10-01)
+
+8ksal8 had already flown chirps on ADRC and posted two logs in #15400 (comment 5937565409). `US20` decodes to
+4.5 s only (75 % of iterations missing in the 16 MiB file) and is unusable; `US25` (wc 81 / wo 90 / b0
+6560/3936/2624, FIXED law, `adrc_gyro_lpf_hz` 0, σ 0, pidsum 1000, PID 4 kHz, log 1 kHz) has one 0.2→500 Hz,
+16 s sweep per axis. The sweep is exogenous, so H = S_ry/S_ru is an unbiased plant estimate even in closed loop
+(`docs/tools/adrc_math_review/chirp_id.py`, output `chirp_out2.txt`).
+
+| | roll | pitch |
+|---|---|---|
+| coherent band | 1.7–60 Hz | 1.7–66 Hz |
+| plant fit `b_acc·e^(−sd)/(s(1+sτ))` | b_acc 135 °/s²/unit, **τ 21.1 ms**, delay 2.2 ms (err 0.085; lag-only 0.24) | b_acc 93, **τ 21.4 ms**, delay 2.3 ms (err 0.060; lag-only 0.26) |
+| b_acc/τ vs configured b0 | 6413 vs 6560 (**0.98**) | 4345 vs 3936 (**1.10**) |
+| wo·τ, wc·(τ+d) | 1.9, 1.9 | 1.9, 1.9 |
+| margins with the *measured* plant | PM 55° at 10.8 Hz, GM 8.0 dB at 29.5 Hz | PM 49° at 13.3 Hz, GM 7.6 dB at 29.5 Hz |
+| closed-loop \|T\| measured / model as coded (3, 8, 20, 40 Hz) | 1.11/1.09, 0.43/0.44, 0.23/0.23, 0.086/0.087 | 1.08/1.06, 0.45/0.45, 0.28/0.28, 0.106/0.102 |
+| step overshoot on this plant: coded → motor-pole | 11.1 % → 0.2 % (rise 59 → 42 ms; PM 56° → 41°) | 9.6 % → 0.0 % (rise 59 → 43 ms; PM 51° → 39°) |
+
+So, on real hardware: the plant is an integrator plus one 21 ms motor lag and 2 ms of delay; **b0 = b_acc/τ to
+within 2–10 %** of what the tester flies; the loop model as coded reproduces the measured closed-loop response
+across the band; the margins sit where the wc·τ table of §3 puts them; and the flown wo·τ ≈ 1.9 is the regime
+where the plain law carries ~10 % step overshoot that the motor-pole law would remove.
+
+**Yaw is a different plant.** |H|·ω rises from 26 to 70 between 2 and 50 Hz with a positive phase at low
+frequency: a zero at ≈ 7.7 rad/s (reaction torque from motor acceleration, fast) ahead of the 26 ms lag and 2.6 ms
+delay (lead+lag+delay fit err 0.056; the lag-only model fails at 0.20). The second-order ESO model does not
+describe it, "b0 = b_acc/τ" is meaningless there, and the loop as flown (81/90/2624) is close to the edge: PM 11°
+at 59.7 Hz, GM 1.2 dB, closed-loop peak 2.8× at 65 Hz — the "60 Hz yaw line" the tester has reported since
+September is this resonance. Lower yaw wc/wo (the default yaw wo = 80 exists for a reason) or a yaw-specific
+model are the options; the motor-pole variant is not applicable to yaw in this form.
+
 ## 3. Stability ceiling and noise: what wc, wo and b0 actually trade
 
 Loop margins (plant as above, gyro lpf1 250 + lpf2 500 + ADRC pt2 150, b0 matched):
