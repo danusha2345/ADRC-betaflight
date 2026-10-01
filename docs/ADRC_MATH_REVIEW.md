@@ -85,7 +85,7 @@ Modelled effect, same tunes, τ_model = τ:
 | disturbance step 2000 °/s², peak | 28.1 °/s | 30.8 °/s |
 
 Robust to a wrong τ: τ_model = 2τ still halves the overshoot (4.7 %), 0.7τ gives none. With b0 under-estimated
-2× the overshoot stays at zero and the phase margin matches the plain law's (27°). Costs: 10–15° of phase margin
+2× the overshoot stays at zero and the phase margin matches the plain law's (27°). Costs: 8–15° of phase margin
 (the plain law was effectively detuned), one more number per craft, and the constraint 1/τ < 2wc (otherwise
 the effective D gain goes to zero; with wc = 60 that means τ > 8 ms, so whoops need wc ≥ 100 or a floor on
 the D gain). τ is obtainable from the same step-response logs the b0 fitter uses. Field slot: the PG version
@@ -126,7 +126,7 @@ is pin τ: stick moves have no energy above ~5 Hz, so b_acc and τ trade off alo
 0.5–2.4 × the configured b0, often at the grid edge). A Betaflight **chirp** flight (upstream's in-flight system
 identification, now also on the angle controller via #15196) on one ADRC craft would give the plant transfer
 function directly and settle τ, b0 and the delay in one log. Also worth noting: all 23 logs run
-`adrc_gyro_lpf_hz = 0`, and 17 of them `adrc_sigma_decay = 0` — the tester already flies the pure integrator and no
+`adrc_gyro_lpf_hz = 0`, and 14 of them `adrc_sigma_decay = 0` — the tester already flies the pure integrator and no
 pre-ESO filter.
 
 ## 3. Stability ceiling and noise: what wc, wo and b0 actually trade
