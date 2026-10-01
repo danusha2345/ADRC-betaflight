@@ -1653,4 +1653,4 @@ REVIEW_REQUIRED (human maintainer review). The PR workflow on the new head (run 
 **2026-10-01: submodule conflict.** Master bumped `src/config` (afe6a86dc5) and #15400 turned CONFLICTING. The cause
 was ours: since aed66441f8 the PR line carried a stray `src/config` pointer change (d78c5a2351 instead of master's).
 Branch `adrc-sync-1001` (28f8e09e6a) merges master and takes its pointer, so the PR no longer touches `src/config`
-(26 files against master). 88 suites, five MCU builds; PR to `adrc-toggle` drafted, awaiting approval.
+(26 files against master). 88 suites, five MCU builds; opened as **bvandevliet/betaflight#4** (2026-10-01).
