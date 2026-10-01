@@ -1654,3 +1654,11 @@ REVIEW_REQUIRED (human maintainer review). The PR workflow on the new head (run 
 was ours: since aed66441f8 the PR line carried a stray `src/config` pointer change (d78c5a2351 instead of master's).
 Branch `adrc-sync-1001` (28f8e09e6a) merges master and takes its pointer, so the PR no longer touches `src/config`
 (26 files against master). 88 suites, five MCU builds; opened as **bvandevliet/betaflight#4** (2026-10-01).
+
+**2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
+structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
+D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
+two comment fixes) summarised in #15400 comment 5935569670, with a chirp flight proposed before any code moves.
+jmsweng's docs PR (bvandevliet/betaflight.com#1 → upstream betaflight/betaflight.com#718: Quick Start, b11 CLI
+fields, mechanisms) reviewed in its comment 5935570268 — two wording points (wc ≥ wo is not an instability cliff;
+b0 depends on the motor time constant, not only TWR). That PR drops most links to this fork (tracker links stay).
