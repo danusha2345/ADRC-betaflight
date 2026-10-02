@@ -1,0 +1,8 @@
+
+### adrc_motor_tau_ms = 0: 196 s, log 986 Hz, throttle median 40 %, vbat median 11.77 V, motor mean 806, motor HF(40+ Hz) 33.2
+  roll :  46 moves, peak/setpoint 1.060 (IQR 0.97–1.12), >10 % over 28 %, 50 % lag 17.2 ms | err RMS active 28.3, calm 7.1 deg/s | P RMS 13.6, D RMS 20.9, D 40+ Hz 1.2 | gyro calm 2–40 Hz 5.44, 40+ Hz 3.73
+  pitch:  55 moves, peak/setpoint 0.953 (IQR 0.89–1.10), >10 % over 24 %, 50 % lag 25.3 ms | err RMS active 42.2, calm 6.1 deg/s | P RMS 30.8, D RMS 38.7, D 40+ Hz 2.0 | gyro calm 2–40 Hz 4.32, 40+ Hz 3.82
+
+### adrc_motor_tau_ms = 12: 86 s, log 986 Hz, throttle median 40 %, vbat median 11.80 V, motor mean 819, motor HF(40+ Hz) 35.1
+  roll :  67 moves, peak/setpoint 1.023 (IQR 0.98–1.06), >10 % over 18 %, 50 % lag 6.1 ms | err RMS active 36.4, calm 14.6 deg/s | P RMS 21.3, D RMS 19.9, D 40+ Hz 0.8 | gyro calm 2–40 Hz 12.21, 40+ Hz 3.14
+  pitch:  62 moves, peak/setpoint 1.006 (IQR 0.96–1.12), >10 % over 27 %, 50 % lag 9.1 ms | err RMS active 54.4, calm 9.7 deg/s | P RMS 44.0, D RMS 34.4, D 40+ Hz 1.4 | gyro calm 2–40 Hz 8.05, 40+ Hz 2.47
