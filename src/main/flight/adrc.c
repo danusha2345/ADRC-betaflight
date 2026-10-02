@@ -60,6 +60,10 @@
 #define ADRC_B0_SCALE_MIN_FLOOR_PERCENT 20
 #define ADRC_B0_SCALE_MIN_FLOOR 0.2f // ADRC-031: b0 never scheduled below 20 % of the hover value
 #define ADRC_B0_SCALE_MAX 50.0f
+// ADRC-036: motor time constant ceiling and the D-gain floor that keeps 2*wc - 1/tau positive when the
+// motor pole is faster than the controller (1/tau > 2*wc, e.g. a 5 ms whoop motor at wc 60).
+#define ADRC_MOTOR_TAU_MS_MAX 100.0f
+#define ADRC_MOTOR_POLE_KD_FLOOR 0.5f // of wc, i.e. a quarter of the nominal 2*wc
 
 // Liftoff-gate mechanism (thresholds now live in adrcProfile_t - see adrc.h - ported as tunable
 // fields rather than fixed constants; the numbers below are just the danusha2345/ADRC-betaflight
@@ -224,7 +228,6 @@ static void adrcResetAxisState(adrcRuntime_t *adrcRuntime, int axis, float gyroR
     adrcRuntime->z1[axis] = finiteGyroRate;
     adrcRuntime->z2[axis] = 0.0f;
     adrcRuntime->z3[axis] = 0.0f;
-    adrcRuntime->vRef[axis] = finiteGyroRate;
     adrcRuntime->lastOutput[axis] = 0.0f;
 }
 
@@ -235,7 +238,7 @@ static bool adrcAxisStateIsFinite(const adrcRuntime_t *adrcRuntime, int axis)
     return adrcIsFinite(gyroFilter->k) && gyroFilter->k >= 0.0f && gyroFilter->k <= 1.0f
         && adrcIsFinite(gyroFilter->state) && adrcIsFinite(gyroFilter->state1)
         && adrcIsFinite(adrcRuntime->z1[axis]) && adrcIsFinite(adrcRuntime->z2[axis])
-        && adrcIsFinite(adrcRuntime->z3[axis]) && adrcIsFinite(adrcRuntime->vRef[axis])
+        && adrcIsFinite(adrcRuntime->z3[axis])
         && adrcIsFinite(adrcRuntime->lastOutput[axis]);
 }
 
@@ -277,11 +280,10 @@ void adrcResetProfile(adrcProfile_t *adrcProfile)
     // z3 leaky-decay rate x0.1 (fix #11): a mild leak (tau ~ 3s) so a transient disturbance bump
     // bleeds off instead of lingering. Set 0 for the classic pure integrator.
     adrcProfile->sigmaDecay = 3;
-    // Tracking differentiator, off by default: smooths the setpoint feeding the control law (not
-    // the ESO's own gyro-tracking error) instead of feeding it straight through. Ported from
-    // SeverinBitterli's independent implementation, not danusha2345's - unvalidated here, left
-    // opt-in for testers.
-    adrcProfile->tdHz = 0;
+    // ADRC-036: motor pole in the observer, off by default (0) so a profile reset flies the plain law.
+    // The value is the craft's motor time constant in ms; a chirp fit gives it (21 ms on a 2.5", see
+    // docs/ADRC_MATH_REVIEW.md 2c), the plant fitter can too.
+    adrcProfile->motorTauMs = 0;
 
     // Liftoff-gate defaults, ported as-is from danusha2345/ADRC-betaflight (ADRC_FIXES.md fix
     // #8/#10) - community-validated on real hardware across several testers/airframes. See adrc.h
@@ -351,8 +353,14 @@ void adrcInitConfig(const adrcProfile_t *adrcProfile, adrcRuntime_t *adrcRuntime
         c->beta2 = 3.0f * c->wo * c->wo;
         c->beta3 = c->wo * c->wo * c->wo;
         c->decayRate = fminf(adrcProfile->sigmaDecay, ADRC_SIGMA_DECAY_MAX) * 0.1f;
-        const float tdHz = fminf(adrcProfile->tdHz, LPF_MAX_HZ);
-        c->tdFilterGain = (tdHz > 0.0f && validDt) ? pt1FilterGain(tdHz, dT) : 0.0f;
+        // ADRC-036: roll/pitch only. The yaw plant is not an integrator plus one lag (reaction torque adds
+        // a lead), so the term would model the wrong thing there.
+        const float motorTauMs = fminf(adrcProfile->motorTauMs, ADRC_MOTOR_TAU_MS_MAX);
+        c->invTau = (motorTauMs > 0.0f && axis != FD_YAW) ? 1000.0f / motorTauMs : 0.0f;
+        if (validDt) {
+            // Same forward-Euler bound as wo: the z2 relaxation step invTau*dT must stay well below 1.
+            c->invTau = fminf(c->invTau, ADRC_ESO_MAX_WO_DT / dT);
+        }
         // Never slower than the airborne decay and never zero. This rate is no longer the thing
         // that prevents grounded windup - the gate-only growth inhibit in adrcApplyControl() does
         // that, at any throttle - but it is what pulls an already non-zero z3 back toward zero
@@ -495,9 +503,6 @@ void adrcResetState(adrcRuntime_t *adrcRuntime, int axis)
     // manufacture exactly the errorEso kick this reset exists to prevent: at gyro = 1000 deg/s
     // the first filtered sample is ~24 deg/s (150 Hz pt2 @ 8 kHz), so errorEso ~ 976 and the
     // first z3 step is -beta3*errorEso*dT ~ -122 000.
-    // vRef is seeded from the same physical state rather than zero. pidResetIterm() also calls this
-    // during launch control and every loop of a 3D reversal; a zero TD reference there would create
-    // a large command opposite to the current rotation until the tracker caught up.
     adrcResetAxisState(adrcRuntime, axis, gyroRate);
 }
 
@@ -792,7 +797,9 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // the low-pass it keys on tracks maneuver/prop-wash transients, not a steady load.)
     const float z3DecayRate = adrcRuntime->liftoff ? c->decayRate : c->gatedDecayRate;
     adrcRuntime->z1[axis] += finiteDt * (adrcRuntime->z2[axis] - c->beta1 * errorEso);
-    adrcRuntime->z2[axis] += finiteDt * (adrcRuntime->z3[axis] + b0u - c->beta2 * errorEso);
+    // ADRC-036: with the motor pole in the model, z2 relaxes at 1/tau on its own and z3 no longer has
+    // to carry -z2/tau (invTau is 0 without it, which is the plain update).
+    adrcRuntime->z2[axis] += finiteDt * (adrcRuntime->z3[axis] + b0u - c->invTau * adrcRuntime->z2[axis] - c->beta2 * errorEso);
 
     // Split the z3 step into its decay and observer-error halves so the inhibit below can keep the
     // former while dropping the latter; with the inhibit inactive the two recombine exactly into
@@ -857,18 +864,6 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     const float maxZ3 = finitePidSumLimit * b0;
     adrcRuntime->z3[axis] = constrainf(adrcRuntime->z3[axis], -maxZ3, maxZ3);
 
-    // Tracking differentiator (opt-in, off by default): smooths the setpoint driving the control
-    // law's P term, separate from the ESO's own error term above (errorEso still tracks the filtered
-    // gyro directly - the TD only changes what the control law treats as "where we're steering
-    // toward", not what the observer treats as "what actually happened"). tdFilterGain is the
-    // unconditionally stable PT1 gain omega*dT/(1 + omega*dT), so every positive cutoff/looptime
-    // combination stays monotonic. A zero gain bypasses the TD exactly.
-    if (c->tdFilterGain > 0.0f) {
-        adrcRuntime->vRef[axis] += c->tdFilterGain * (finiteSetpoint - adrcRuntime->vRef[axis]);
-    } else {
-        adrcRuntime->vRef[axis] = finiteSetpoint;
-    }
-
     // Virtual PD control law; b0 divides out the control-input gain estimate. The terms are NOT
     // clamped individually: P and D are memoryless (nothing to wind up), the z3 clamp above
     // already caps |I| at pidSumLimit, and the mixer applies the final constrainf(Sum,
@@ -881,9 +876,12 @@ adrcOutput_t adrcApplyControl(adrcRuntime_t *adrcRuntime, int axis, float gyroRa
     // c->wc (so kp == c->kp, kd == c->kd) whenever the feature is off.
     const float wcEff = c->groundWc + (c->wc - c->groundWc) * adrcRuntime->wcBlend;
     const float kp = wcEff * wcEff;
-    const float kd = 2.0f * wcEff;
+    // ADRC-036: the model term the observer now carries (-z2/tau) comes out of the D gain, so the closed
+    // loop stays the one the bandwidth design promises; floored so a motor pole faster than 2*wc
+    // cannot zero the D path.
+    const float kd = fmaxf(2.0f * wcEff - c->invTau, ADRC_MOTOR_POLE_KD_FLOOR * wcEff);
     adrcOutput_t output = {
-        .P = (kp * (adrcRuntime->vRef[axis] - adrcRuntime->z1[axis])) / b0,
+        .P = (kp * (finiteSetpoint - adrcRuntime->z1[axis])) / b0,
         .D = (-kd * adrcRuntime->z2[axis]) / b0,
         .I = (-adrcRuntime->z3[axis]) / b0,
     };

@@ -142,7 +142,6 @@ TEST_F(AdrcUnittest, GateOpenDropsGroundEpochOutputBeforeFirstControlStep)
     runtime.gyroFilter[FD_ROLL].state = 300.0f;
     runtime.gyroFilter[FD_ROLL].state1 = 300.0f;
     runtime.z1[FD_ROLL] = 300.0f;
-    runtime.vRef[FD_ROLL] = 300.0f;
     runtime.lastOutput[FD_ROLL] = 500.0f;
 
     simulatedThrottle = 0.5f;
@@ -155,7 +154,6 @@ TEST_F(AdrcUnittest, GateOpenDropsGroundEpochOutputBeforeFirstControlStep)
     EXPECT_FLOAT_EQ(300.0f, runtime.z1[FD_ROLL]);
     EXPECT_FLOAT_EQ(0.0f, runtime.z2[FD_ROLL]);
     EXPECT_FLOAT_EQ(0.0f, runtime.z3[FD_ROLL]);
-    EXPECT_FLOAT_EQ(300.0f, runtime.vRef[FD_ROLL]);
     EXPECT_FLOAT_EQ(0.0f, runtime.lastOutput[FD_ROLL]);
 
     // With measurement == setpoint, the first airborne control step must be exactly neutral;
@@ -997,7 +995,7 @@ TEST_F(AdrcUnittest, InitConfigCapsCorruptUpperRangeValues)
     profile.wo[FD_ROLL] = UINT16_MAX;
     profile.sigmaDecay = UINT8_MAX;
     profile.gatedZ3DecayRate = UINT16_MAX;
-    profile.tdHz = UINT16_MAX;
+    profile.motorTauMs = UINT16_MAX;
     profile.gyroFilterHz = UINT16_MAX;
     adrcInitConfig(&profile, &runtime, dT);
 
@@ -1005,7 +1003,7 @@ TEST_F(AdrcUnittest, InitConfigCapsCorruptUpperRangeValues)
     EXPECT_FLOAT_EQ(600.0f, runtime.coefficient[FD_ROLL].wo);
     EXPECT_FLOAT_EQ(10.0f, runtime.coefficient[FD_ROLL].decayRate);
     EXPECT_FLOAT_EQ(200.0f, runtime.coefficient[FD_ROLL].gatedDecayRate);
-    EXPECT_FLOAT_EQ(pt1FilterGain(LPF_MAX_HZ, dT), runtime.coefficient[FD_ROLL].tdFilterGain);
+    EXPECT_FLOAT_EQ(10.0f, runtime.coefficient[FD_ROLL].invTau); // 1000 / ADRC_MOTOR_TAU_MS_MAX
     EXPECT_FLOAT_EQ(pt2FilterGain(LPF_MAX_HZ, dT), runtime.gyroFilter[FD_ROLL].k);
 }
 
@@ -1021,82 +1019,99 @@ TEST_F(AdrcUnittest, GateBlocksB0uFeedbackWhenClosed)
     EXPECT_FLOAT_EQ(z2Before, runtime.z2[FD_ROLL]);
 }
 
-TEST_F(AdrcUnittest, TdDisabledByDefaultTracksSetpointExactly)
+// ADRC-036: motor pole in the observer. Off by default, in which case the law is bit-identical.
+TEST_F(AdrcUnittest, MotorPoleOffByDefaultLeavesTheLawUntouched)
 {
-    // tdHz == 0 (the default) must bypass the tracking differentiator entirely - vRef should
-    // follow a setpoint step with zero lag, matching pre-TD behavior exactly.
-    ASSERT_EQ(0, profile.tdHz);
-    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 500.0f, TEST_DT, 500.0f);
-    EXPECT_FLOAT_EQ(500.0f, runtime.vRef[FD_ROLL]);
+    ASSERT_EQ(0, profile.motorTauMs);
+    EXPECT_FLOAT_EQ(0.0f, runtime.coefficient[FD_ROLL].invTau);
+    runtime.z2[FD_ROLL] = 1000.0f;
+    const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+    // D = -2*wc*z2/b0 = -2*60*1000/2000 = -60, with z2 only moved by beta2*errorEso (0 here).
+    EXPECT_FLOAT_EQ(-60.0f, out.D);
+    EXPECT_FLOAT_EQ(1000.0f, runtime.z2[FD_ROLL]);
 }
 
-TEST_F(AdrcUnittest, TdEnabledSmoothsSetpointStep)
-{
-    // With the TD enabled, a setpoint step must not appear in vRef instantly - it should lag
-    // behind, unlike the disabled (direct passthrough) case above. The PT1 discretization remains
-    // monotonic even at this deliberately slow 125 Hz-equivalent test looptime.
-    profile.tdHz = 5;
-    adrcInitConfig(&profile, &runtime, TEST_DT);
-    for (int axis = FD_ROLL; axis <= FD_YAW; axis++) {
-        adrcResetState(&runtime, axis);
-    }
-
-    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 500.0f, TEST_DT, 500.0f);
-    EXPECT_GT(500.0f, runtime.vRef[FD_ROLL]);
-    EXPECT_LT(0.0f, runtime.vRef[FD_ROLL]);
-
-    // Run it long enough to settle - vRef should converge on the setpoint once it stops moving.
-    for (int i = 0; i < 500; i++) {
-        adrcApplyControl(&runtime, FD_ROLL, 0.0f, 500.0f, TEST_DT, 500.0f);
-    }
-    EXPECT_NEAR(500.0f, runtime.vRef[FD_ROLL], 1.0f);
-}
-
-TEST_F(AdrcUnittest, TdSweepIsFiniteAndMonotonicAtSupportedLoopRates)
-{
-    const int loopRatesHz[] = { 200, 1600, 4000, 8000 };
-
-    profile.gyroFilterHz = 0;
-    for (const int loopRateHz : loopRatesHz) {
-        const float dT = 1.0f / loopRateHz;
-        for (int cutoffHz = 1; cutoffHz <= LPF_MAX_HZ; cutoffHz++) {
-            SCOPED_TRACE(::testing::Message() << "loopRateHz=" << loopRateHz << ", cutoffHz=" << cutoffHz);
-            profile.tdHz = cutoffHz;
-            adrcInitConfig(&profile, &runtime, dT);
-            gyro.gyroADCf[FD_ROLL] = 0.0f;
-            adrcResetState(&runtime, FD_ROLL);
-
-            for (int i = 0; i < 100; i++) {
-                const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 500.0f, dT, 500.0f);
-                ASSERT_TRUE(isfinite(runtime.vRef[FD_ROLL]));
-                ASSERT_TRUE(isfinite(out.P));
-                ASSERT_TRUE(isfinite(out.I));
-                ASSERT_TRUE(isfinite(out.D));
-                ASSERT_GE(runtime.vRef[FD_ROLL], 0.0f);
-                ASSERT_LE(runtime.vRef[FD_ROLL], 500.0f);
-            }
-        }
-    }
-}
-
-TEST_F(AdrcUnittest, RepeatedResetSeedsTdReferenceBumplessly)
+TEST_F(AdrcUnittest, MotorPoleMovesTheLagFromTheDGainIntoTheObserver)
 {
     constexpr float dT = 0.000125f; // 8 kHz
-    profile.tdHz = 5;
-    profile.gyroFilterHz = 0;
+    profile.motorTauMs = 20; // 1/tau = 50/s
     adrcInitConfig(&profile, &runtime, dT);
-    gyro.gyroADCf[FD_ROLL] = 500.0f;
+    EXPECT_FLOAT_EQ(50.0f, runtime.coefficient[FD_ROLL].invTau);
+    EXPECT_FLOAT_EQ(50.0f, runtime.coefficient[FD_PITCH].invTau);
+    EXPECT_FLOAT_EQ(0.0f, runtime.coefficient[FD_YAW].invTau); // yaw keeps the plain law
 
-    // pidResetIterm() can repeat every loop during a 3D reversal. The reset reference must start
-    // from the measured rate, so a positive setpoint error cannot manufacture a negative P pulse.
-    for (int i = 0; i < 100; i++) {
-        adrcResetState(&runtime, FD_ROLL);
-        const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 500.0f, 1000.0f, dT, 500.0f);
-        ASSERT_TRUE(isfinite(out.P));
-        EXPECT_GE(out.P, 0.0f);
-        EXPECT_GE(runtime.vRef[FD_ROLL], 500.0f);
-        EXPECT_LE(runtime.vRef[FD_ROLL], 1000.0f);
+    runtime.z2[FD_ROLL] = 1000.0f;
+    const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    // kd = 2*wc - 1/tau = 120 - 50 = 70: D = -70*1000/2000 = -35 (computed from the updated z2).
+    EXPECT_NEAR(-35.0f * (1.0f - 50.0f * dT), out.D, 1e-3f);
+    // z2 relaxes at 1/tau on its own: z2 += dT * (-50 * z2).
+    EXPECT_NEAR(1000.0f * (1.0f - 50.0f * dT), runtime.z2[FD_ROLL], 1e-3f);
+}
+
+TEST_F(AdrcUnittest, MotorPoleKdFloorHoldsWhenTheMotorIsFasterThanTheController)
+{
+    constexpr float dT = 0.000125f; // 8 kHz
+    profile.motorTauMs = 5; // 1/tau = 200/s > 2*wc = 120
+    adrcInitConfig(&profile, &runtime, dT);
+    EXPECT_FLOAT_EQ(200.0f, runtime.coefficient[FD_ROLL].invTau);
+    runtime.z2[FD_ROLL] = 1000.0f;
+    const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, dT, 500.0f);
+    // kd floored at 0.5*wc = 30: D = -30 * z2 / b0 with z2 after its own relaxation step.
+    EXPECT_NEAR(-30.0f * runtime.z2[FD_ROLL] / 2000.0f, out.D, 1e-3f);
+    EXPECT_GT(runtime.z2[FD_ROLL], 0.0f);
+}
+
+TEST_F(AdrcUnittest, MotorPoleRelaxationIsCappedAgainstTheLooptime)
+{
+    // At a slow loop the Euler step invTau*dT would overshoot; the same 0.5 bound as wo applies.
+    profile.motorTauMs = 5; // 200/s uncapped
+    adrcInitConfig(&profile, &runtime, TEST_DT); // 8 ms loop -> cap 62.5/s
+    EXPECT_FLOAT_EQ(62.5f, runtime.coefficient[FD_ROLL].invTau);
+    runtime.z2[FD_ROLL] = 1000.0f;
+    adrcApplyControl(&runtime, FD_ROLL, 0.0f, 0.0f, TEST_DT, 500.0f);
+    EXPECT_GT(runtime.z2[FD_ROLL], 0.0f);
+}
+
+// Closed loop against a rate plant with a motor lag: w' = b_acc * T, tau * T' = u - T, with
+// b0 = b_acc / tau matched. The plain law overshoots a rate step because the observer has to learn
+// the plant's own -w'/tau term; with the pole in the model it does not.
+static float simulateStepOvershootPercent(adrcProfile_t &profile, adrcRuntime_t &runtime, float tauS, float dT)
+{
+    const float b0 = profile.b0[FD_ROLL];
+    const float bAcc = b0 * tauS;
+    adrcInitConfig(&profile, &runtime, dT);
+    gyro.gyroADCf[FD_ROLL] = 0.0f;
+    adrcResetState(&runtime, FD_ROLL);
+    simulatedThrottle = 0.5f;
+    simulatedCommandedThrottle = 0.5f;
+    adrcUpdatePerLoopState(&runtime, &profile, dT); // opens the gate so b0*u feeds the observer
+    float w = 0.0f, motor = 0.0f, peak = 0.0f;
+    for (int i = 0; i < (int)(0.4f / dT); i++) {
+        const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, w, 100.0f, dT, 500.0f);
+        const float u = constrainf(out.P + out.I + out.D, -500.0f, 500.0f);
+        adrcSetAppliedOutput(&runtime, FD_ROLL, u);
+        motor += dT * (u - motor) / tauS;
+        w += dT * bAcc * motor;
+        peak = fmaxf(peak, w);
     }
+    return peak - 100.0f;
+}
+
+TEST_F(AdrcUnittest, MotorPoleRemovesTheStepOvershootOfTheMatchedPlant)
+{
+    constexpr float dT = 0.000125f; // 8 kHz
+    profile.gyroFilterHz = 0;
+    profile.sigmaDecay = 0;
+    profile.b0Law = ADRC_B0_LAW_FIXED;
+
+    profile.motorTauMs = 0;
+    const float plainOvershoot = simulateStepOvershootPercent(profile, runtime, 0.020f, dT);
+    profile.motorTauMs = 20;
+    const float modelledOvershoot = simulateStepOvershootPercent(profile, runtime, 0.020f, dT);
+    // docs/ADRC_MATH_REVIEW.md: 60/100/2000 on a 20 ms motor overshoots ~10 % plain, ~0 with the pole.
+    EXPECT_GT(plainOvershoot, 5.0f);
+    EXPECT_LT(modelledOvershoot, 2.0f);
+    EXPECT_GT(modelledOvershoot, -2.0f);
 }
 
 TEST_F(AdrcUnittest, EsoSweepConvergesAtSupportedLoopRates)
@@ -1170,7 +1185,6 @@ TEST_F(AdrcUnittest, NonFiniteRuntimeStateRecoversToFiniteOutput)
     runtime.z1[FD_ROLL] = NAN;
     runtime.z2[FD_ROLL] = INFINITY;
     runtime.z3[FD_ROLL] = -INFINITY;
-    runtime.vRef[FD_ROLL] = NAN;
     runtime.lastOutput[FD_ROLL] = INFINITY;
     runtime.gyroFilter[FD_ROLL].state = NAN;
     runtime.b0ThrottleScale = NAN;
@@ -1184,7 +1198,6 @@ TEST_F(AdrcUnittest, NonFiniteRuntimeStateRecoversToFiniteOutput)
     EXPECT_TRUE(isfinite(runtime.z1[FD_ROLL]));
     EXPECT_TRUE(isfinite(runtime.z2[FD_ROLL]));
     EXPECT_TRUE(isfinite(runtime.z3[FD_ROLL]));
-    EXPECT_TRUE(isfinite(runtime.vRef[FD_ROLL]));
     EXPECT_TRUE(isfinite(runtime.lastOutput[FD_ROLL]));
     EXPECT_TRUE(isfinite(runtime.b0ThrottleScale));
     EXPECT_TRUE(isfinite(out.P));
@@ -1206,7 +1219,7 @@ TEST_F(AdrcUnittest, GroundWcDisabledByDefaultLeavesGainsUntouched)
 {
     ASSERT_FALSE(runtime.liftoff);
     EXPECT_FLOAT_EQ(runtime.coefficient[FD_ROLL].wc, runtime.coefficient[FD_ROLL].groundWc);
-    // vRef == setpoint (TD off), z1 == 0: P = wc^2 * setpoint / b0 = 60^2 * 100 / 2000 = 180.
+    // z1 == 0: P = wc^2 * setpoint / b0 = 60^2 * 100 / 2000 = 180.
     const adrcOutput_t out = adrcApplyControl(&runtime, FD_ROLL, 0.0f, 100.0f, TEST_DT, 500.0f);
     EXPECT_FLOAT_EQ(180.0f, out.P);
 }

@@ -263,7 +263,7 @@
 #define PARAM_NAME_ADRC_GYRO_LPF_HZ "adrc_gyro_lpf_hz"
 #define PARAM_NAME_ADRC_HOVER_THROTTLE "adrc_hover_throttle"
 #define PARAM_NAME_ADRC_SIGMA_DECAY "adrc_sigma_decay"
-#define PARAM_NAME_ADRC_TD_HZ "adrc_td_hz"
+#define PARAM_NAME_ADRC_MOTOR_TAU_MS "adrc_motor_tau_ms"
 #define PARAM_NAME_ADRC_LIFTOFF_THROTTLE "adrc_liftoff_throttle"
 #define PARAM_NAME_ADRC_LIFTOFF_GYRO_DPS "adrc_liftoff_gyro_dps"
 #define PARAM_NAME_ADRC_LIFTOFF_HOLD_MS "adrc_liftoff_hold_ms"

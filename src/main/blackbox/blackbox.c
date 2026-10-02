@@ -1825,7 +1825,7 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_GYRO_LPF_HZ, "%d",       currentPidProfile->adrc.gyroFilterHz);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_HOVER_THROTTLE, "%d",    currentPidProfile->adrc.hoverThrottlePercent);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_SIGMA_DECAY, "%d",       currentPidProfile->adrc.sigmaDecay);
-        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_TD_HZ, "%d",             currentPidProfile->adrc.tdHz);
+        BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_MOTOR_TAU_MS, "%d",      currentPidProfile->adrc.motorTauMs);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_LIFTOFF_THROTTLE, "%d",      currentPidProfile->adrc.liftoffThrottlePercent);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_LIFTOFF_GYRO_DPS, "%d",      currentPidProfile->adrc.liftoffGyroDps);
         BLACKBOX_PRINT_HEADER_LINE(PARAM_NAME_ADRC_LIFTOFF_HOLD_MS, "%d",       currentPidProfile->adrc.liftoffHoldMs);

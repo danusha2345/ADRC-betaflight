@@ -34,8 +34,9 @@
 // Builds on a proof-of-concept by Godwin Pious (@Boyyt357): https://github.com/Boyyt357/ADRC-betaflight
 // Robustness fixes (liftoff gate, throttle-scaled b0, anti-windup, z3 decay) ported from
 // danusha2345/ADRC-betaflight: https://github.com/danusha2345/ADRC-betaflight
-// Tracking differentiator (adrc_td_hz) ported from an independent implementation by SeverinBitterli:
-// https://github.com/SeverinBitterli/betaflight/tree/ADRC-Implementation
+// Motor pole in the observer (adrc_motor_tau_ms, ADRC-036): the rate plant is first order plus a motor lag,
+// so in the ESO's second-order form the lag's pole -z2/tau is part of the model, not of the disturbance.
+// With it in the observer z3 only carries what the model does not know; 0 keeps the plain law.
 
 typedef enum {
     PID_TYPE_CLASSIC = 0,
@@ -69,12 +70,11 @@ typedef struct adrcProfile_s {
                                    // b0Law (SQRT by default since b11; not per-axis)
     uint8_t sigmaDecay;           // z3 leaky-decay rate x0.1; 0 = classic pure integrator (not
                                    // per-axis)
-    uint16_t tdHz;                // tracking-differentiator corner freq on the setpoint feeding the
-                                   // control law (not the ESO's own error term); 0 = disabled
-                                   // (bypass, setpoint fed straight through). Off by default - not
-                                   // part of the danusha2345 port, independently added by a third
-                                   // ADRC implementation (SeverinBitterli/betaflight, ADRC-Implementation
-                                   // branch); standard ADRC theory component, unvalidated here.
+    uint16_t motorTauMs;          // ADRC-036: motor time constant [ms] put into the observer model
+                                   // (roll/pitch; yaw keeps the plain law). 0 = off = the plain
+                                   // second-order ESO. Takes the profile slot of the former
+                                   // adrc_td_hz (a PT1 on the setpoint, never validated), so the
+                                   // profile layout and PG version are unchanged.
 
     // Liftoff-gate thresholds (see adrcUpdatePerLoopState() in adrc.c for the state machine these
     // drive). Community-validated defaults from danusha2345/ADRC-betaflight, but craft-dependent -
@@ -146,7 +146,7 @@ typedef struct adrcCoefficient_s {
     float beta2;   // = 3*wo*wo (ESO observer gain)
     float beta3;   // = wo*wo*wo (ESO observer gain)
     float decayRate; // = adrcProfile->sigmaDecay * 0.1 (z3 leaky-decay rate, shared across axes)
-    float tdFilterGain; // stable PT1 gain for tdHz at the runtime looptime; 0 = TD disabled
+    float invTau;  // = 1000 / motorTauMs [1/s] on roll/pitch, 0 = motor pole not modelled (ADRC-036)
     float gatedDecayRate; // z3 decay rate while ungated (shared across axes). NOT simply
                            // gatedZ3DecayRate * 0.1: adrcInitConfig() clamps the profile value,
                            // then takes the max against decayRate above and a 1/s floor.
@@ -160,8 +160,6 @@ typedef struct adrcRuntime_s {
     float z1[XYZ_AXIS_COUNT]; // ESO estimate of angular rate [deg/s]
     float z2[XYZ_AXIS_COUNT]; // ESO estimate of angular acceleration [deg/s^2]
     float z3[XYZ_AXIS_COUNT]; // ESO estimate of lumped rate-plant disturbance [deg/s^3]
-    float vRef[XYZ_AXIS_COUNT]; // tracking-differentiator-filtered setpoint fed to the control law;
-                                 // tracks the raw setpoint directly when tdFilterGain == 0 (disabled)
     float lastOutput[XYZ_AXIS_COUNT]; // control output fed back into the observer next iteration
     bool liftoff;           // craft has left the ground; the detector only ever sets it, and it
                              // is cleared only by adrcResetGate() - through adrcResetAll(), or by
