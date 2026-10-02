@@ -67,7 +67,17 @@ jobs:
         run: make configs
 
       - name: Build target
-        run: make ${{ matrix.target }}
+        # USE_CHIRP (Betaflight's in-flight system identification) is a build option the cloud
+        # builder offers; testers need it to fit b0 and the motor lag. Build with it where it fits
+        # and fall back to the plain build where it does not (STM32F722: ITCM is full).
+        run: |
+          if make ${{ matrix.target }} OPTIONS=USE_CHIRP; then
+            echo "- ${{ matrix.target }}: built with USE_CHIRP" >> "$GITHUB_STEP_SUMMARY"
+          else
+            rm -f obj/*.hex
+            make ${{ matrix.target }}
+            echo "- ${{ matrix.target }}: **without** USE_CHIRP (does not fit)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
@@ -124,6 +134,7 @@ jobs:
           echo "Shard ${{ matrix.shard }}: ${targets[*]}"
           failed=()
           skipped=()
+          nochirp=()
           for t in "${targets[@]}"; do
             # Only the ARM/hex release path is installed here; skip configs needing another
             # platform SDK or output format.
@@ -134,8 +145,11 @@ jobs:
                 echo "SKIP $t ($mcu)"; skipped+=("$t"); continue ;;
             esac
             echo "::group::$t"
-            if make -j"$(nproc)" "$t" > "/tmp/build_$t.log" 2>&1; then
-              echo "OK $t"
+            if make -j"$(nproc)" "$t" OPTIONS=USE_CHIRP > "/tmp/build_$t.log" 2>&1; then
+              echo "OK $t (USE_CHIRP)"
+            elif rm -f obj/*"_$t".hex && make -j"$(nproc)" "$t" > "/tmp/build_$t.log" 2>&1; then
+              echo "OK $t (without USE_CHIRP)"
+              nochirp+=("$t")
             else
               echo "FAIL $t"
               tail -50 "/tmp/build_$t.log"
@@ -147,6 +161,7 @@ jobs:
             echo "### Shard ${{ matrix.shard }}: $(( ${#targets[@]} - ${#failed[@]} - ${#skipped[@]} )) built, ${#failed[@]} failed, ${#skipped[@]} skipped"
             if [ ${#failed[@]} -gt 0 ]; then printf -- '- FAILED: %s\n' "${failed[@]}"; fi
             if [ ${#skipped[@]} -gt 0 ]; then printf -- '- skipped (non-ARM toolchain): %s\n' "${skipped[@]}"; fi
+            if [ ${#nochirp[@]} -gt 0 ]; then printf -- '- built without USE_CHIRP (does not fit): %s\n' "${nochirp[@]}"; fi
           } >> "$GITHUB_STEP_SUMMARY"
           # Boards that do not link on the upstream base itself are reported, not allowed to block the
           # release of the other ~630. Keep this list short and dated; anything else failing is ours.
