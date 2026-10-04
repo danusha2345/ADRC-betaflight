@@ -160,6 +160,43 @@ at 59.7 Hz, GM 1.2 dB, closed-loop peak 2.8× at 65 Hz — the "60 Hz yaw line" 
 September is this resonance. Lower yaw wc/wo (the default yaw wo = 80 exists for a reason) or a yaw-specific
 model are the options; the motor-pole variant is not applicable to yaw in this form.
 
+### 2d. Flight A/B of the motor-pole law (ADRC-036, tester builds mp1/mp2)
+
+`adrc_motor_tau_ms` (0 = the plain law, bit-identical) puts the motor pole into the observer on roll and pitch.
+Three A/Bs so far, each the same craft and tune with only τ changed (scripts: `docs/tools/adrc_math_review/ab_mp1.py`,
+`ab_mp2.py`).
+
+**jmsweng, 2.5", wc 80 / wo 90, b0 4616/3636, τ 0 vs 22 ms, chirp on every axis in both flights (2026-10-04).**
+The chirp gives the measured closed-loop response T = S_ry/S_rr directly, same axis, both laws:
+
+| | roll, τ = 0 | roll, τ = 22 | pitch, τ = 0 | pitch, τ = 22 |
+|---|---|---|---|---|
+| \|T\| peak | 1.09 | 0.98 | 1.09 | 0.99 |
+| −3 dB bandwidth | 5.8 Hz | **15.5 Hz** | 6.3 Hz | **20.3 Hz** |
+| \|T\| at 8 / 12 Hz | 0.46 / 0.34 | 0.77 / 0.85 | 0.51 / 0.47 | 0.82 / 0.82 |
+| phase at 5 Hz | −60° | −35° | −75° | −37° |
+| stick moves: peak/setpoint, share > 10 % over | 1.08, 33 % (21) | 1.00, 18 % (17) | 1.09, 43 % (21) | 1.06, 29 % (7) |
+| D term RMS | 22.4 | 11.2 | 20.7 | 10.2 |
+| plant from the chirp | τ 24.0 ms, d 2.2 ms | τ 21.1 ms, d 3.1 ms | (poor fit) | τ 20.6 ms, d 3.0 ms |
+| loop margins, measured plant × controller model | PM 43–53°, GM 2.8–4.2 dB | PM 31–39°, GM 4.4–4.8 dB | PM 35–63°, GM 3.6–3.7 dB | PM 32–49°, GM 4.4–4.5 dB |
+
+The resonance peak is gone and the tracking bandwidth is 2.7–3.2× wider, as the model said it would be (on this
+plant: −3 dB 5.9 → 17.9 Hz on roll, 5.7 → 20.0 Hz on pitch); the D term does half the work; the price is ~10–14° of
+phase margin and no gain margin. The controller models reproduce the measured T peak for the law that was flown in
+all four cases (1.08/1.10 vs 1.09/1.09 plain; 0.97/0.95 vs 0.97/0.99 with the pole). Yaw, which keeps the plain
+law, is unchanged (peak 1.19 at 47 Hz in both). Calm-flight gyro RMS per segment is 1.3 °/s higher with the pole
+(median 4.9 → 6.3 roll, 5.5 → 6.7 pitch) on a day the pilot called extremely windy — not separable from the wind.
+Note the gain margin of this tune is ~4 dB with either law (crossing near 25 Hz, at the edge of the coherent band).
+
+**jmsweng, 5", wc 80 / wo 90, b0 2529/2692, τ 0 vs 23 ms, no chirp.** Pilot: "didn't really notice any differences".
+Logs: share of moves > 10 % over 23 → 12 % (roll), 33 → 29 % (pitch); 50 % lag 31 → 28 ms, 17 → 16 ms; D term RMS
+33 → 25 and 32 → 21; motor 40+ Hz RMS 19.7 → 17.6. Same direction, smaller.
+
+**8ksal8, Pavo20 Pro II, 85/100, τ 0 vs 12 ms (2026-10-02)** — τ set below the chirp-measured 33/27 ms: 50 % lag
+17 → 6 ms and 25 → 9 ms, typical overshoot no worse, but the 90th-percentile calm-flight segment worse (12.7 →
+17.2 °/s); the model puts the phase margin at 45° → 21° for that mismatch. **A τ below the real one costs margin;
+measure it (the plant-fit tool reports it) or err high.**
+
 ## 3. Stability ceiling and noise: what wc, wo and b0 actually trade
 
 Loop margins (plant as above, gyro lpf1 250 + lpf2 500 + ADRC pt2 150, b0 matched):
