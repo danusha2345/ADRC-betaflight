@@ -166,38 +166,68 @@ model are the options; the motor-pole variant is not applicable to yaw in this f
 Three A/Bs so far, each the same craft and tune with only τ changed (scripts: `docs/tools/adrc_math_review/ab_mp1.py`,
 `ab_mp2.py`).
 
-**jmsweng, 2.5", wc 80 / wo 90, b0 4616/3636, τ 0 vs 22 ms, chirp on every axis in both flights (2026-10-04).**
-The chirp gives the measured closed-loop response T = S_ry/S_rr directly, same axis, both laws:
+**jmsweng, 2.5" (b0 4616/3636, τ 0 vs 22 ms) and 5" (b0 2529/2692, τ 0 vs 23 ms), both wc 80 / wo 90, angle mode,
+a chirp on every axis in every flight (2026-10-04).** The chirp gives the measured closed-loop response
+T = S_ry/S_rr directly, same axis, both laws. Chirp windows are taken from the flight-mode flags; the pilot switched
+every sweep off early (11–17 s of 20), so each is valid only up to the frequency it had reached (15–200 Hz).
 
-| | roll, τ = 0 | roll, τ = 22 | pitch, τ = 0 | pitch, τ = 22 |
+| 2.5" | roll, τ = 0 | roll, τ = 22 | pitch, τ = 0 | pitch, τ = 22 |
 |---|---|---|---|---|
-| \|T\| peak | 1.09 | 0.98 | 1.09 | 0.99 |
-| −3 dB bandwidth | 5.8 Hz | **15.5 Hz** | 6.3 Hz | **20.3 Hz** |
-| \|T\| at 8 / 12 Hz | 0.46 / 0.34 | 0.77 / 0.85 | 0.51 / 0.47 | 0.82 / 0.82 |
-| phase at 5 Hz | −60° | −35° | −75° | −37° |
-| stick moves: peak/setpoint, share > 10 % over | 1.08, 33 % (21) | 1.00, 18 % (17) | 1.09, 43 % (21) | 1.06, 29 % (7) |
-| D term RMS | 22.4 | 11.2 | 20.7 | 10.2 |
-| plant from the chirp | τ 24.0 ms, d 2.2 ms | τ 21.1 ms, d 3.1 ms | (poor fit) | τ 20.6 ms, d 3.0 ms |
-| phase margin, measured H × controller model (plant from the τ = 0 / τ = 22 flight) | 53° / 43° | 40° / 31° | 63° / 33° | 49° / 27° |
-| same through the fitted plant | 44° / 36° | 32° / 27° | 42° / 35° | 33° / 27° |
-| gain margin, measured H (fitted plant) | 2.4 dB (4.7–6.8) | 4.5 dB (4.8–7.0) | 3.1 dB (3.5–4.4) | 3.7–3.8 dB (3.9–4.6) |
+| \|T\| peak | 1.09 | 0.97 | 1.09 | 1.02 (at 18 Hz) |
+| −3 dB bandwidth | 5.8 Hz | **15.5 Hz** | 6.3 Hz | **20.8 Hz** |
+| \|T\| at 8 / 12 Hz | 0.46 / 0.34 | 0.78 / 0.85 | 0.49 / 0.46 | 0.82 / 0.83 |
+| phase at 5 Hz | −62° | −35° | −79° | −37° |
+| setpoint moves: peak/setpoint, share > 10 % over | 1.08, 35 % (23) | 1.00, 18 % (17) | 1.09, 43 % (23) | 1.06, 29 % (7) |
+| D term RMS (outside the chirps) | 21.8 | 11.0 | 20.3 | 9.9 |
+| plant from the chirp | τ 22.9 ms, d 2.4 ms | τ 21.5 ms, d 3.1 ms | (poor fit) | τ 20.7 ms, d 3.0 ms |
+| b_acc/τ against the b0 in use | 1.04× | 1.18× | — | 1.24× |
+| phase margin, measured H × controller model (plant from the τ = 0 / τ = 22 flight) | 50° / 43° | 36° / 30° | (81°) / 36° | (67°) / 32° |
+| same through the fitted plant | 46° / 39° | 33° / 29° | 50° / 38° | 39° / 29° |
+| gain margin, measured H (fitted plant) | 3.1–3.2 dB (5.2–6.9) | 4.2–6.5 dB (5.3–7.1) | 2.9–3.0 dB (4.6–5.0) | 3.3–4.4 dB (5.0–5.1) |
 
-The resonance peak is gone and the tracking bandwidth is 2.7–3.2× wider; the D term does half the work. The loop
-model on the plant fitted from these chirps gives the same (−3 dB at 5.3–5.8 Hz plain, 15–20 Hz with the pole;
-T peak 1.05–1.11 against the measured 1.09 plain, 0.98–1.00 against 0.98/0.99 with the pole). The price is
-**7–14° of phase margin on the same plant** (the two flights' plant estimates differ by more than that, hence
-two values per cell) and no gain margin. Yaw, which keeps the plain law, is unchanged (peak 1.19 at 47 Hz in
-both). Calm-flight gyro RMS per segment is ~1.3 °/s higher with the pole (median 4.9 → 6.3 roll, 5.5 → 6.7 pitch)
-on a day the pilot called extremely windy; yaw, flying the same law in both, rose by the same amount (5.5 → 6.7),
-which points at the conditions rather than the pole — a calm-day repeat would settle it.
-The tune itself is close to the ceiling with either law: gain margin 2.4–4.5 dB from the measured response
-(3.5–7 dB through the fitted plant), phase crossover at 20–27 Hz. wc·τ is 1.7–1.9, and b_acc/τ is 1.07–1.25× the
-roll b0 and ~1.3× the pitch b0 (b0 slightly low). b0 × 1.25 gives back ~2 dB and 6–11° with either law
-(`ab_mp2_margins.py`, `ab_mp2_margins_out.txt`).
+| 5" | roll, τ = 0 | roll, τ = 23 | pitch, τ = 0 | pitch, τ = 23 |
+|---|---|---|---|---|
+| sweep reached / coherent to | 45 / 21 Hz | 34 / 19 Hz | 19 / 10 Hz | 48 / 21 Hz |
+| \|T\| peak | 1.06 | 0.98 | 1.05 | 0.98 |
+| −3 dB bandwidth | 5.3 Hz | **17.4 Hz** | 5.3 Hz | **9.6 Hz** |
+| \|T\| at 8 / 12 Hz | 0.43 / 0.35 | 0.74 / 0.79 | 0.51 / — | 0.73 / 0.67 |
+| phase at 5 Hz | −63° | −35° | −78° | −40° |
+| setpoint moves: peak/setpoint, share > 10 % over | 1.10, 42 % (19) | 1.02, 25 % (16) | 1.16, 59 % (22) | 1.12, 56 % (18) |
+| time to half the move | 24 ms | 10 ms | 8 ms | 5 ms |
+| D term RMS (outside the chirps) | 21.2 | 16.1 | 23.0 | 13.7 |
+| plant from the chirp | τ 19.5 ms, d 2.4 ms | τ 20.5 ms, d 2.3 ms | (sweep too short) | τ 21.9 ms, d 2.2 ms |
+| b_acc/τ against the b0 in use | 1.39× | 1.30× | — | 0.98× |
+| phase margin, measured H × controller model (plant from the τ = 0 / τ = 23 flight) | 36° / 38° | 30° / 28° | — / 53° | — / 40° |
+| same through the fitted plant | 37° / 40° | 30° / 31° | — / 50° | — / 37° |
+| gain margin (fitted plant) | 4.8–5.3 dB | 5.1–5.6 dB | 7.8 dB | 8.0 dB |
 
-**jmsweng, 5", wc 80 / wo 90, b0 2529/2692, τ 0 vs 23 ms, no chirp.** Pilot: "didn't really notice any differences".
-Logs: share of moves > 10 % over 23 → 12 % (roll), 33 → 29 % (pitch); 50 % lag 31 → 28 ms, 17 → 16 ms; D term RMS
-33 → 25 and 32 → 21; motor 40+ Hz RMS 19.7 → 17.6. Same direction, smaller.
+Reading: the low-frequency resonance peak (5–9 %) is gone on all four axes, the phase lag at 5 Hz is roughly halved
+and the D term does 24–51 % less work. The −3 dB bandwidth goes from 5.3–6.3 Hz to 9.6–20.8 Hz. How far depends on b0:
+a critically damped pair at wc = 80 rad/s has its −3 dB point at 0.64·wc = 8.2 Hz, the one axis with b0 matched
+(5" pitch, 0.98×) lands at 9.6 Hz, and the three axes where b_acc/τ is 1.18–1.39× the b0 in use (b0 low, extra loop gain) land at 15–21 Hz.
+The plain law at the same wc sits below the design bandwidth and peaks; the pole brings the loop to it.
+The loop model reproduces this on the fitted plants: −3 dB 5.3–5.8 Hz plain; 14–20 Hz with the pole where b0 is low
+and 11.5 Hz on the matched axis; T peak 1.04–1.11 against the measured 1.05–1.09 plain, 0.98–1.00 against
+0.97–1.02 with the pole. The pilot noticed the difference on the 2.5" and not on the 5".
+
+The price is **5–14° of phase margin on the same plant** and no gain margin (the two flights' plant estimates differ
+by about as much, hence two values per cell). Controller models use the b0 the firmware actually applied — base b0 ×
+the throttle schedule, logged in `debug[7]`, median 1.03–1.22 over these chirps. Yaw, which keeps the plain law, is
+unchanged (2.5": peak 1.15 / 1.19 at 47 Hz). Calm-flight gyro RMS per segment on the 2.5" is ~1.2 °/s higher with
+the pole (median 4.9 → 6.2 roll, 5.5 → 6.6 pitch) on a day the pilot called extremely windy; yaw, flying the same
+law in both, rose by the same amount (5.5 → 6.5), which points at the conditions rather than the pole. On the 5":
+5.7 → 6.6 roll, 6.4 → 6.6 pitch, yaw 5.3 → 4.6. A calm-day repeat would settle it.
+The 2.5" tune is close to the ceiling with either law: gain margin 2.9–3.2 dB plain from the measured response
+(4.6–6.9 dB through the fitted plant), phase crossover at 18–27 Hz, wc·τ 1.7–1.8, b_acc/τ 1.04–1.24× the b0 in use; b0 × 1.25 gives
+back ~2 dB and 4–12° with either law (`ab_mp2_margins.py`, `ab_mp2_margins_out.txt`).
+
+*Erratum (same day).* The first pass of this section said the 5" logs had no chirps and quoted setpoint-move
+numbers for them (23 → 12 %, 33 → 29 %, 31 → 28 ms, 17 → 16 ms, D 33 → 25 / 32 → 21). Both were wrong: the sweep
+detector looked for a setpoint frequency rising past 40 Hz, the 5" sweeps were switched off at 15–48 Hz, so it
+missed them and then counted the chirp oscillations as stick moves. It also padded the 2.5" windows with a few
+seconds of non-chirp flight (last-digit changes above; the one visible change is the 2.5" pitch peak with the
+pole, 1.02 at 18 Hz rather than 0.99). jmsweng pointed it out (fork issue #5). The margins in the first pass used
+the base b0 rather than the b0 in use.
 
 **jmsweng, 5", suspended weight (a filament spool on a string), τ = 23, same tune.** Not a τ result: the flight
 ended on a stopped motor. At 14.9 s, in a low-throttle descent (0.5 g), `motor[1]` stops answering — commanded to

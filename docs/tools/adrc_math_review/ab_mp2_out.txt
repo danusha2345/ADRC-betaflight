@@ -1,33 +1,39 @@
 ################ 2.5 inch (wc 80 / wo 90, b0 4616/3636/5453)
 
-### tau = 0: 139 s, log 991 Hz, throttle median 39 %, vbat 16.05 -> 14.56 V, a motor at max 1.9 % of airborne time, motor 40+ Hz RMS 13.1
-    chirp sweeps: axis 0: 64-84 s; axis 1: 30-50 s; axis 2: 47-67 s
-  roll : moves  21 peak/sp 1.075 (IQR 0.94-1.12, >10 % over 33 %), 50 % lag 17.2 ms | calm 23 segs/48 s gyro RMS med 4.9 p90 15.4, err 8.4 | D RMS 22.4 (40+ Hz 4.21), gyro 40+ Hz 2.36
-         chirp: |T| peak 1.088 at 1.9 Hz, -3 dB at 5.8 Hz, phase at 5/10 Hz -60/-77 deg, |T| at 3/5/8/12/20 Hz 1.06/0.83/0.46/0.34/0.53 | plant: b_acc 118.2, tau 24.0 ms, delay 2.2 ms (err 0.099)
-  pitch: moves  21 peak/sp 1.089 (IQR 1.02-1.22, >10 % over 43 %), 50 % lag 4.0 ms | calm 21 segs/48 s gyro RMS med 5.5 p90 9.4, err 7.7 | D RMS 20.7 (40+ Hz 2.07), gyro 40+ Hz 1.79
-         chirp: |T| peak 1.092 at 2.4 Hz, -3 dB at 6.3 Hz, phase at 5/10 Hz -75/-96 deg, |T| at 3/5/8/12/20 Hz 1.08/0.84/0.51/0.47/0.45 | plant: b_acc 62.4, tau 12.4 ms, delay 5.6 ms (err 0.173)
-  yaw  : moves  12 peak/sp 0.834 (IQR 0.74-1.16, >10 % over 33 %), 50 % lag 24.2 ms | calm 18 segs/27 s gyro RMS med 5.5 p90 19.3, err 12.8 | D RMS 16.5 (40+ Hz 2.25), gyro 40+ Hz 2.14
-         chirp: |T| peak 1.188 at 46.9 Hz, -3 dB at 50.8 Hz, phase at 5/10 Hz -71/-56 deg, |T| at 3/5/8/12/20 Hz 0.73/0.34/0.19/0.15/0.15 | plant: b_acc 58.8, tau 0.1 ms, delay 3.0 ms (err 0.261)
+### tau = 0: 139 s, log 991 Hz, throttle median 39 %, vbat 16.05 -> 14.56 V, a motor at max 1.9 % of airborne time, motor 40+ Hz RMS 12.3
+    chirp sweeps: axis 0: 66.3-82.9 s (to 155 Hz); axis 1: 34.3-48.9 s (to 70 Hz); axis 2: 49.6-65.5 s (to 116 Hz)
+  roll : moves  23 peak/sp 1.075 (IQR 0.93-1.12, >10 % over 35 %), 50 % lag 17.2 ms | calm 25 segs/50 s gyro RMS med 4.9 p90 15.0, err 8.3 | D RMS 21.8 (40+ Hz 3.91), gyro 40+ Hz 2.34
+         chirp (valid to 60 Hz): |T| peak 1.088 at 1.9 Hz, -3 dB at 5.8 Hz, phase at 5/10 Hz -62/-75 deg, |T| at 3/5/8/12/20 Hz 1.04/0.85/0.46/0.34/0.51 | plant: b_acc 117.3, tau 22.9 ms, delay 2.4 ms (err 0.101)
+  pitch: moves  23 peak/sp 1.089 (IQR 1.01-1.26, >10 % over 43 %), 50 % lag 4.0 ms | calm 22 segs/50 s gyro RMS med 5.5 p90 9.4, err 7.7 | D RMS 20.3 (40+ Hz 1.98), gyro 40+ Hz 1.80
+         chirp (valid to 60 Hz): |T| peak 1.085 at 2.9 Hz, -3 dB at 6.3 Hz, phase at 5/10 Hz -79/-97 deg, |T| at 3/5/8/12/20 Hz 1.08/0.91/0.49/0.46/0.44 | plant: b_acc 64.3, tau 13.1 ms, delay 4.7 ms (err 0.206)
+  yaw  : moves  12 peak/sp 0.834 (IQR 0.74-1.16, >10 % over 33 %), 50 % lag 24.2 ms | calm 20 segs/31 s gyro RMS med 5.5 p90 18.9, err 12.7 | D RMS 16.2 (40+ Hz 2.20), gyro 40+ Hz 2.11
+         chirp (valid to 60 Hz): |T| peak 1.149 at 46.9 Hz, -3 dB at 50.8 Hz, phase at 5/10 Hz -76/-59 deg, |T| at 3/5/8/12/20 Hz 0.72/0.34/0.20/0.15/0.15 | plant: b_acc 58.5, tau 0.1 ms, delay 2.9 ms (err 0.266)
 
-### tau = 22: 126 s, log 991 Hz, throttle median 38 %, vbat 16.12 -> 14.35 V, a motor at max 3.7 % of airborne time, motor 40+ Hz RMS 12.1
-    chirp sweeps: axis 0: 54-74 s; axis 1: 21-41 s; axis 2: 39-59 s
-  roll : moves  17 peak/sp 1.000 (IQR 0.93-1.08, >10 % over 18 %), 50 % lag 12.1 ms | calm 19 segs/41 s gyro RMS med 6.3 p90 22.4, err 8.9 | D RMS 11.2 (40+ Hz 2.26), gyro 40+ Hz 2.59
-         chirp: |T| peak 0.975 at 1.9 Hz, -3 dB at 15.5 Hz, phase at 5/10 Hz -35/-61 deg, |T| at 3/5/8/12/20 Hz 0.94/0.88/0.77/0.85/0.31 | plant: b_acc 121.9, tau 21.1 ms, delay 3.1 ms (err 0.116)
-  pitch: moves   7 peak/sp 1.064 (IQR 1.04-1.09, >10 % over 29 %), 50 % lag 5.0 ms | calm 15 segs/34 s gyro RMS med 6.7 p90 10.6, err 7.4 | D RMS 10.2 (40+ Hz 1.92), gyro 40+ Hz 2.02
-         chirp: |T| peak 0.994 at 17.9 Hz, -3 dB at 20.3 Hz, phase at 5/10 Hz -37/-62 deg, |T| at 3/5/8/12/20 Hz 0.93/0.91/0.82/0.82/0.83 | plant: b_acc 98.8, tau 20.6 ms, delay 3.0 ms (err 0.061)
-  yaw  : moves   4 peak/sp 0.678 (IQR 0.66-0.80, >10 % over 25 %), 50 % lag 21.2 ms | calm 19 segs/40 s gyro RMS med 6.7 p90 15.7, err 8.7 | D RMS 7.7 (40+ Hz 2.27), gyro 40+ Hz 1.97
-         chirp: |T| peak 1.187 at 46.9 Hz, -3 dB at 51.8 Hz, phase at 5/10 Hz -70/-53 deg, |T| at 3/5/8/12/20 Hz 0.68/0.41/0.20/0.18/0.16 | plant: b_acc 62.1, tau 0.1 ms, delay 3.2 ms (err 0.285)
+### tau = 22: 126 s, log 991 Hz, throttle median 38 %, vbat 16.12 -> 14.35 V, a motor at max 3.7 % of airborne time, motor 40+ Hz RMS 11.9
+    chirp sweeps: axis 0: 59.3-73.0 s (to 49 Hz); axis 1: 22.9-40.2 s (to 203 Hz); axis 2: 40.9-58.2 s (to 201 Hz)
+  roll : moves  17 peak/sp 1.000 (IQR 0.93-1.08, >10 % over 18 %), 50 % lag 12.1 ms | calm 21 segs/42 s gyro RMS med 6.2 p90 21.4, err 8.7 | D RMS 11.0 (40+ Hz 2.22), gyro 40+ Hz 2.58
+         chirp (valid to 44 Hz): |T| peak 0.973 at 1.9 Hz, -3 dB at 15.5 Hz, phase at 5/10 Hz -35/-61 deg, |T| at 3/5/8/12/20 Hz 0.93/0.89/0.78/0.85/0.29 | plant: b_acc 122.3, tau 21.5 ms, delay 3.1 ms (err 0.123)
+  pitch: moves   7 peak/sp 1.064 (IQR 1.04-1.09, >10 % over 29 %), 50 % lag 5.0 ms | calm 17 segs/36 s gyro RMS med 6.6 p90 10.4, err 7.3 | D RMS 9.9 (40+ Hz 1.88), gyro 40+ Hz 2.07
+         chirp (valid to 60 Hz): |T| peak 1.016 at 17.9 Hz, -3 dB at 20.8 Hz, phase at 5/10 Hz -37/-62 deg, |T| at 3/5/8/12/20 Hz 0.93/0.91/0.82/0.83/0.84 | plant: b_acc 98.9, tau 20.7 ms, delay 3.0 ms (err 0.062)
+  yaw  : moves   4 peak/sp 0.678 (IQR 0.66-0.80, >10 % over 25 %), 50 % lag 21.2 ms | calm 20 segs/42 s gyro RMS med 6.5 p90 15.6, err 8.6 | D RMS 7.7 (40+ Hz 2.22), gyro 40+ Hz 1.96
+         chirp (valid to 60 Hz): |T| peak 1.187 at 46.9 Hz, -3 dB at 51.8 Hz, phase at 5/10 Hz -70/-53 deg, |T| at 3/5/8/12/20 Hz 0.68/0.41/0.20/0.18/0.16 | plant: b_acc 62.2, tau 0.1 ms, delay 3.2 ms (err 0.278)
 
 ################ 5 inch (wc 80 / wo 90, b0 2529/2692/3021)
 
-### tau = 0: 143 s, log 988 Hz, throttle median 34 %, vbat 15.49 -> 13.80 V, a motor at max 2.7 % of airborne time, motor 40+ Hz RMS 19.7
-    chirp sweeps: none
-  roll : moves  35 peak/sp 0.914 (IQR 0.63-1.10, >10 % over 23 %), 50 % lag 31.4 ms | calm 38 segs/73 s gyro RMS med 6.0 p90 12.6, err 8.1 | D RMS 33.0 (40+ Hz 5.63), gyro 40+ Hz 6.17
-  pitch: moves  39 peak/sp 1.030 (IQR 0.76-1.18, >10 % over 33 %), 50 % lag 17.2 ms | calm 37 segs/79 s gyro RMS med 6.5 p90 7.9, err 7.3 | D RMS 32.0 (40+ Hz 3.86), gyro 40+ Hz 4.91
-  yaw  : moves  23 peak/sp 0.496 (IQR 0.18-0.96, >10 % over 0 %), 50 % lag 38.5 ms | calm 39 segs/82 s gyro RMS med 5.4 p90 10.6, err 7.3 | D RMS 24.9 (40+ Hz 4.28), gyro 40+ Hz 4.29
+### tau = 0: 143 s, log 988 Hz, throttle median 34 %, vbat 15.49 -> 13.80 V, a motor at max 2.7 % of airborne time, motor 40+ Hz RMS 20.0
+    chirp sweeps: axis 0: 42.9-56.4 s (to 45 Hz); axis 1: 18.7-30.0 s (to 19 Hz); axis 2: 30.7-41.4 s (to 15 Hz)
+  roll : moves  19 peak/sp 1.096 (IQR 0.80-1.13, >10 % over 42 %), 50 % lag 24.3 ms | calm 33 segs/55 s gyro RMS med 5.7 p90 13.2, err 6.7 | D RMS 21.2 (40+ Hz 6.31), gyro 40+ Hz 4.46
+         chirp (valid to 41 Hz): |T| peak 1.056 at 1.9 Hz, -3 dB at 5.3 Hz, phase at 5/10 Hz -63/-66 deg, |T| at 3/5/8/12/20 Hz 1.03/0.78/0.43/0.35/0.49 | plant: b_acc 76.6, tau 19.5 ms, delay 2.4 ms (err 0.080)
+  pitch: moves  22 peak/sp 1.159 (IQR 1.04-1.31, >10 % over 59 %), 50 % lag 7.6 ms | calm 30 segs/54 s gyro RMS med 6.4 p90 8.2, err 6.3 | D RMS 23.0 (40+ Hz 4.06), gyro 40+ Hz 3.54
+         chirp (valid to 17 Hz): |T| peak 1.053 at 2.9 Hz, -3 dB at 5.3 Hz, phase at 5/10 Hz -78/-81 deg, |T| at 3/5/8/12/20 Hz 1.05/0.88/0.51/0.79/3.01 | plant: b_acc 48.5, tau 23.1 ms, delay 0.0 ms (err 0.269)
+  yaw  : moves   9 peak/sp 0.968 (IQR 0.95-1.01, >10 % over 0 %), 50 % lag 27.3 ms | calm 33 segs/69 s gyro RMS med 5.3 p90 11.8, err 6.5 | D RMS 13.5 (40+ Hz 4.16), gyro 40+ Hz 3.02
+         chirp (valid to 13 Hz): |T| peak 0.909 at 1.9 Hz, -3 dB at 2.9 Hz, phase at 5/10 Hz -70/-52 deg, |T| at 3/5/8/12/20 Hz 0.63/0.36/0.20/0.29/0.28 | plant: b_acc 17.5, tau 0.1 ms, delay 0.0 ms (err 0.448)
 
-### tau = 23: 124 s, log 988 Hz, throttle median 33 %, vbat 15.63 -> 14.38 V, a motor at max 2.2 % of airborne time, motor 40+ Hz RMS 17.6
-    chirp sweeps: none
-  roll : moves  32 peak/sp 0.904 (IQR 0.70-1.02, >10 % over 12 %), 50 % lag 27.8 ms | calm 32 segs/59 s gyro RMS med 6.4 p90 9.2, err 7.7 | D RMS 25.0 (40+ Hz 3.52), gyro 40+ Hz 5.99
-  pitch: moves  34 peak/sp 0.939 (IQR 0.77-1.12, >10 % over 29 %), 50 % lag 15.7 ms | calm 27 segs/60 s gyro RMS med 6.5 p90 9.4, err 7.2 | D RMS 21.2 (40+ Hz 2.67), gyro 40+ Hz 4.98
-  yaw  : moves  20 peak/sp 0.328 (IQR 0.11-0.74, >10 % over 0 %), 50 % lag 38.0 ms | calm 34 segs/60 s gyro RMS med 4.6 p90 8.0, err 7.6 | D RMS 25.7 (40+ Hz 4.41), gyro 40+ Hz 5.42
+### tau = 23: 124 s, log 988 Hz, throttle median 33 %, vbat 15.63 -> 14.38 V, a motor at max 2.2 % of airborne time, motor 40+ Hz RMS 17.4
+    chirp sweeps: axis 0: 61.5-74.4 s (to 34 Hz); axis 1: 34.0-47.7 s (to 48 Hz); axis 2: 48.3-60.7 s (to 28 Hz)
+  roll : moves  16 peak/sp 1.024 (IQR 0.98-1.10, >10 % over 25 %), 50 % lag 10.1 ms | calm 26 segs/43 s gyro RMS med 6.6 p90 9.0, err 6.2 | D RMS 16.1 (40+ Hz 4.43), gyro 40+ Hz 4.12
+         chirp (valid to 31 Hz): |T| peak 0.979 at 1.9 Hz, -3 dB at 17.4 Hz, phase at 5/10 Hz -35/-53 deg, |T| at 3/5/8/12/20 Hz 0.96/0.87/0.74/0.79/0.35 | plant: b_acc 69.4, tau 20.5 ms, delay 2.3 ms (err 0.112)
+  pitch: moves  18 peak/sp 1.119 (IQR 1.00-1.14, >10 % over 56 %), 50 % lag 5.1 ms | calm 19 segs/37 s gyro RMS med 6.6 p90 9.3, err 5.9 | D RMS 13.7 (40+ Hz 3.23), gyro 40+ Hz 2.92
+         chirp (valid to 43 Hz): |T| peak 0.982 at 1.9 Hz, -3 dB at 9.6 Hz, phase at 5/10 Hz -40/-67 deg, |T| at 3/5/8/12/20 Hz 0.95/0.89/0.73/0.67/0.51 | plant: b_acc 70.5, tau 21.9 ms, delay 2.2 ms (err 0.074)
+  yaw  : moves   6 peak/sp 0.900 (IQR 0.74-1.00, >10 % over 0 %), 50 % lag 26.3 ms | calm 25 segs/40 s gyro RMS med 4.6 p90 7.9, err 6.0 | D RMS 13.7 (40+ Hz 4.15), gyro 40+ Hz 2.83
+         chirp (valid to 26 Hz): |T| peak 0.905 at 1.9 Hz, -3 dB at 2.9 Hz, phase at 5/10 Hz -71/-57 deg, |T| at 3/5/8/12/20 Hz 0.59/0.36/0.19/0.16/0.74 | plant: b_acc 19.6, tau 0.1 ms, delay 0.0 ms (err 0.402)
