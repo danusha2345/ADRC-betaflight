@@ -191,7 +191,7 @@ both). Calm-flight gyro RMS per segment is ~1.3 °/s higher with the pole (media
 on a day the pilot called extremely windy; yaw, flying the same law in both, rose by the same amount (5.5 → 6.7),
 which points at the conditions rather than the pole — a calm-day repeat would settle it.
 The tune itself is close to the ceiling with either law: gain margin 2.4–4.5 dB from the measured response
-(3.5–7 dB through the fitted plant), phase crossover at 21–27 Hz. wc·τ is 1.7–1.9, and b_acc/τ is 1.07–1.25× the
+(3.5–7 dB through the fitted plant), phase crossover at 20–27 Hz. wc·τ is 1.7–1.9, and b_acc/τ is 1.07–1.25× the
 roll b0 and ~1.3× the pitch b0 (b0 slightly low). b0 × 1.25 gives back ~2 dB and 6–11° with either law
 (`ab_mp2_margins.py`, `ab_mp2_margins_out.txt`).
 
