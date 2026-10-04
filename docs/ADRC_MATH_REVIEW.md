@@ -205,6 +205,8 @@ Reading: the low-frequency resonance peak (5–9 %) is gone on all four axes, th
 and the D term does 24–51 % less work. The −3 dB bandwidth goes from 5.3–6.3 Hz to 9.6–20.8 Hz. How far depends on b0:
 a critically damped pair at wc = 80 rad/s has its −3 dB point at 0.64·wc = 8.2 Hz, the one axis with b0 matched
 (5" pitch, 0.98×) lands at 9.6 Hz, and the three axes where b_acc/τ is 1.18–1.39× the b0 in use (b0 low, extra loop gain) land at 15–21 Hz.
+The model says the same (τ 21 ms, 2.5 ms delay): with the pole 13 Hz at b0 matched, 18 Hz at 1.2×, 21 Hz at 1.4×, and
+the phase margin falls with it (36° → 31° → 26°); the plain law stays at 5.5–5.7 Hz whatever b0 is.
 The plain law at the same wc sits below the design bandwidth and peaks; the pole brings the loop to it.
 The loop model reproduces this on the fitted plants: −3 dB 5.3–5.8 Hz plain; 14–20 Hz with the pole where b0 is low
 and 11.5 Hz on the matched axis; T peak 1.04–1.11 against the measured 1.05–1.09 plain, 0.98–1.00 against
