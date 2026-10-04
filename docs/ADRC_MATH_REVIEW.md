@@ -178,19 +178,35 @@ The chirp gives the measured closed-loop response T = S_ry/S_rr directly, same a
 | stick moves: peak/setpoint, share > 10 % over | 1.08, 33 % (21) | 1.00, 18 % (17) | 1.09, 43 % (21) | 1.06, 29 % (7) |
 | D term RMS | 22.4 | 11.2 | 20.7 | 10.2 |
 | plant from the chirp | τ 24.0 ms, d 2.2 ms | τ 21.1 ms, d 3.1 ms | (poor fit) | τ 20.6 ms, d 3.0 ms |
-| loop margins, measured plant × controller model | PM 43–53°, GM 2.8–4.2 dB | PM 31–39°, GM 4.4–4.8 dB | PM 35–63°, GM 3.6–3.7 dB | PM 32–49°, GM 4.4–4.5 dB |
+| phase margin, measured H × controller model (plant from the τ = 0 / τ = 22 flight) | 53° / 43° | 40° / 31° | 63° / 33° | 49° / 27° |
+| same through the fitted plant | 44° / 36° | 32° / 27° | 42° / 35° | 33° / 27° |
+| gain margin, measured H (fitted plant) | 2.4 dB (4.7–6.8) | 4.5 dB (4.8–7.0) | 3.1 dB (3.5–4.4) | 3.7–3.8 dB (3.9–4.6) |
 
-The resonance peak is gone and the tracking bandwidth is 2.7–3.2× wider, as the model said it would be (on this
-plant: −3 dB 5.9 → 17.9 Hz on roll, 5.7 → 20.0 Hz on pitch); the D term does half the work; the price is ~10–14° of
-phase margin and no gain margin. The controller models reproduce the measured T peak for the law that was flown in
-all four cases (1.08/1.10 vs 1.09/1.09 plain; 0.97/0.95 vs 0.97/0.99 with the pole). Yaw, which keeps the plain
-law, is unchanged (peak 1.19 at 47 Hz in both). Calm-flight gyro RMS per segment is 1.3 °/s higher with the pole
-(median 4.9 → 6.3 roll, 5.5 → 6.7 pitch) on a day the pilot called extremely windy — not separable from the wind.
-Note the gain margin of this tune is ~4 dB with either law (crossing near 25 Hz, at the edge of the coherent band).
+The resonance peak is gone and the tracking bandwidth is 2.7–3.2× wider; the D term does half the work. The loop
+model on the plant fitted from these chirps gives the same (−3 dB at 5.3–5.8 Hz plain, 15–20 Hz with the pole;
+T peak 1.05–1.11 against the measured 1.09 plain, 0.98–1.00 against 0.98/0.99 with the pole). The price is
+**7–14° of phase margin on the same plant** (the two flights' plant estimates differ by more than that, hence
+two values per cell) and no gain margin. Yaw, which keeps the plain law, is unchanged (peak 1.19 at 47 Hz in
+both). Calm-flight gyro RMS per segment is ~1.3 °/s higher with the pole (median 4.9 → 6.3 roll, 5.5 → 6.7 pitch)
+on a day the pilot called extremely windy; yaw, flying the same law in both, rose by the same amount (5.5 → 6.7),
+which points at the conditions rather than the pole — a calm-day repeat would settle it.
+The tune itself is close to the ceiling with either law: gain margin 2.4–4.5 dB from the measured response
+(3.5–7 dB through the fitted plant), phase crossover at 21–27 Hz. wc·τ is 1.7–1.9, and b_acc/τ is 1.07–1.25× the
+roll b0 and ~1.3× the pitch b0 (b0 slightly low). b0 × 1.25 gives back ~2 dB and 6–11° with either law
+(`ab_mp2_margins.py`, `ab_mp2_margins_out.txt`).
 
 **jmsweng, 5", wc 80 / wo 90, b0 2529/2692, τ 0 vs 23 ms, no chirp.** Pilot: "didn't really notice any differences".
 Logs: share of moves > 10 % over 23 → 12 % (roll), 33 → 29 % (pitch); 50 % lag 31 → 28 ms, 17 → 16 ms; D term RMS
 33 → 25 and 32 → 21; motor 40+ Hz RMS 19.7 → 17.6. Same direction, smaller.
+
+**jmsweng, 5", suspended weight (a filament spool on a string), τ = 23, same tune.** Not a τ result: the flight
+ended on a stopped motor. At 14.9 s, in a low-throttle descent (0.5 g), `motor[1]` stops answering — commanded to
+2047, eRPM falls to ~14 and stays there, with a 56 A spike at the stall; the other three keep answering. The craft
+flies about 1.6 s on three motors (rates ≤ 371/230/537 °/s up to 16.5 s) and hits the ground at 16.59 s; the 1400–2150 °/s in the
+log are that impact. Before the stop the yaw axis was already at its limit (7–13 s: one diagonal pair averaging
+1430/1050 against 650/570, a motor at idle half of the time, yaw I touching its 400 bound, yaw rate up to
+590 °/s with the stick centred); a motor was at max 8 % of the time (`ab_mp2_weight.py`). An earlier reading of
+this log as "past authority, z3 on its clamp" was wrong — it had not looked at eRPM.
 
 **8ksal8, Pavo20 Pro II, 85/100, τ 0 vs 12 ms (2026-10-02)** — τ set below the chirp-measured 33/27 ms: 50 % lag
 17 → 6 ms and 25 → 9 ms, typical overshoot no worse, but the 90th-percentile calm-flight segment worse (12.7 →
