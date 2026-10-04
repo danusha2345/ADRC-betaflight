@@ -223,6 +223,17 @@ The 2.5" tune is close to the ceiling with either law: gain margin 2.9–3.2 dB 
 (4.6–6.9 dB through the fitted plant), phase crossover at 18–27 Hz, wc·τ 1.7–1.8, b_acc/τ 1.04–1.24× the b0 in use; b0 × 1.25 gives
 back ~2 dB and 4–12° with either law (`ab_mp2_margins.py`, `ab_mp2_margins_out.txt`).
 
+**Which b0 the tune was flown with.** jmsweng's plant-fit tool reports `b0_eff = wc²·|G(j·wc)|`, the
+double-integrator equivalent at the proposed wc, not b_acc/τ. For an integrator plus one lag the two differ by
+√(1+(wc·τ)²)/(wc·τ) — 1.14–1.19 at the wc·τ of these craft — so most of the "b0 low" above is that definition.
+`b0_eff` at wc 80 from the chirps here: 4500–4920 (flown 4616) on 2.5" roll, 4090 (3636) on 2.5" pitch, 2890–3310
+(2529) on 5" roll, 2800 (2692) on 5" pitch: three axes within 12 %, 5" roll 14–31 % above. The two 5" roll sweeps
+give b_acc/τ = 3390 at 30 % throttle and 3930 at 35 %; neither craft has thrust linearisation or sag compensation,
+so throttle and pack voltage move the gain. **With `adrc_motor_tau_ms` set the observer's model is
+ω'' = b0·u − ω'/τ, so the matching b0 is b_acc/τ exactly and does not depend on wc; `b0_eff` is the equivalent for
+the plain law.** Model (τ 21 ms, 80/90, pole on) for b0 at 0.83 / 1.0 / 1.25 × b_acc/τ: −3 dB 17.6 / 13.2 /
+10.4 Hz, PM 31 / 36 / 40°, GM 6.0 / 7.5 / 9.5 dB, no peak; plain law: same margin trend, peak 1.06 / 1.09 / 1.14.
+
 *Erratum (same day).* The first pass of this section said the 5" logs had no chirps and quoted setpoint-move
 numbers for them (23 → 12 %, 33 → 29 %, 31 → 28 ms, 17 → 16 ms, D 33 → 25 / 32 → 21). Both were wrong: the sweep
 detector looked for a setpoint frequency rising past 40 Hz, the 5" sweeps were switched off at 15–48 Hz, so it
