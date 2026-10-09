@@ -1656,6 +1656,15 @@ was ours: since aed66441f8 the PR line carried a stray `src/config` pointer chan
 Branch `adrc-sync-1001` (28f8e09e6a) merges master and takes its pointer, so the PR no longer touches `src/config`
 (26 files against master). 88 suites, five MCU builds; opened as **bvandevliet/betaflight#4** (2026-10-01).
 
+**2026-10-09: second conflict, upstream #15796 (wing navigation).** #4 was still unmerged when master (4fc1520c5a)
+added three debug modes (`AUTOPILOT_CLIMB/GUIDANCE/LANDING`) where the ADRC line appends `DEBUG_ADRC`, and an
+`autopilotStopsMotor()` term to the mixer's motor-stop condition, which the ADRC line hoists into `motorStopped`.
+Merge `0a71f8916c` (branch `adrc-sync-1009`, on top of #4's `28f8e09e6a`): upstream's modes keep their indices and
+`DEBUG_ADRC` stays last (**111 → 114**; logs carry `debug_mode_name`, the viewer PR #944 is name-based);
+`motorStopped` takes the upstream term. Upstream did not touch `pid.h` or the `pidProfiles` registration, so no PG
+bump. 94 suites / 1501 tests, five MCU builds, merges cleanly into master. Not yet in #4 (update pending approval).
+`adrc-motor-pole` needs the same merge before any mp3.
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
