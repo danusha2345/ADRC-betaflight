@@ -1662,7 +1662,7 @@ added three debug modes (`AUTOPILOT_CLIMB/GUIDANCE/LANDING`) where the ADRC line
 Merge `0a71f8916c` (branch `adrc-sync-1009`, on top of #4's `28f8e09e6a`): upstream's modes keep their indices and
 `DEBUG_ADRC` stays last (**111 → 114**; logs carry `debug_mode_name`, the viewer PR #944 is name-based);
 `motorStopped` takes the upstream term. Upstream did not touch `pid.h` or the `pidProfiles` registration, so no PG
-bump. 94 suites / 1501 tests, five MCU builds, merges cleanly into master. Not yet in #4 (update pending approval).
+bump. 94 suites / 1501 tests, five MCU builds, merges cleanly into master. **#4 updated in place the same day** (its branch fast-forwarded to `0a71f8916c`, new title and description; note to the PR owner: #15400 comment 6079861526).
 `adrc-motor-pole` needs the same merge before any mp3.
 
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
