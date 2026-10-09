@@ -72,6 +72,32 @@ protected:
     }
 };
 
+// --- Track geometry: how a fixed wing flies the target ---
+
+TEST_F(PositionNavTest, TrackGeometryLastsUntilTheNextTarget)
+{
+    const vector2_t start = {{ -100.0f, 50.0f }};
+    positionNavSetTrackLine(&start);
+    EXPECT_FALSE(positionNavHasActiveTarget());
+
+    const vector3_t target = {{ 200.0f, 300.0f, 40.0f }};
+    positionNavSetTargetEf(&target, 15.0f, -1.0f, 1000.0f, true, NULL, NULL);
+    EXPECT_EQ(NAV_TRACK_POINT, positionNavGetActiveCommand()->track);
+
+    positionNavSetTrackLine(&start);
+    EXPECT_EQ(NAV_TRACK_LINE, positionNavGetActiveCommand()->track);
+    EXPECT_FLOAT_EQ(-100.0f, positionNavGetActiveCommand()->trackStartEfM.x);
+    EXPECT_FLOAT_EQ(50.0f, positionNavGetActiveCommand()->trackStartEfM.y);
+
+    positionNavSetTrackLoiter(60.0f, -1);
+    EXPECT_EQ(NAV_TRACK_LOITER, positionNavGetActiveCommand()->track);
+    EXPECT_FLOAT_EQ(60.0f, positionNavGetActiveCommand()->loiterRadiusM);
+    EXPECT_EQ(-1, positionNavGetActiveCommand()->loiterDirection);
+
+    positionNavSetTargetEf(&target, 15.0f, -1.0f, 1000.0f, true, NULL, NULL);
+    EXPECT_EQ(NAV_TRACK_POINT, positionNavGetActiveCommand()->track);
+}
+
 // --- Vertical channel: rate-limited ramp, not a stepped altitude target ---
 
 TEST_F(PositionNavTest, VerticalProfileSeedsTheCommandedRateBeforeAnyUpdate)
@@ -1107,6 +1133,23 @@ TEST_F(PositionNavTest, MoveTargetWithoutActiveCommandIsNoOp)
     const vector3_t moved = {{ 5.0f, 5.0f, 0.0f }};
     positionNavMoveTargetEf(&moved);
     EXPECT_FALSE(positionNavHasActiveTarget());
+}
+
+TEST_F(PositionNavTest, LoweredTargetAltitudeStaysFixedAndNeverRises)
+{
+    // Only the altitude moves, so the horizontal target is still flown as a fixed one.
+    const vector3_t target = {{ 10.0f, 5.0f, -200.0f }};
+    positionNavSetTargetEf(&target, 1.0f, 1.0f, 0.1f, true, NULL, NULL);
+
+    positionNavLowerTargetAltitude(-210.0f);
+    const positionNavCommand_t *cmd = positionNavGetActiveCommand();
+    EXPECT_FLOAT_EQ(cmd->targetPosEfM.v[ENU_U], -210.0f);
+    EXPECT_FLOAT_EQ(cmd->targetPosEfM.v[ENU_E], 10.0f);
+    EXPECT_FLOAT_EQ(cmd->targetPosEfM.v[ENU_N], 5.0f);
+    EXPECT_TRUE(cmd->fixedTarget);
+
+    positionNavLowerTargetAltitude(-205.0f);
+    EXPECT_FLOAT_EQ(cmd->targetPosEfM.v[ENU_U], -210.0f);
 }
 
 // --- Clear target ---
