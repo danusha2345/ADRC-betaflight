@@ -7,8 +7,8 @@
 Identical flight code to mp1. Two changes:
 
 - **Chirp is back.** It is a build option (`USE_CHIRP`) that the Betaflight cloud builder adds and mp1 did not;
-  mp2 builds every target with it, except where it does not fit — **STM32F722 boards** (ITCM RAM is full) are
-  built without it and listed in the release's build summary.
+  mp2 builds every target with it, except where it does not fit — **STM32F7 boards** (F722/F745: ITCM RAM is full; 189 of the
+  board builds) are built without it and listed in the release's build summary. G4, F4 and H7 boards all have it.
 - **τ guidance corrected.** mp1's notes suggested 8–12 ms on whoops. That was wrong for at least one: a chirp on
   a Pavo20 Pro II measured τ ≈ 33 ms on roll and 27 ms on pitch, and 12 ms on it cut the modelled phase margin
   from ~45° to ~21°. **Measure τ with a chirp** (the plant-fit tool, or ask in #15400), and if you must guess,
@@ -32,3 +32,4 @@ Debug mode: `debug_mode = ADRC` is **111** on this line (upstream's indices pres
 after flashing from b11.
 
 Not built: **NEXUSXR** (STM32F722) — its ITCM RAM overflows on the upstream base itself.
+
