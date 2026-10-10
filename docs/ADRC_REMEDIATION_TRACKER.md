@@ -1665,6 +1665,21 @@ Merge `0a71f8916c` (branch `adrc-sync-1009`, on top of #4's `28f8e09e6a`): upstr
 bump. 94 suites / 1501 tests, five MCU builds, merges cleanly into master. **#4 updated in place the same day** (its branch fast-forwarded to `0a71f8916c`, new title and description; note to the PR owner: #15400 comment 6079861526).
 `adrc-motor-pole` needs the same merge before any mp3.
 
+**2026-10-10: upstream #15546 changes `pidProfile_t`, and the PG version cannot follow.** Master (79d8b4aba3)
+inserts four wing fields (`speed_curve_vref/power/min/max`, 6 bytes) into `pidProfile_t` ahead of the chirp block,
+with no version bump of its own (still 12). The textual merge with the ADRC line is clean (`6e56566a67`, branch
+`adrc-sync-1011`, on top of #4's `0a71f8916c`; 94 suites / 1501 tests, five MCU builds) — but the stored element
+grows **268 → 274 bytes** (measured from `pidProfiles_SystemArray` in the F405 ELF: 1072 → 1096) while the line is
+at PG version 15, which is the ceiling of the 4-bit field. Unlike the chirp_repeat case of 2026-09-27, version-15
+builds with the 268-byte layout **are** in testers' hands (the PR head `1eabcb3877`, mp1, mp2), so on any build of
+the merged line their saved profiles load shifted: profile 1 from the insertion point on, profiles 2–4 entirely
+(the ADRC-034 failure). `EEPROM_CONF_VERSION` is 178 on both sides, so nothing else forces a reset.
+Open decision, not taken unilaterally: keep 15 and require a full chip erase in the notes of the next tester
+build; or wrap to a number no ADRC build has used (1–11; 0, 13, 14, 15 are taken) and let the maintainers pick the
+final one when the PR lands. #4 is **not** updated with this merge: its head still builds the 268-byte layout, and
+the question only becomes live at the next sync. Upstream has the same exposure on its own side (#15196 and #15546
+both moved the stride at version 12).
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
