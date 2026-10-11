@@ -1680,6 +1680,17 @@ final one when the PR lands. #4 is **not** updated with this merge: its head sti
 the question only becomes live at the next sync. Upstream has the same exposure on its own side (#15196 and #15546
 both moved the stride at version 12).
 
+**2026-10-11: third conflict, upstream #15813 (normalised RC channels), and the version decision comes due.**
+Master (c78d9e7bd2) rewrites the throttle test inside the same motor-stop condition
+(`rcData[THROTTLE] < mincheck` → `rcGetChannel(THROTTLE) < rcUsToNorm(mincheck)`), so #4's head `0a71f8916c`
+conflicts with master again, and any merge that fixes it necessarily brings in #15546's 274-byte element.
+Prepared, not in #4 yet (pending approval): `adrc-sync-1012` = merge `11a979fd65` (on top of `6e56566a67`;
+`motorStopped` takes upstream's test) and `adrc-sync-1012-pg1` = that plus `08363e79c5`, which moves the
+`pidProfiles` PG version 15 → 1 (16 would wrap to 0, used by the b9 line; 1 is carried by no ADRC build and by no
+upstream build of `EEPROM_CONF_VERSION` 178, which saw 11 and 12). `PidProfilesPgVersionRejectsOlderBlobs` now
+rejects a version-15 blob too and fails if the version is left at 15 (mutation-checked). 94 suites / 1501 tests on
+both branches; five MCU builds on the merge, F405/F722/G474 on the version commit.
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
