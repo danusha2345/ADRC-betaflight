@@ -1695,6 +1695,12 @@ both branches; five MCU builds on the merge, F405/F722/G474 on the version commi
 testers in #15400 (comment 6119798730). Same day: #15562 marked stale a second time — replied (6119776942); #15665
 auto-closed as not planned — commented (6119777998), reopen refused by GitHub for the author, maintainer asked.
 
+**2026-10-12 (evening): fourth conflict, upstream #15806 (timer-wrap fixes).** Master (cd8e8386de) replaces the
+`levelModeStartTimeUs` age test before `detectAndSetCrashRecovery()` with a `crashRecoveryGuardActive` flag — the
+statement the ADRC line extends with `gyroDeltaRequired` and a flag read. Merge `d02b179b7f` (branch
+`adrc-sync-1013`, on #4's `08363e79c5`): `gyroDeltaRequired && !crashRecoveryGuardActive`. 95 suites / 1516 tests,
+F405/F722/G474 build, element still 274 bytes. Not yet in #4 (`DRAFT_bobpr4_update3.md`, pending approval).
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
