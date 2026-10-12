@@ -1677,8 +1677,9 @@ the merged line their saved profiles load shifted: profile 1 from the insertion 
 Open decision, not taken unilaterally: keep 15 and require a full chip erase in the notes of the next tester
 build; or wrap to a number no ADRC build has used (1–11; 0, 13, 14, 15 are taken) and let the maintainers pick the
 final one when the PR lands. #4 is **not** updated with this merge: its head still builds the 268-byte layout, and
-the question only becomes live at the next sync. Upstream has the same exposure on its own side (#15196 and #15546
-both moved the stride at version 12).
+the question only becomes live at the next sync. Upstream has the same exposure on its own side: #15546 moved its element 228 → 234 bytes at version 12 (measured by
+building 29ae6a65e6^ and 29ae6a65e6; #15196's `chirp_repeat` was absorbed by padding, 228 → 228). Reported as
+betaflight/betaflight#15826 (2026-10-12); the 2026.6 release line is at version 11 and not affected.
 
 **2026-10-11: third conflict, upstream #15813 (normalised RC channels), and the version decision comes due.**
 Master (c78d9e7bd2) rewrites the throttle test inside the same motor-stop condition
@@ -1690,6 +1691,9 @@ Prepared, not in #4 yet (pending approval): `adrc-sync-1012` = merge `11a979fd65
 upstream build of `EEPROM_CONF_VERSION` 178, which saw 11 and 12). `PidProfilesPgVersionRejectsOlderBlobs` now
 rejects a version-15 blob too and fails if the version is left at 15 (mutation-checked). 94 suites / 1501 tests on
 both branches; five MCU builds on the merge, F405/F722/G474 on the version commit.
+**2026-10-12:** #4 updated in place to `08363e79c5` (title and body rewritten, mergeable clean); note to the PR owner and
+testers in #15400 (comment 6119798730). Same day: #15562 marked stale a second time — replied (6119776942); #15665
+auto-closed as not planned — commented (6119777998), reopen refused by GitHub for the author, maintainer asked.
 
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
