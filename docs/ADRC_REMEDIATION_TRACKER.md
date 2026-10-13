@@ -1700,6 +1700,10 @@ auto-closed as not planned — commented (6119777998), reopen refused by GitHub 
 statement the ADRC line extends with `gyroDeltaRequired` and a flag read. Merge `d02b179b7f` (branch
 `adrc-sync-1013`, on #4's `08363e79c5`): `gyroDeltaRequired && !crashRecoveryGuardActive`. 95 suites / 1516 tests,
 F405/F722/G474 build, element still 274 bytes. Not yet in #4 (`DRAFT_bobpr4_update3.md`, pending approval).
+**2026-10-13: #15821 (rcCommand as normalised deflection/throttle).** Clean merge `2b5bc4abe6` on `adrc-sync-1013`. The
+ADRC collective comes from the mixer's own 0..1 `throttle`, unchanged by #15821; only the ADRC mixer unit test needed
+its `rcCommand[THROTTLE]` setup moved from µs to 0..1 (upstream adapted its tests the same way). 95 suites / 1516
+tests, F405/G474 build. Still not in #4 (same draft, extended).
 
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
