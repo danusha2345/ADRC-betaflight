@@ -1713,6 +1713,15 @@ line now carries `debug_mode = ADRC` = 114 and `pidProfiles` PG version 1: a pro
 b11, mp1 or mp2 resets on upgrade. The mp tester line (`adrc-motor-pole`, mp2) is still on the pre-#4 base; any
 mp3 has to be rebuilt on `277d102cb2`.
 
+**2026-10-14: CodeRabbit re-review of the new head (CHANGES_REQUESTED, two findings).** (a) `pid_init.c`: drop the
+`!ARMED` guard around `adrcResetGate()` on a pid_type change — declined: the guard is the ADRC-020 "no mid-air gate
+close" rule; the grounded-armed case it cites is the accepted state after any landing. (b) `pid.c`: "version 1 was
+used by older upstream layouts" — true (last in 2020, `EEPROM_CONF_VERSION` 173), but every value 0–15 has been used
+upstream at some point; `pgLoad()` does run before `isEEPROMVersionValid()` at startup, yet a 173-era EEPROM then
+hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that pass the 178 check are 11, 12 (upstream)
+and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
+(#15826), its own PR. Reply drafts: `DRAFT_15400_cr_gate_reply.md`, `DRAFT_15400_cr_pgversion_reply.md` (pending).
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
