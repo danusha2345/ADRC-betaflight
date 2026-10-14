@@ -1706,6 +1706,13 @@ its `rcCommand[THROTTLE]` setup moved from µs to 0..1 (upstream adapted its tes
 tests, F405/G474 build. **#4 updated to `2b5bc4abe6` the same evening** (items 5–6 added to its body; mergeable clean
 against master 4b7fa8e40a).
 
+**2026-10-14: #4 merged by the PR owner** (05:22 UTC, merge commit `277d102cb2`, no comment). #15400 is no longer
+CONFLICTING: 26 files against master, `src/config` untouched, state "behind" only because master bumped the submodule
+again on 14.10 (4b7fa8e40a) after the merge. CI on the new head still `action_required` (maintainer approval). The PR
+line now carries `debug_mode = ADRC` = 114 and `pidProfiles` PG version 1: a profile saved by the previous PR head,
+b11, mp1 or mp2 resets on upgrade. The mp tester line (`adrc-motor-pole`, mp2) is still on the pre-#4 base; any
+mp3 has to be rebuilt on `277d102cb2`.
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
