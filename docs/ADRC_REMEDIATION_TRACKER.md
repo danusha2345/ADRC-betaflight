@@ -1725,8 +1725,7 @@ and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()`
 **2026-10-17: jmsweng back (fork #5).** On his 2.5" the overshoot at τ = 0 goes away with `adrc_b0_law = LINEAR`
 instead of SQRT; he suggests guidance on trying the laws rather than a "+20 %" column in the fitter. Consistent with
 the chirps: b0 was 4–24 % under b_acc/τ, and the two 5" roll sweeps at 30 / 35 % throttle gave b_acc/τ 3390 / 3930
-(ratio 1.16; linear predicts 1.17, sqrt 1.08). He offers flights this weekend. Reply draft
-(`DRAFT_issue5_reply_jmsweng_tests.md`, pending): (1) a flight on the current PR head 277d102cb2 (nobody has flown it;
+(ratio 1.16; linear predicts 1.17, sqrt 1.08). He offers flights this weekend. Reply posted the same evening: (1) a flight on the current PR head 277d102cb2 (nobody has flown it;
 debug 114, profiles reset once), prebuilt hex on offer; (2) chirps at two throttle levels in one flight to pick the
 law from data; (3) calm-air repeat of the 2.5" τ pair; (4) the 5" τ = 0 pitch sweep.
 
