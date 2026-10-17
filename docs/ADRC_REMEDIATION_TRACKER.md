@@ -1722,6 +1722,14 @@ hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that
 and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
 (#15826), its own PR. Replies posted the same day: inline 4271892798 (gate) and 4271893389 (version). **CodeRabbit withdrew both findings within a minute and re-approved the PR** (review 5519312637, 14:12 UTC); it asked whether #15826 covers the array-size guard (answer pending approval). Master 3fc834476b (#15812, CLI ranges on MSP set) adds macros to `pid.h` only; PR head still merges cleanly.
 
+**2026-10-17: jmsweng back (fork #5).** On his 2.5" the overshoot at τ = 0 goes away with `adrc_b0_law = LINEAR`
+instead of SQRT; he suggests guidance on trying the laws rather than a "+20 %" column in the fitter. Consistent with
+the chirps: b0 was 4–24 % under b_acc/τ, and the two 5" roll sweeps at 30 / 35 % throttle gave b_acc/τ 3390 / 3930
+(ratio 1.16; linear predicts 1.17, sqrt 1.08). He offers flights this weekend. Reply draft
+(`DRAFT_issue5_reply_jmsweng_tests.md`, pending): (1) a flight on the current PR head 277d102cb2 (nobody has flown it;
+debug 114, profiles reset once), prebuilt hex on offer; (2) chirps at two throttle levels in one flight to pick the
+law from data; (3) calm-air repeat of the 2.5" τ pair; (4) the 5" τ = 0 pitch sweep.
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
