@@ -1729,6 +1729,13 @@ the chirps: b0 was 4–24 % under b_acc/τ, and the two 5" roll sweeps at 30 / 3
 debug 114, profiles reset once), prebuilt hex on offer; (2) chirps at two throttle levels in one flight to pick the
 law from data; (3) calm-air repeat of the 2.5" τ pair; (4) the 5" τ = 0 pitch sweep.
 
+**2026-10-19: upstream fixed #15826.** #15830 (Firat17aze, merged by haslinghuis) bumps `PG_PID_PROFILE` 12 → 13
+on master for the #15546 stride change (228 → 234 bytes), with a test that a version-12 blob is rejected. That made
+#15400 conflict on the version line. Resolved on `adrc-sync-1019` (b87167dffe = PR head 277d102cb2 + master
+b37531190d): the PR keeps version 1, which neither upstream (11, 12, 13) nor any ADRC build has carried (13 was the
+PR's own earlier bump with a different layout); upstream's two new tests pass as they are. 95/95 test executables,
+F405 and G474 build. Not yet offered to Bob.
+
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
 D filter; equivalent PID; candidate motor-pole-in-ESO law; simplifications: drop `adrc_td_hz`, constant gated decay,
