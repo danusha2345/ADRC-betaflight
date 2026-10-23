@@ -1734,7 +1734,7 @@ themselves in the App without any viewer change. Left for the App, after #15400 
 for `adrcPidSum[…]`, `adrcCommandedCollective`, `adrcAppliedCollective`, `adrcState`, `adrcGateResetCount` (the App's
 presenter has no `adrc` entries). The red checks on #944 were not ours: `Build / build` refuses fork checkout under
 `pull_request_target` (every fork PR, #938/#939 included; #939 was merged red), and SonarCloud's two MINOR hints sit on
-May-2026 lines this PR did not touch. Plan: close #944 with a note (draft `DRAFT_944_stale_reply.md`).
+May-2026 lines this PR did not touch. Closed 2026-10-23 08:02 UTC with that note.
 
 **2026-10-22/23: Bob's reply and ours.** Bob (#15400 comment 6337099743): thanks for #4/#5; ADRC-036 as its own PR
 later; `adrc_td_hz` / `adrc_gated_z3_decay` stay until ADRC-036 (8ksal8 uses `td_hz`); PG version 1 fine as interim, the
