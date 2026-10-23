@@ -1722,6 +1722,20 @@ hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that
 and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
 (#15826), its own PR. Replies posted the same day: inline 4271892798 (gate) and 4271893389 (version). **CodeRabbit withdrew both findings within a minute and re-approved the PR** (review 5519312637, 14:12 UTC); it asked whether #15826 covers the array-size guard (answer pending approval). Master 3fc834476b (#15812, CLI ranges on MSP set) adds macros to `pid.h` only; PR head still merges cleanly.
 
+**2026-10-23: blackbox-log-viewer#944 is moot — the standalone viewer is frozen.** The stale bot labelled #944 on
+2026-10-23. Checking why nothing had moved since CodeRabbit's approval (2026-09-23) turned up the README note merged on
+2026-08-19 (#939): the standalone Blackbox Explorer is feature frozen, moved into the Betaflight App as the Blackbox
+Viewer tab (code in betaflight-configurator `src/blackbox-viewer/`), and the repository is archived on 2026-12-01. #944
+(2026-09-22) was filed against a frozen repository — a miss on our side. The App's parser already reads
+`debug_mode_name` and the per-slot `debug_field[i]` annotations from the log header (`src/js/utils/debugModes.ts`,
+`debugPrecedence.test.ts`), and the #15400 head writes both (`blackbox.c` header line; `//!<` annotations on the eight
+`DEBUG_SET(DEBUG_ADRC, …)` calls; annotations only on targets above 512 kB flash), so ADRC debug slots label
+themselves in the App without any viewer change. Left for the App, after #15400 lands: friendly names and scale hints
+for `adrcPidSum[…]`, `adrcCommandedCollective`, `adrcAppliedCollective`, `adrcState`, `adrcGateResetCount` (the App's
+presenter has no `adrc` entries). The red checks on #944 were not ours: `Build / build` refuses fork checkout under
+`pull_request_target` (every fork PR, #938/#939 included; #939 was merged red), and SonarCloud's two MINOR hints sit on
+May-2026 lines this PR did not touch. Plan: close #944 with a note (draft `DRAFT_944_stale_reply.md`).
+
 **2026-10-22/23: Bob's reply and ours.** Bob (#15400 comment 6337099743): thanks for #4/#5; ADRC-036 as its own PR
 later; `adrc_td_hz` / `adrc_gated_z3_decay` stay until ADRC-036 (8ksal8 uses `td_hz`); PG version 1 fine as interim, the
 final number for the maintainers; the `pgLoad()` size guard as its own PR. He asked whether ADRC-028 is still open and what
