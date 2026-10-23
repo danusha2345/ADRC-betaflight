@@ -1722,12 +1722,18 @@ hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that
 and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
 (#15826), its own PR. Replies posted the same day: inline 4271892798 (gate) and 4271893389 (version). **CodeRabbit withdrew both findings within a minute and re-approved the PR** (review 5519312637, 14:12 UTC); it asked whether #15826 covers the array-size guard (answer pending approval). Master 3fc834476b (#15812, CLI ranges on MSP set) adds macros to `pid.h` only; PR head still merges cleanly.
 
-**2026-10-17: jmsweng back (fork #5).** On his 2.5" the overshoot at τ = 0 goes away with `adrc_b0_law = LINEAR`
-instead of SQRT; he suggests guidance on trying the laws rather than a "+20 %" column in the fitter. Consistent with
-the chirps: b0 was 4–24 % under b_acc/τ, and the two 5" roll sweeps at 30 / 35 % throttle gave b_acc/τ 3390 / 3930
-(ratio 1.16; linear predicts 1.17, sqrt 1.08). He offers flights this weekend. Reply posted the same evening: (1) a flight on the current PR head 277d102cb2 (nobody has flown it;
-debug 114, profiles reset once), prebuilt hex on offer; (2) chirps at two throttle levels in one flight to pick the
-law from data; (3) calm-air repeat of the 2.5" τ pair; (4) the 5" τ = 0 pitch sweep.
+**2026-10-22/23: Bob's reply and ours.** Bob (#15400 comment 6337099743): thanks for #4/#5; ADRC-036 as its own PR
+later; `adrc_td_hz` / `adrc_gated_z3_decay` stay until ADRC-036 (8ksal8 uses `td_hz`); PG version 1 fine as interim, the
+final number for the maintainers; the `pgLoad()` size guard as its own PR. He asked whether ADRC-028 is still open and what
+should be settled before a maintainer is asked to review. Our reply (comment 6360245622): 028 stays open as a documented
+caution about raising `wo` — the mechanism was never pinned down, but since b11 the gate-closed loop runs at
+`adrc_ground_wc` 10 (36× less P-equivalent, 6× less D-equivalent than that arm at `wc` 60) and no arm-time growth has
+been reported since; one sentence in the PR description proposed. Before review, no code: (1) refresh the test plan
+(the first item still says `pid_unittest` 15/15 without `USE_ADRC`; it is 35 tests with it, plus `adrc_unittest` 64,
+`adrc_mixer_unittest` 20, `adrc_gate_e2e_unittest` 2 and ADRC cases in `blackbox_unittest`; 95/95 executables, F405/G474
+build on the head); (2) a flight on the current head 912827d69e (nobody has flown it; profiles reset once, `DEBUG_ADRC`
+114); (3) `tasks` output from an F411 with ADRC on (ADRC-012's open item). Promised: the `pgLoad()` size guard as our own
+upstream PR.
 
 **2026-10-19: upstream fixed #15826.** #15830 (Firat17aze, merged by haslinghuis) bumps `PG_PID_PROFILE` 12 → 13
 on master for the #15546 stride change (228 → 234 bytes), with a test that a version-12 blob is rejected. That made
@@ -1735,6 +1741,13 @@ on master for the #15546 stride change (228 → 234 bytes), with a test that a v
 b37531190d): the PR keeps version 1, which neither upstream (11, 12, 13) nor any ADRC build has carried (13 was the
 PR's own earlier bump with a different layout); upstream's two new tests pass as they are. 95/95 test executables,
 F405 and G474 build. Not yet offered to Bob.
+
+**2026-10-17: jmsweng back (fork #5).** On his 2.5" the overshoot at τ = 0 goes away with `adrc_b0_law = LINEAR`
+instead of SQRT; he suggests guidance on trying the laws rather than a "+20 %" column in the fitter. Consistent with
+the chirps: b0 was 4–24 % under b_acc/τ, and the two 5" roll sweeps at 30 / 35 % throttle gave b_acc/τ 3390 / 3930
+(ratio 1.16; linear predicts 1.17, sqrt 1.08). He offers flights this weekend. Reply posted the same evening: (1) a flight on the current PR head 277d102cb2 (nobody has flown it;
+debug 114, profiles reset once), prebuilt hex on offer; (2) chirps at two throttle levels in one flight to pick the
+law from data; (3) calm-air repeat of the 2.5" τ pair; (4) the 5" τ = 0 pitch sweep.
 
 **2026-10-01, math review posted.** `docs/ADRC_MATH_REVIEW.md` (loop model as coded; the motor pole in z3 and the
 structural overshoot, checked on 23 tester logs / 726 stick moves; wc·τ stability ceiling; D-path noise and wo as the
