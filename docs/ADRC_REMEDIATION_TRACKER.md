@@ -1729,7 +1729,11 @@ first. Single structs keep the `MIN(size, pgSize)` prefix copy, which is upstrea
 without a version bump. `diagnoseEEPROM()` reports the case as a new `CONFIG_RESET_PG_SIZE` (appended to the enum, since
 the value is stored in `systemConfig`) instead of falling through to `BOARD`. Three tests in `pg_unittest` on
 `PG_RESERVED_FOR_TESTING_1`; removing the guard fails exactly the rejection test. `make preview` passed. Branch
-`pg-array-size-guard` on the fork, worktree `~/storage/pg-size-guard`.
+`pg-array-size-guard` on the fork, worktree `~/storage/pg-size-guard`. Same day: blckmn labelled it `RN: SAFETY
+IMPROVEMENT`, haslinghuis put it on the 2026.12 milestone, the full PR workflow ran green, CodeRabbit approved; then
+blckmn requested changes with the project's standard ask for a Blackbox log from a flight on the PR build (the change
+runs only while the EEPROM is read at boot, but the rule is the rule). A tester flight on the cloud build `15908` is
+the way to close it.
 
 **2026-10-23: blackbox-log-viewer#944 is moot — the standalone viewer is frozen.** The stale bot labelled #944 on
 2026-10-23. Checking why nothing had moved since CodeRabbit's approval (2026-09-23) turned up the README note merged on
