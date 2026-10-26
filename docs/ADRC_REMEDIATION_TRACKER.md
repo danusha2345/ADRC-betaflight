@@ -1722,6 +1722,15 @@ hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that
 and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
 (#15826), its own PR. Replies posted the same day: inline 4271892798 (gate) and 4271893389 (version). **CodeRabbit withdrew both findings within a minute and re-approved the PR** (review 5519312637, 14:12 UTC); it asked whether #15826 covers the array-size guard (answer pending approval). Master 3fc834476b (#15812, CLI ranges on MSP set) adds macros to `pid.h` only; PR head still merges cleanly.
 
+**2026-10-26: the `pgLoad()` size guard is up as betaflight/betaflight#15908.** Promised to Bob on 2026-10-23. The guard
+applies only to array groups (`reg->length > 1`): a record whose size is not `pgSize(reg)` is rejected and the group keeps
+its defaults, because the record is the elements laid end to end and another element size shifts every element after the
+first. Single structs keep the `MIN(size, pgSize)` prefix copy, which is upstream's convention for appending a field
+without a version bump. `diagnoseEEPROM()` reports the case as a new `CONFIG_RESET_PG_SIZE` (appended to the enum, since
+the value is stored in `systemConfig`) instead of falling through to `BOARD`. Three tests in `pg_unittest` on
+`PG_RESERVED_FOR_TESTING_1`; removing the guard fails exactly the rejection test. `make preview` passed. Branch
+`pg-array-size-guard` on the fork, worktree `~/storage/pg-size-guard`.
+
 **2026-10-23: blackbox-log-viewer#944 is moot — the standalone viewer is frozen.** The stale bot labelled #944 on
 2026-10-23. Checking why nothing had moved since CodeRabbit's approval (2026-09-23) turned up the README note merged on
 2026-08-19 (#939): the standalone Blackbox Explorer is feature frozen, moved into the Betaflight App as the Blackbox
