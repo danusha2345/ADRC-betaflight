@@ -1722,6 +1722,14 @@ hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that
 and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
 (#15826), its own PR. Replies posted the same day: inline 4271892798 (gate) and 4271893389 (version). **CodeRabbit withdrew both findings within a minute and re-approved the PR** (review 5519312637, 14:12 UTC); it asked whether #15826 covers the array-size guard (answer pending approval). Master 3fc834476b (#15812, CLI ranges on MSP set) adds macros to `pid.h` only; PR head still merges cleanly.
 
+**2026-10-27: replied to blckmn on #15908 and asked for a tester flight.** Posted on #15908 that a log will follow and
+where the change runs (only while the EEPROM is read at boot: `pgLoad()` in `loadEEPROM()` and `diagnoseEEPROM()` on a
+load fault; nothing in the flight loop is on the path). Asked jmsweng in fork issue #5 to flash the cloud build `15908`
+from the App's Firmware Flasher (expert mode, "Select commit"), fly a minute or two with Blackbox on, rename the `.bbl`
+to `.log` and attach it on #15908 or in #5. When a log arrives: check the battery and motor command vs eRPM first, then
+forward it. No other movement: master at 49679ccdfa, #15400 head 912827d69e still mergeable, Bob and jmsweng silent since
+2026-10-19 and 2026-10-17, Discord quiet.
+
 **2026-10-26: the `pgLoad()` size guard is up as betaflight/betaflight#15908.** Promised to Bob on 2026-10-23. The guard
 applies only to array groups (`reg->length > 1`): a record whose size is not `pgSize(reg)` is rejected and the group keeps
 its defaults, because the record is the elements laid end to end and another element size shifts every element after the
