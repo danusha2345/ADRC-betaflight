@@ -1722,6 +1722,12 @@ hits `resetEEPROM()` → `pgResetAll()` before anything is flown. The blobs that
 and 13, 14, 15, 0 (ADRC lines); 1 collides with none. A size guard in `pgLoad()` for array groups is the real fix
 (#15826), its own PR. Replies posted the same day: inline 4271892798 (gate) and 4271893389 (version). **CodeRabbit withdrew both findings within a minute and re-approved the PR** (review 5519312637, 14:12 UTC); it asked whether #15826 covers the array-size guard (answer pending approval). Master 3fc834476b (#15812, CLI ranges on MSP set) adds macros to `pid.h` only; PR head still merges cleanly.
 
+**2026-10-27 20:49 UTC: blckmn withdrew the log request on #15908.** Review dismissed with "flagged in error, this
+change doesn't affect flight code". No Blackbox log is needed for #15908; it stands with CodeRabbit's approval, a green
+PR workflow (50/50 check runs on `f202c6d51b`), the `RN: SAFETY IMPROVEMENT` label and the 2026.12 milestone, waiting
+on a maintainer review. The flight asked of jmsweng on the `15908` build is moot (a note to that effect drafted,
+`DRAFT_fork5_15908_not_needed.md`); the flight on the #15400 head is still wanted.
+
 **2026-10-27: replied to blckmn on #15908 and asked for a tester flight.** Posted on #15908 that a log will follow and
 where the change runs (only while the EEPROM is read at boot: `pgLoad()` in `loadEEPROM()` and `diagnoseEEPROM()` on a
 load fault; nothing in the flight loop is on the path). Asked jmsweng in fork issue #5 to flash the cloud build `15908`
