@@ -1733,7 +1733,7 @@ forward it. No other movement: master at 49679ccdfa, #15400 head 912827d69e stil
 wanted as well as ADRC; he was ill, and the 2.5" is lost in the mountains (to be rebuilt), so only the 5" and the 65 mm
 whoop remain. Reply drafted (`DRAFT_fork5_reply_jmsweng_1027.md`): the `15908` cloud build is master plus the guard with
 no ADRC in it, so stock PID with defaults and one log; the `15400` build is Bob's head with ADRC, where the ADRC flight
-alone is enough (`adrc_motor_tau_ms` is not in it); `tasks` from the whoop if it is an F411.
+alone is enough (`adrc_motor_tau_ms` is not in it); `tasks` from the whoop if it is an F411. Posted the same day (11:22 UTC).
 
 **2026-10-26: the `pgLoad()` size guard is up as betaflight/betaflight#15908.** Promised to Bob on 2026-10-23. The guard
 applies only to array groups (`reg->length > 1`): a record whose size is not `pgSize(reg)` is rejected and the group keeps
