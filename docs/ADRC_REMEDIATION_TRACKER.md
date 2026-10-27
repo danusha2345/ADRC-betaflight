@@ -1728,7 +1728,12 @@ load fault; nothing in the flight loop is on the path). Asked jmsweng in fork is
 from the App's Firmware Flasher (expert mode, "Select commit"), fly a minute or two with Blackbox on, rename the `.bbl`
 to `.log` and attach it on #15908 or in #5. When a log arrives: check the battery and motor command vs eRPM first, then
 forward it. No other movement: master at 49679ccdfa, #15400 head 912827d69e still mergeable, Bob and jmsweng silent since
-2026-10-19 and 2026-10-17, Discord quiet.
+2026-10-19 and 2026-10-17, Discord quiet. Same day 11:02 UTC jmsweng answered in fork #5: he can fly "tomorrow"
+(2026-10-28), both the #15908 log and the earlier asks (current #15400 head, F411 `tasks`); asked whether a PID log is
+wanted as well as ADRC; he was ill, and the 2.5" is lost in the mountains (to be rebuilt), so only the 5" and the 65 mm
+whoop remain. Reply drafted (`DRAFT_fork5_reply_jmsweng_1027.md`): the `15908` cloud build is master plus the guard with
+no ADRC in it, so stock PID with defaults and one log; the `15400` build is Bob's head with ADRC, where the ADRC flight
+alone is enough (`adrc_motor_tau_ms` is not in it); `tasks` from the whoop if it is an F411.
 
 **2026-10-26: the `pgLoad()` size guard is up as betaflight/betaflight#15908.** Promised to Bob on 2026-10-23. The guard
 applies only to array groups (`reg->length > 1`): a record whose size is not `pgSize(reg)` is rejected and the group keeps
