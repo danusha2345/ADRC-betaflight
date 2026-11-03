@@ -6,6 +6,14 @@ Maintained by @danusha2345; the full internal runbook (bench logs, local build
 matrices, per-craft configs) is kept out of the PR tree — this is the complete
 list of findings, their status, and what remains open.
 
+**Актуализация плана проверок: 2026-11-03.** Текущая матрица и доказательства:
+[ADRC_TEST_PLAN_20261103.md](ADRC_TEST_PLAN_20261103.md). Официальный CI для
+`912827d69e` прошёл 29.10 (merge checkout `0f4cfbd804`, 95 программ / 41 build job);
+два полёта Air65 на этой голове подтверждены. F411 timing остаётся открытым.
+Синхронизация с master `c5102518` опубликована как [PR Бобу #6](https://github.com/bvandevliet/betaflight/pull/6),
+merge `a7c9d13995`; локально 100 test executables и G474/F405/F411 PASS. Полётов на merge нет.
+Старые записи ниже сохраняют дату и не являются текущим списком невыполненных тестов.
+
 **Evidence sync: 2026-09-22.** The public evidence tree is current through the
 September 8ksal8 campaign (addenda 1–21 in
 `flight-test-analysis/pr15400-8ksal8-airmode-rxsmoothing/ANALYSIS.md`: five
@@ -49,7 +57,7 @@ head `a138a5dd19`; the remediation series landed with the force-push to
 | ADRC-010 | CLASSIC↔ADRC handover semantics undefined; tests implied an unsupported mid-air bumpless switch | DONE | `fc2b9cca4c` | Disarmed-switch test checks reset state, not a false mid-air promise | n/a | — |
 | ADRC-011 | Gate re-arm tests were vacuous (`liftoffIdleHoldMs=0` disabled the very path under test) | DONE | `1bdfffcef1` | Mutation check: reverting cross-clamp/stillness cap breaks the tests | n/a | — |
 | ADRC-012 | Coverage: full `pidController` path, mixer E2E, crash/GPS Rescue, loop-rate sweeps; F411 8 kHz cycle budget | IMPLEMENTED | `ab98b77127`, `72e47757e8`, `799ff89e60` | 63 host suites green with `-Werror`; F405/F411 size deltas recorded (+3280 B / +2624 B FLASH) | n/a | F411 8 kHz DWT cycle benchmark on real hardware — **NOT PROVEN, medium risk** |
-| ADRC-013 | Integration: rebase onto master, official CI, release, structured re-flight | IMPLEMENTED | rebase series (`range-diff`-verified equivalent) | Local full test-all + clean target builds | Partial (see 017/018/019) | Official CI matrix needs maintainer approve-and-run; structured flight checklist below |
+| ADRC-013 | Integration: rebase onto master, official CI, release, structured re-flight | IMPLEMENTED | rebase series (`range-diff`-verified equivalent) | Local full test-all + clean target builds | Partial (see 017/018/019) | CI for 912827d69e passed 2026-10-29; new-head flight received; next master sync and F411 timing remain (see current test plan) |
 | ADRC-014 | Yaw-spin recovery zeroed visible I but left `z3` alive — exit kicked up to `pidSumLimit` | DONE | `ee9a153767` | Mutation reproduces the kick; regression in normal and `-ffast-math` matrix | n/a | — |
 | ADRC-015 | Crash Flip: ESO could learn the turtle command and open the gate; auto-rearm entered flight with stale state | DONE | `7ade8d8089` | Crash-Flip loop reset tests | n/a | — |
 | ADRC-016 | With `thrust_linear > 0` the mixer published inverse-compensated throttle — 40 % gate threshold effectively shifted to ~45 %, `b0` schedule underestimated thrust | DONE | `1b19666f6c` | Real mixer test with target-equivalent thrust formula 11/11; mutation breaks 10/11 | n/a | — |
@@ -294,6 +302,8 @@ so the available exact-input corpus does not establish voltage-tracking `b0`;
 no compensation feature is supported.
 
 ### ADRC-022 — Conservative typical-5″ defaults (raised by @bvandevliet)
+
+**Актуальный scope, 2026-11-03:** универсальный тюн исключён из цели #15400 по текущему описанию PR; исторический запрос ниже не является незакрытым обязательным тестом. Настройка выполняется под аппарат.
 
 Explicit criterion going forward: defaults (`wc/wo/b0`, gate thresholds,
 `adrc_b0_scale_max`) target a conservative point on a typical 5″ freestyle
@@ -1444,54 +1454,38 @@ boundaries rather than prescribing a new flight matrix.
 
 ## External acceptance criteria still pending
 
-- Official upstream CI matrix on the current head (needs maintainer
-  approve-and-run for collaborator pushes).
-- ~~b4 re-fly (same tune)~~ — **happened 2026-07-14**; split outcome recorded
-  in ADRC-018/019 (always-on over-gain and d7 modulation gone; episodic ring
-  → ADRC-024, punch rebound → ADRC-025; the zero-throttle drop report is
-  consistent with the logs — flight mode itself is not log-verifiable).
-- ~~ADRC-021 doublet flight~~ — **completed and independently repeated on a
-  second craft**; the corpus rejects the shipped quadratic law but does not yet
-  select the production replacement. Fitter/input hardening is published at
-  `e696c08591`; the LINEAR/SQRT production choice is still waiting for the
-  maintainers/testers' judgment on the existing corpus. @8ksal8's 2026-08-28
-  reply prefers SQRT from accumulated working-tune experience, but explicitly
-  says it is too early to select a law and that LINEAR might tune equally well;
-  this supports retaining the experimental selector rather than declaring a
-  default.
-- ~~Decide with the PR author whether and how to rebase the upstream-scoped ADRC
-  patchset onto current Betaflight~~ — **the merge is done on the fork side**
-  (`adrc-b11`, a `git merge` of master into the tester line, no rebase, no
-  conflicts of substance; ahead 93 / behind 0 on 2026-09-19). Bob chose the PR
-  route (26 Sep) and **merged bvandevliet/betaflight#1 into `adrc-toggle` on
-  2026-09-27** (merge commit 0f493054bb, tree identical to `adrc-b11-pr`), so
-  #15400 now carries the b11 PR line.
-- ~~Official upstream CI on the new head~~ — **green**: Bob merged
-  bvandevliet/betaflight#2 and took #15400 out of draft (2026-09-27 20:17 UTC);
-  the PR workflow on head 1492457e29 (run 36346231748) passed.
-- CodeRabbit's review of 1492457e29: two findings, both valid — `DEBUG_ADRC`
-  ordering and ADRC-035. Fixed in branch `adrc-cr-fixes` (b7e489dfe5), opened as
-  **bvandevliet/betaflight#3** (2026-09-28), merged by Bob the same day; CodeRabbit
-  resolved both threads and approved. The PR workflow on head 1eabcb3877 (run
-  36455744783) waits for maintainer approval.
-- ADRC-028 mechanism remains open; no universal default is accepted from the
-  current high-`wo` corpus. Production protection/automatic derating is
-  deliberately deferred and is not part of the observability patch.
-- ~~One new-format Blackbox log is eventually needed to validate the on-hardware
-  `adrc_z3_log_scale` and exact observability fields~~ — **done**: every
-  September log carries the b9+ header and `adrcState` bits are read directly
-  (addenda 12–21).
-- ~~b0 law production choice~~ — **SQRT is the b11 default** by the D2 vote
-  (jmsweng + 8ksal8, no objection); the selector stays.
-- ~~ADRC-033 sustained-clip case~~ — **closed 2026-09-23**: a 25 % payload under one
-  motor (jmsweng, Air65, addendum 22) is carried as a standing disturbance and does
-  not pin the mixer, like full throttle and full-rate yaw before it. Not pursued
-  further: reaching a sustained clip means flying at the edge of controllability.
-- Configurator (bvandevliet/betaflight-configurator#1) and Blackbox Explorer
-  (betaflight/blackbox-log-viewer#944) support for the b11 settings and fields
-  — PRs open 2026-09-22.
-- F411 8 kHz DWT cycle benchmark on real hardware (ADRC-012).
+Актуальный статус на **2026-11-03**; полная матрица источников —
+[план проверок](ADRC_TEST_PLAN_20261103.md). Готовый блок для описания PR
+[передан Бобу](https://github.com/betaflight/betaflight/pull/15400#issuecomment-6604575596).
 
+- **Выполнено:** официальный CI для `912827d69e` (29.10), 95 test executables и
+  41 build job PASS; фактический checkout — merge `0f4cfbd804` с base `b37531190d`.
+  Старое ожидание maintainer approve-and-run к этой голове больше не относится.
+- **Выполнено:** два полётных лога jmsweng на `912827d69`, Air65/G474, ADRC=1,
+  24.42 + 43.26 с; [анализ в PR](https://github.com/betaflight/betaflight/pull/15400#issuecomment-6604362590).
+  Только этот head и настроенный профиль; флаг sat_z3_inhibit OFF.
+- **Выполнено исторически:** b4 re-fly, doublets двух аппаратов, проверка новой
+  Blackbox-наблюдаемости, ground-wc тесты и OFF/ON короткого насыщения. Подробности
+  и ограничения сохраняются в соответствующих ADRC-пунктах; не переносить их
+  автоматически на свежий head как новые аппаратные проверки.
+- **Открыто:** F411 runtime timing (ADRC-012); запрошенный `tasks` и доказательство
+  бюджета 8 kHz не получены. Сборка F411 не равна измерению на железе.
+- **Открыто:** sync с новым master, затем тесты/сборки на полученном SHA. Старый
+  зелёный CI не доказывает корректность будущего merge.
+- **Дополнительно ожидается:** обещанный jmsweng полёт 5-дюймового аппарата.
+  Отдельный CLASSIC flight и полный аппаратный upgrade/save/reboot/readback на
+  нынешнем head не заявлены выполненными; это границы доказательств, не новый
+  обязательный полётный чек-лист.
+- **Решение принято:** универсальный тюн исключён из цели PR; SQRT — дефолт b11,
+  селектор b0 сохраняется. ADRC-028 оставлен предупреждением по wo, механизм
+  не объявлен закрытым. Старые формулировки ADRC-021/022 читаются с этой поправкой.
+- **Запрос снят, сценарий не проверен:** длительное насыщение ADRC-033. Ранее
+  throttle/yaw/payload тесты не достигли нужного режима; дальнейшие stress flights
+  сознательно не назначаются, флаг остаётся opt-in/OFF.
+- **Отдельная работа:** ADRC-036/mp2, GUI #5302, docs #718. #944 закрыт:
+  standalone viewer заморожен, современный viewer находится в Betaflight App.
+- **#15908:** требование полётного BBL отозвано мейнтейнером 27.10; это отдельный
+  PR, его PID-лог не является проверкой CLASSIC на ADRC head.
 
 ## Post-b10.1 items (the b11 line)
 
