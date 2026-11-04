@@ -6,13 +6,14 @@ Maintained by @danusha2345; the full internal runbook (bench logs, local build
 matrices, per-craft configs) is kept out of the PR tree — this is the complete
 list of findings, their status, and what remains open.
 
-**Актуализация плана проверок: 2026-11-03.** Текущая матрица и доказательства:
-[ADRC_TEST_PLAN_20261103.md](ADRC_TEST_PLAN_20261103.md). Официальный CI для
-`912827d69e` прошёл 29.10 (merge checkout `0f4cfbd804`, 95 программ / 41 build job);
-два полёта Air65 на этой голове подтверждены. F411 timing остаётся открытым.
-Синхронизация с master `c5102518` опубликована как [PR Бобу #6](https://github.com/bvandevliet/betaflight/pull/6),
-merge `a7c9d13995`; локально 100 test executables и G474/F405/F411 PASS. Полётов на merge нет.
-Старые записи ниже сохраняют дату и не являются текущим списком невыполненных тестов.
+**Актуализация плана проверок: 2026-11-04.** Актуальная матрица:
+[ADRC_TEST_PLAN_20261104.md](ADRC_TEST_PLAN_20261104.md).
+PR #6 и #7 слиты; head 5a19cf92a, CI merge abbeb9b1bd: 101 программа и 43 build job PASS.
+Полёты Air65 остаются привязаны к 912827d69e; F411 timing открыт.
+Follow-up e2e24f49: запрет armed set pid_type и тест производственного захвата
+Blackbox; локально 100 программ и G474 PASS, upstream merge/CI ещё ожидаются.
+Математика CLASSIC сохранена; запрет profile при armed меняет CLI для обоих типов.
+Старые записи ниже исторические, не текущий список невыполненных проверок.
 
 **Evidence sync: 2026-09-22.** The public evidence tree is current through the
 September 8ksal8 campaign (addenda 1–21 in
